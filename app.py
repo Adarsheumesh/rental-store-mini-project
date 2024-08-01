@@ -6,6 +6,7 @@ from oauthlib.oauth2 import WebApplicationClient
 import requests
 import os
 from dotenv import load_dotenv # type: ignore
+
 load_dotenv()
 
 # Allow insecure transport for development
@@ -78,6 +79,8 @@ def register():
         name = request.form.get('name')
         phone = request.form.get('phone')
         district = request.form.get('district')
+        user_type = request.form.get('user_type')  # Get user type from form
+        status = 0  # Default status
 
         if not is_valid_email(email):
             flash('Invalid email address.', 'danger')
@@ -108,7 +111,9 @@ def register():
                 "name": name,
                 "phone": phone,
                 "district": district,
-                "email": email
+                "email": email,
+                "user_type": user_type,  # Save user type
+                "status": status  # Default status
             })
 
             flash('Registration successful! Please verify your email before logging in.', 'success')
@@ -125,12 +130,13 @@ def register():
 def resend_verification():
     if request.method == 'POST':
         email = request.form.get('email')
+        password = request.form.get('password')
         try:
-            user = auth.sign_in_with_email_and_password(email, request.form.get('password'))
+            user = auth.sign_in_with_email_and_password(email, password)
             auth.send_email_verification(user['idToken'])
             flash('Verification email sent.', 'success')
-        except:
-            flash('Failed to send verification email.', 'danger')
+        except Exception as e:
+            flash(f'Failed to send verification email: {str(e)}', 'danger')
 
     return render_template('resend_verification.html')
 
@@ -160,13 +166,17 @@ def login():
                 return render_template('login.html')
 
             session['user_id'] = user_id
-
             user_data = db.child("users").child(user_id).get().val()
 
             if user_data:
                 session['email'] = email
                 session['user_info'] = user_data
-                return redirect(url_for('index'))
+
+                # Redirect based on user type
+                if user_data.get('user_type') == 'vendor':
+                    return render_template('admin/index.html', email=email, user_info=user_data)
+                else:
+                    return redirect(url_for('index'))
             else:
                 flash('User data not found.', 'danger')
 
@@ -194,6 +204,7 @@ def google_callback():
     google_provider_cfg = get_google_provider_cfg()
     token_endpoint = google_provider_cfg["token_endpoint"]
 
+    # Exchange authorization code for access token
     token_url, headers, body = client.prepare_token_request(
         token_endpoint,
         authorization_response=request.url,
@@ -206,9 +217,7 @@ def google_callback():
         data=body,
         auth=(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET),
     )
-
     token_json = token_response.json()
-    session['google_token'] = token_json['access_token']
 
     client.parse_request_body_response(json.dumps(token_json))
     userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
@@ -218,21 +227,34 @@ def google_callback():
     userinfo = userinfo_response.json()
 
     if userinfo.get("email_verified"):
-        unique_id = userinfo["sub"]
-        users_name = userinfo["name"]
         users_email = userinfo["email"]
+        users_name = userinfo["name"]
         picture = userinfo["picture"]
 
         session['email'] = users_email
         session['name'] = users_name
         session['picture'] = picture
 
+        # Check if user already exists in Firebase
         try:
-            user = auth.create_user_with_email_and_password(users_email, unique_id)
+            user = auth.sign_in_with_email_and_password(users_email, users_email)
             user_id = user['localId']
         except:
-            user = auth.sign_in_with_email_and_password(users_email, unique_id)
-            user_id = user['localId']
+            # If the user does not exist, create a new one
+            try:
+                user = auth.create_user_with_email_and_password(users_email, users_email)
+                user_id = user['localId']
+                # Save user info in Firebase
+                db.child("users").child(user_id).set({
+                    "name": users_name,
+                    "phone": "",  # Default values if not provided
+                    "district": "",
+                    "email": users_email,
+                    "user_type": "customer"  # Default user type
+                })
+            except Exception as e:
+                flash(f"Error creating user: {str(e)}", 'danger')
+                return redirect(url_for('login'))
 
         # Fetch user data from the database and update the session
         user_data = db.child("users").child(user_id).get().val()
@@ -240,9 +262,11 @@ def google_callback():
         if user_data:
             session['user_id'] = user_id
             session['user_info'] = user_data
-
-        flash('Logged in successfully with Google.', 'success')
-        return redirect(url_for('index'))
+            flash('Logged in successfully with Google.', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('User data not found after login.', 'danger')
+            return redirect(url_for('login'))
     else:
         flash('User email not available or not verified by Google.', 'danger')
         return redirect(url_for('login'))
@@ -279,8 +303,8 @@ def forgot_password():
         try:
             auth.send_password_reset_email(email)
             flash('Password reset email sent.', 'success')
-        except:
-            flash('Failed to send password reset email.', 'danger')
+        except Exception as e:
+            flash(f'Failed to send password reset email: {str(e)}', 'danger')
 
     return render_template('forgot_password.html')
 
@@ -289,68 +313,9 @@ def logout():
     session.pop('email', None)
     session.pop('user_info', None)
     session.pop('user_id', None)
-    session.pop('google_token', None)
+    session.pop('google_token', None, None)
+    flash('You have been logged out.', 'info')
     return redirect(url_for('index'))
-
-@app.route('/register-vendor', methods=['GET', 'POST'])
-def register_vendor():
-    if 'email' in session and 'user_info' in session:
-        return redirect(url_for('index'))
-
-    if request.method == 'POST':
-        email = request.form.get('email').lower()
-        password = request.form.get('password')
-        name = request.form.get('name')
-        phone = request.form.get('phone')
-        district = request.form.get('district')
-        newsletter = request.form.get('newsletter')
-        agree = request.form.get('agree')
-
-        if not is_valid_email(email):
-            flash('Invalid email address.', 'danger')
-            return render_template('vendorreg.html')
-
-        if not is_valid_password(password):
-            flash('Password must be at least 8 characters long and include one uppercase letter, one lowercase letter, one number, and one special character.', 'danger')
-            return render_template('vendorreg.html')
-
-        if not is_valid_phone(phone):
-            flash('Invalid phone number.', 'danger')
-            return render_template('vendorreg.html')
-
-        if not is_valid_name(name):
-            flash('Name cannot contain numbers or special characters.', 'danger')
-            return render_template('vendorreg.html')
-
-        if not is_valid_district(district):
-            flash('District cannot contain numbers or special characters.', 'danger')
-            return render_template('vendorreg.html')
-
-        try:
-            user = auth.create_user_with_email_and_password(email, password)
-            user_id = user['localId']
-            auth.send_email_verification(user['idToken'])
-
-            db.child("vendors").child(user_id).set({
-                "name": name,
-                "phone": phone,
-                "district": district,
-                "email": email,
-                "newsletter": newsletter,
-                "agree": agree
-            })
-
-            flash('Vendor registration successful! Please verify your email before logging in.', 'success')
-            return redirect(url_for('login'))
-
-        except Exception as e:
-            error = f"Unsuccessful registration: {str(e)}"
-            flash(error, 'danger')
-            return render_template('vendorreg.html')
-
-    return render_template('vendorreg.html')
-
-# Make sure other routes remain unchanged.
 
 @app.route('/update-account', methods=['GET', 'POST'])
 def update_account():
