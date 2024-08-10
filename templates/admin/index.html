@@ -10,7 +10,7 @@
 	<title>Qoduby - Admin & Dashboard Template</title>
 
 	<!-- Favicon -->
-	<link rel="icon" type="image/png" href="assets/media/logo/favicon.png">	
+	<link rel="icon" type="image/png" href="{{ url_for('static', filename='admin/favicon.png') }}">
 
 	<!-- Google Font -->
 	<link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,10 +18,9 @@
 	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
 	<!-- Global CSS -->
-	<link href="assets/css/style.css" rel="stylesheet" type="text/css">
-
+	<link href="{{ url_for('static', filename='admin/css/style.css') }}" rel="stylesheet" type="text/css">
 	<!-- Light-Dark Mode & Theme Direction Selector -->
-	<script src="assets/js/theme.js" crossorigin="anonymous"></script>
+	<script src="{{ url_for('static', filename='admin/js/theme.js') }}" crossorigin="anonymous"></script>
 </head>
 <body>
 	<div class="app-root">

@@ -1,3 +1,4 @@
+from weakref import ref
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import pyrebase
 import re
@@ -5,8 +6,12 @@ import json
 from oauthlib.oauth2 import WebApplicationClient
 import requests
 import os
-from dotenv import load_dotenv # type: ignore
-
+import firebase_admin
+from firebase_admin import db
+from firebase_admin import credentials
+from dotenv import load_dotenv  # type: ignore
+from datetime import datetime  # Import datetime
+from werkzeug.utils import secure_filename
 load_dotenv()
 
 # Allow insecure transport for development
@@ -54,6 +59,7 @@ def is_valid_phone(phone):
 
 def is_valid_name(name):
     regex = r'^[A-Za-z\s]+$'
+    
     return re.match(regex, name)
 
 def is_valid_district(district):
@@ -80,7 +86,8 @@ def register():
         phone = request.form.get('phone')
         district = request.form.get('district')
         user_type = request.form.get('user_type')  # Get user type from form
-        status = 0  # Default status
+        status = "active"    # Default status
+        registration_date = datetime.now().date().strftime("%Y-%m-%d")  # Get current date
 
         if not is_valid_email(email):
             flash('Invalid email address.', 'danger')
@@ -103,17 +110,20 @@ def register():
             return render_template('register.html')
 
         try:
+            # Create user in Firebase Auth
             user = auth.create_user_with_email_and_password(email, password)
             user_id = user['localId']
             auth.send_email_verification(user['idToken'])
 
+            # Store user data in Firebase Realtime Database
             db.child("users").child(user_id).set({
                 "name": name,
                 "phone": phone,
                 "district": district,
                 "email": email,
                 "user_type": user_type,  # Save user type
-                "status": status  # Default status
+                "status": status,  # Default status
+                "registration_date": registration_date  # Save registration date (only date)
             })
 
             flash('Registration successful! Please verify your email before logging in.', 'success')
@@ -125,6 +135,7 @@ def register():
             return render_template('register.html')
 
     return render_template('register.html')
+
 
 @app.route('/resend-verification', methods=['GET', 'POST'])
 def resend_verification():
@@ -168,13 +179,15 @@ def login():
             session['user_id'] = user_id
             user_data = db.child("users").child(user_id).get().val()
 
+
+
             if user_data:
                 session['email'] = email
                 session['user_info'] = user_data
 
                 # Redirect based on user type
                 if user_data.get('user_type') == 'vendor':
-                    return render_template('admin/index.html', email=email, user_info=user_data)
+                    return redirect(url_for('vendor_dashboard'))
                 else:
                     return redirect(url_for('index'))
             else:
@@ -195,6 +208,7 @@ def google_login():
         authorization_endpoint,
         redirect_uri=request.base_url + "/callback",
         scope=["openid", "email", "profile"],
+        prompt="select_account"  # Force account selection
     )
     return redirect(request_uri)
 
@@ -276,8 +290,28 @@ def index():
     if 'email' in session and 'user_info' in session:
         email = session['email']
         user_info = session['user_info']
-        return render_template('index.html', email=email, user_info=user_info)
-    return render_template('index.html')
+    else:
+        email = None
+        user_info = None
+
+    # Fetch data from the 'products' table
+    try:
+        products = db.child("products").get().val()  # Fetch all products from the 'products' table
+    except Exception as e:
+        products = None
+        flash(f"Failed to retrieve products: {str(e)}", 'danger')
+
+    return render_template('index.html', email=email, user_info=user_info, products=products)
+
+
+@app.route('/vendor_dashboard')
+def vendor_dashboard():
+    if 'email' in session and 'user_info' in session:
+        email = session['email']
+        user_info = session['user_info']
+        return render_template('andshop/index.html', email=email, user_info=user_info)
+    else:
+        return redirect(url_for('login'))
 
 @app.route('/account')
 def account():
@@ -306,14 +340,14 @@ def forgot_password():
         except Exception as e:
             flash(f'Failed to send password reset email: {str(e)}', 'danger')
 
-    return render_template('forgot_password.html')
+    return render_template('reset_password.html')
 
 @app.route('/logout')
 def logout():
     session.pop('email', None)
     session.pop('user_info', None)
     session.pop('user_id', None)
-    session.pop('google_token', None, None)
+    session.pop('google_token', None)  # Correct this line
     flash('You have been logged out.', 'info')
     return redirect(url_for('index'))
 
@@ -324,6 +358,7 @@ def update_account():
 
     email = session['email']
     user_info = session['user_info']
+    user_type = user_info.get('user_type')
 
     if request.method == 'POST':
         name = request.form.get('name')
@@ -332,38 +367,174 @@ def update_account():
 
         if not is_valid_name(name):
             flash('Name cannot contain numbers or special characters.', 'danger')
-            return render_template('update_account.html', email=email, user_info=user_info)
+            return render_template('account.html', email=email, user_info=user_info)
 
         if not is_valid_phone(phone):
             flash('Invalid phone number.', 'danger')
-            return render_template('update_account.html', email=email, user_info=user_info)
+            return render_template('account.html', email=email, user_info=user_info)
 
         if not is_valid_district(district):
             flash('District cannot contain numbers or special characters.', 'danger')
-            return render_template('update_account.html', email=email, user_info=user_info)
+            return render_template('account.html', email=email, user_info=user_info)
+
+        update_data = {
+            "name": name,
+            "phone": phone,
+            "district": district
+        }
+
+        # Additional fields for vendors
+        if user_type == 'vendor':
+            store_name = request.form.get('store_name')
+            profile_pic = request.files.get('profile_pic')
+
+            if not store_name:
+                flash('Store name is required for vendors.', 'danger')
+                return render_template('account.html', email=email, user_info=user_info)
+
+            # Save the profile picture if it exists
+            if profile_pic:
+                profile_pic_url = save_profile_picture(profile_pic)
+                update_data['profile_pic'] = profile_pic_url
+
+            update_data['store_name'] = store_name
 
         user_id = session['user_id']
         try:
-            db.child("users").child(user_id).update({
-                "name": name,
-                "phone": phone,
-                "district": district
-            })
+            db.child("users").child(user_id).update(update_data)
 
             # Update session info
-            session['user_info'] = {
-                "name": name,
-                "phone": phone,
-                "district": district,
-                "email": email
-            }
+            session['user_info'].update(update_data)
 
             flash('Account updated successfully!', 'success')
-            return redirect(url_for('account'))
+            
+            # Redirect based on user type
+            print("sdsdsdsdsdsds",user_type)
+            if user_type == "vendor":
+                return redirect(url_for('user_profile'))  # Redirect to the vendor profile route
+            else:
+                return redirect(url_for('account'))
         except Exception as e:
             flash(f"Failed to update account: {str(e)}", 'danger')
 
-    return render_template('update_account.html', email=email, user_info=user_info)
+    return render_template('account.html', email=email, user_info=user_info)
+
+# Vendor-start
+@app.route('/product-add')
+def producadd():
+    return render_template('/andshop/product-add.html')
+@app.route('/user-list')
+def user_list():
+    # Check if the user is logged in
+    if 'user_info' in session:
+        try:
+            # Fetch all users from the Firebase database
+            users = db.child("users").get().val()
+            # If users data exists, render it in the template
+            if users:
+                return render_template('/andshop/user-list.html', users=users)
+            else:
+                flash('No users found.', 'warning')
+                return render_template('/andshop/user-list.html', users={})
+        except Exception as e:
+            flash(f"Error fetching user list: {str(e)}", 'danger')
+            return redirect(url_for('index'))
+    else:
+        flash('You need to log in first.', 'danger')
+        return redirect(url_for('login'))
+
+@app.route('/user-profile')
+def user_profile():
+    if 'user_info' in session:
+        user_info = session['user_info']
+        return render_template('/andshop/user-profile.html', user=user_info)
+    else:
+        flash('You need to log in to view your profile.', 'warning')
+        return redirect(url_for('login'))
+    
+
+@app.route('/add-product', methods=['POST'])
+def add_product():
+    if 'email' not in session or 'user_info' not in session:
+        return redirect(url_for('login'))
+
+    user_info = session['user_info']
+    user_type = user_info.get('user_type')
+
+    if request.method == 'POST':
+        product_name = request.form.get('product_name')
+        product_type = request.form.get('product_type')
+        main_category = request.form.get('main_category')
+        product_quantity = request.form.get('product_quantity')
+        product_price = request.form.get('product_price')
+        product_image = request.files.get('product_image')
+
+        # Validate inputs
+        if not product_name or not product_price:
+            flash('Product name and product_price are required.', 'danger')
+            return redirect(url_for('add_product_page'))
+
+        # Save the product image if it exists
+        product_image_url = None
+        if product_image and product_image.filename != '':
+            product_image_url = save_product_image(product_image)
+
+        try:
+            # Insert product into the database
+            db.child("products").push({
+                "product_name": product_name,
+                "product_type": product_type,
+                "main_category": main_category,
+                "product_quantity": product_quantity,
+                "product_price": product_price,
+                "product_image": product_image_url
+            })
+
+            flash('Product added successfully!', 'success')
+            return redirect(url_for('product_list'))  # Adjust the redirect URL as needed
+        except Exception as e:
+            flash(f"Failed to add product: {str(e)}", 'danger')
+
+    return redirect(url_for('add_product_page'))  # Redirect if method is not POST
+
+def save_product_image(product_image):
+    filename = secure_filename(product_image.filename)
+    # Create the 'products' folder in 'static/uploads' if it does not exist
+    products_folder = os.path.join('static/uploads', 'products')
+    os.makedirs(products_folder, exist_ok=True)
+    filepath = os.path.join(products_folder, filename)
+    product_image.save(filepath)
+    return url_for('static', filename=f'uploads/products/{filename}')
+
+
+@app.route('/add-product-page')
+def add_product_page():
+    return render_template('/andshop/product-add.html')  # Replace with your template name
+
+@app.route('/product/<product_id>')
+def product_detail(product_id):
+    try:
+        # Fetch product details from Firebase using the provided product_id
+        product = db.child("products").child(product_id).get()
+        product_details = product.val() if product else None
+
+        if product_details:
+            print(f"Product Details: {product_details}")
+        else:
+            print("No product details found.")
+
+        # If no product details are found, flash a warning and redirect to the product list
+        if product_details is None:
+            flash('Product not found.', 'warning')
+            return redirect(url_for('product_list'))
+
+    except Exception as e:
+        # If there's an error fetching product details, flash an error message
+        flash(f"Failed to fetch product details: {str(e)}", 'danger')
+        return redirect(url_for('product_list'))
+
+    # Render the product detail template with the fetched product details
+    return render_template('product.html', product_det=product_details)
 
 if __name__ == '__main__':
     app.run(debug=True)

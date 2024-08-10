@@ -357,156 +357,124 @@
                            </div>
                        </div>
                    </div>
-                    <div class="row">
-                        <div class="col-lg-2">
-                            <!-- Nav tabs -->
-                            <ul class="nav flex-column dashboard-list" role="tablist">
-                                <li><a class="active" data-bs-toggle="tab" href="#dashboard">Dashboard</a></li>
-                                <li><a data-bs-toggle="tab" href="#orders">Orders</a></li>
-                                <li><a data-bs-toggle="tab" href="#downloads">Downloads</a></li>
-                                <li><a data-bs-toggle="tab" href="#address">Addresses</a></li>
-                                <li><a data-bs-toggle="tab" href='#account-details'>Account details</a></li>
-                                <li><a data-bs-toggle="tab" href='#edit-account-details'>Edit Account details</a></li>
-                                <li><a  href="/logout">logout</a></li>
-                            </ul>
-                        </div>
-                        <div class="col-lg-10">
-                            <!-- Tab panes -->
-                            <div class="tab-content dashboard-content mt-all-40">
-                                <div id="dashboard" class="tab-pane active">
-                                    <h3>Dashboard </h3>
-                                    <p>From your account dashboard. you can easily check & view your <a href="#">recent orders</a>, manage your <a href="#">shipping and billing addresses</a> and <a href="#">edit your password and account details.</a></p>
+                   <div class="row">
+                    <div class="col-lg-2">
+                        <!-- Nav tabs -->
+                        <ul class="nav flex-column dashboard-list" role="tablist">
+                            <li><a class="active" data-bs-toggle="tab" href="#account-details">Account details</a></li>
+                            <li><a data-bs-toggle="tab" href="#orders">Orders</a></li>
+                            <li><a data-bs-toggle="tab" href="#downloads">Downloads</a></li>
+                            <li><a data-bs-toggle="tab" href="#address">Addresses</a></li>
+                            <li><a data-bs-toggle="tab" href='#edit-account-details'>Edit Account details</a></li>
+                            <li><a href="/logout">logout</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-lg-10">
+                        <!-- Tab panes -->
+                        <div class="tab-content dashboard-content mt-all-40">
+                            <div id="account-details" class="tab-pane active">
+                                <h3>Account details </h3>
+                                <div class="register-form login-form clearfix">
+                                    <form action="#">
+                                        <div class="form-group row">
+                                            <label for="f-name" class="col-lg-3 col-md-4 col-form-label">Name</label>
+                                            <div class="col-lg-6 col-md-8">
+                                                <label>{{ user_info.name }}</label>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label for="l-name" class="col-lg-3 col-md-4 col-form-label">Address</label>
+                                            <div class="col-lg-6 col-md-8">
+                                                <label>{{ user_info.district }} </label>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label for="email" class="col-lg-3 col-md-4 col-form-label">Email address</label>
+                                            <div class="col-lg-6 col-md-8">
+                                                <label>{{ user_info.email }} </label>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label for="inputpassword" class="col-lg-3 col-md-4 col-form-label">Phone No</label>
+                                            <div class="col-lg-6 col-md-8">
+                                                <label>{{ user_info.phone }} </label>
+                                            </div>
+                                        </div>
+                                    </form>
                                 </div>
-                                <div id="orders" class="tab-pane fade">
-                                    <h3>Orders</h3>
-                                    <div class="table-responsive">
-                                        <table class="table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Order</th>
-                                                    <th>Date</th>
-                                                    <th>Status</th>
-                                                    <th>Total</th>
-                                                    <th>Actions</th>	 	 	 	
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td>1</td>
-                                                    <td>May 10, 2018</td>
-                                                    <td>Processing</td>
-                                                    <td>$25.00 for 1 item </td>
-                                                    <td><a class="view" href="cart.html">view</a></td>
-                                                </tr>
-                                                <tr>
-                                                    <td>2</td>
-                                                    <td>May 10, 2018</td>
-                                                    <td>Processing</td>
-                                                    <td>$17.00 for 1 item </td>
-                                                    <td><a class="view" href="cart.html">view</a></td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
+                            </div>
+                            <div id="orders" class="tab-pane fade">
+                                <h3>Orders</h3>
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Order</th>
+                                                <th>Date</th>
+                                                <th>Status</th>
+                                                <th>Total</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>1</td>
+                                                <td>May 10, 2018</td>
+                                                <td>Processing</td>
+                                                <td>$25.00 for 1 item </td>
+                                                <td><a class="view" href="cart.html">view</a></td>
+                                            </tr>
+                                            <tr>
+                                                <td>2</td>
+                                                <td>May 10, 2018</td>
+                                                <td>Processing</td>
+                                                <td>$17.00 for 1 item </td>
+                                                <td><a class="view" href="cart.html">view</a></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
-                                <div id="downloads" class="tab-pane fade">
-                                    <h3>Downloads</h3>
-                                    <div class="table-responsive">
-                                        <table class="table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Product</th>
-                                                    <th>Downloads</th>
-                                                    <th>Expires</th>
-                                                    <th>Download</th>	 	 	 	
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td>Proecut Name Here</td>
-                                                    <td>May 10, 2018</td>
-                                                    <td>never</td>
-                                                    <td><a class="view" href="#">Click Here To Download Your File</a></td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Proecut Name Here</td>
-                                                    <td>Sep 11, 2018</td>
-                                                    <td>never</td>
-                                                    <td><a class="view" href="#">Click Here To Download Your File</a></td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
+                            </div>
+                            <div id="downloads" class="tab-pane fade">
+                                <h3>Downloads</h3>
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Product</th>
+                                                <th>Downloads</th>
+                                                <th>Expires</th>
+                                                <th>Download</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Product Name Here</td>
+                                                <td>May 10, 2018</td>
+                                                <td>never</td>
+                                                <td><a class="view" href="#">Click Here To Download Your File</a></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Product Name Here</td>
+                                                <td>Sep 11, 2018</td>
+                                                <td>never</td>
+                                                <td><a class="view" href="#">Click Here To Download Your File</a></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
-                                <div id="address" class="tab-pane">
-                                    <p>The following addresses will be used on the checkout page by default.</p>
-                                    <h4 class="billing-address">Billing address</h4>
-                                    <a class="view" href="#">edit</a>
-                                    <p>steven smith</p>
-                                    <p>Australia</p>   
-                                </div>
-                                <div id="account-details" class="tab-pane fade">
-                                    <h3>Account details </h3>
-                                    <div class="register-form login-form clearfix">
-                                        <form action="#">
-                                            <div class="form-group row align-items-center">
-                                                <label class="col-lg-3 col-md-4 col-form-label">Social title</label>
-                                                <div class="col-lg-6 col-md-8">
-                                                    <span class="custom-radio"><input name="id_gender" value="1" type="radio"> Mr.</span>
-                                                    <span class="custom-radio"><input name="id_gender" value="1" type="radio"> Mrs.</span>
-                                                </div>
-                                            </div>
-                                            <div class="form-group row">
-                                                <label for="f-name" class="col-lg-3 col-md-4 col-form-label">Name</label>
-                                                <div class="col-lg-6 col-md-8">
-                                                    <label>{{ user_info.name }}</label>
-                                                </div>
-                                            </div>
-                                            <div class="form-group row">
-                                                <label for="l-name" class="col-lg-3 col-md-4 col-form-label">Address</label>
-                                                <div class="col-lg-6 col-md-8">
-                                                    <label>{{ user_info.district }} </label>
-                                                </div>
-                                            </div>
-                                            <div class="form-group row">
-                                                <label for="email" class="col-lg-3 col-md-4 col-form-label">Email address</label>
-                                                <div class="col-lg-6 col-md-8">
-                                                    <label>{{ user_info.email }} </label>
-                                                </div>
-                                            </div>
-                                            <div class="form-group row">
-                                                <label for="inputpassword" class="col-lg-3 col-md-4 col-form-label">Phone No</label>
-                                                <div class="col-lg-6 col-md-8">
-                                                    <label>{{ user_info.phone }} </label>
-                                                </div>
-                                            </div>
-                                            <div class="form-group row">
-                                                <label for="newpassword" class="col-lg-3 col-md-4 col-form-label">New password</label>
-                                                <div class="col-lg-6 col-md-8">
-                                                    <input type="password" class="form-control" id="newpassword">
-                                                    <button class="btn show-btn" type="button">Show</button>
-                                                </div>
-                                            </div>
-                                            <div class="form-group row">
-                                                <label for="v-password" class="col-lg-3 col-md-4 col-form-label">Confirm password</label>
-                                                <div class="col-lg-6 col-md-8">
-                                                    <input type="password" class="form-control" id="c-password">
-                                                    <button class="btn show-btn" type="button">Show</button>
-                                                </div>
-                                            </div>
-                                            <div class="form-group row">
-                                                <label for="birth" class="col-lg-3 col-md-4 col-form-label">Birthdate</label>
-                                                <div class="col-lg-6 col-md-8">
-                                                    <input type="text" class="form-control" id="birth" placeholder="MM/DD/YYYY">
-                                                </div>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div><div id="edit-account-details" class="tab-pane fade">
-                                    <h3>edit-Account details </h3>
-                                    <div class="register-form login-form clearfix">
-                                     <!-- account.html -->
-                                     <form action="{{ url_for('update_account') }}" method="POST">
+                            </div>
+                            <div id="address" class="tab-pane">
+                                <p>The following addresses will be used on the checkout page by default.</p>
+                                <h4 class="billing-address">Billing address</h4>
+                                <a class="view" href="#">edit</a>
+                                <p>steven smith</p>
+                                <p>Australia</p>
+                            </div>
+                            <div id="edit-account-details" class="tab-pane fade">
+                                <h3>Edit Account details </h3>
+                                <div class="register-form login-form clearfix">
+                                    <form action="{{ url_for('update_account') }}" method="POST">
                                         <div class="form-group row">
                                             <label for="f-name" class="col-lg-3 col-md-4 col-form-label">Name</label>
                                             <div class="col-lg-6 col-md-8">
@@ -531,23 +499,23 @@
                                             </div>
                                         </div>
                                     </form>
-                                    
-                                {% with messages = get_flashed_messages(with_categories=true) %}
-                                {% if messages %}
-                                    {% for category, message in messages %}
-                                        <div class="alert alert-{{ category }}">
-                                            {{ message }}
-                                        </div>
-                                    {% endfor %}
-                                {% endif %}
-                            {% endwith %}
-                            
-                                    </div>
+                
+                                    {% with messages = get_flashed_messages(with_categories=true) %}
+                                    {% if messages %}
+                                        {% for category, message in messages %}
+                                            <div class="alert alert-{{ category }}">
+                                                {{ message }}
+                                            </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                    {% endwith %}
+                
                                 </div>
-
                             </div>
                         </div>
                     </div>
+                </div>
+                
                 </div>
             </div>
         </div>

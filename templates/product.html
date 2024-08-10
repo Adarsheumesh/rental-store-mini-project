@@ -10,38 +10,39 @@
     <meta name="description" content="Default Description">
     <meta name="keywords" content="E-commerce" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- place favicon.ico in the root directory -->
-    <link rel="shortcut icon" type="image/x-icon" href="img/icon/favicon.png">
-    <!-- Google Font css -->
-    <link href="https://fonts.googleapis.com/css?family=Lily+Script+One" rel="stylesheet"> 
+      <!-- place favicon.ico in the root directory -->
+      <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/icon/favicon.png') }}">
 
+      <!-- Google Font css -->
+      <link href="https://fonts.googleapis.com/css?family=Lily+Script+One" rel="stylesheet"> 
+  
     <!-- mobile menu css -->
-    <link rel="stylesheet" href="css/meanmenu.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/meanmenu.min.css') }}">
     <!-- animate css -->
-    <link rel="stylesheet" href="css/animate.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/animate.css') }}">
     <!-- nivo slider css -->
-    <link rel="stylesheet" href="css/nivo-slider.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/nivo-slider.css') }}">
     <!-- owl carousel css -->
-    <link rel="stylesheet" href="css/owl.carousel.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/owl.carousel.min.css') }}">
     <!-- slick css -->
-   <link rel="stylesheet" href="css/slick.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/slick.css') }}">
     <!-- price slider css -->
-    <link rel="stylesheet" href="css/jquery-ui.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.min.css') }}">
     <!-- fontawesome css -->
-    <link rel="stylesheet" href="css/font-awesome.min.css">
-     <!-- fancybox css -->
-    <link rel="stylesheet" href="css/jquery.fancybox.css">     
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/font-awesome.min.css') }}">
+    <!-- fancybox css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.fancybox.css') }}">
     <!-- bootstrap css -->
-    <link rel="stylesheet" href="css/bootstrap.min.css">
-    <!-- default css  -->
-    <link rel="stylesheet" href="css/default.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <!-- default css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/default.css') }}">
     <!-- style css -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <!-- responsive css -->
-    <link rel="stylesheet" href="css/responsive.css">
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+  
     <!-- modernizr js -->
-    <script src="js/vendor/modernizr-2.8.3.min.js"></script>
+    <script src="{{ url_for('static', filename='js/vendor/modernizr-2.8.3.min.js') }}"></script>
 </head>
 
 <body>
@@ -122,7 +123,7 @@
                             <div class="middle-menu pull-right">
                                 <nav>
                                     <ul class="middle-menu-list">
-                                        <li><a href="index.html">home<i class="fa fa-angle-down"></i></a>
+                                        <li><a href="/index">home<i class="fa fa-angle-down"></i></a>
                                             <!-- Home Version Dropdown Start -->
                                             <ul class="ht-dropdown home-dropdown">
                                                 <li><a href="index.html">Home Version One</a></li>
@@ -313,7 +314,7 @@
             <div class="container">
                 <div class="breadcrumb">
                     <ul>
-                        <li><a href="index.html">Home</a></li>
+                        <li><a href="/index">Home</a></li>
                         <li><a href="shop.html">Shop</a></li>
                         <li class="active"><a href="product.html">Product</a></li>
                     </ul>
@@ -331,7 +332,9 @@
                         <!-- Thumbnail Large Image start -->
                         <div class="tab-content">
                             <div id="thumb1" class="tab-pane active">
-                                <a data-fancybox="images" href="img/products/1.jpg"><img src="img/products/1.jpg" alt="product-view"></a>
+                                <a data-fancybox="images" href="{{ url_for('static', filename='img/products/1.jpg') }}">
+                                    <img src="{{ url_for('static', filename='img/products/1.jpg') }}" alt="product-view">
+                                </a> 
                             </div>
                             <div id="thumb2" class="tab-pane">
                                 <a data-fancybox="images" href="img/products/2.jpg"><img src="img/products/2.jpg" alt="product-view"></a>
@@ -358,9 +361,10 @@
                     </div>
                     <!-- Main Thumbnail Image End -->
                     <!-- Thumbnail Description Start -->
+                     <script> print(product_details['name'])</script>
                     <div class="col-lg-7">
                         <div class="thubnail-desc fix">
-                            <h3 class="product-header">Products Name Here</h3>
+                            <h3 class="product-header">{{ product_det['name'] }}</h3>
                             <div class="rating-summary fix mtb-10">
                                 <div class="rating f-left">
                                     <i class="fa fa-star"></i>
@@ -1066,30 +1070,30 @@
     </div>
     <!-- Wrapper End -->
     <!-- jquery 3.12.4 -->
-    <script src="js/vendor/jquery-1.12.4.min.js"></script>
-    <!-- mobile menu js  -->
-    <script src="js/jquery.meanmenu.min.js"></script>
+    <script src="{{ url_for('static', filename='js/vendor/jquery-1.12.4.min.js') }}"></script>
+    <!-- mobile menu js -->
+    <script src="{{ url_for('static', filename='js/jquery.meanmenu.min.js') }}"></script>
     <!-- scroll-up js -->
-    <script src="js/jquery.scrollUp.js"></script>
+    <script src="{{ url_for('static', filename='js/jquery.scrollUp.js') }}"></script>
     <!-- owl-carousel js -->
-    <script src="js/owl.carousel.min.js"></script>
+    <script src="{{ url_for('static', filename='js/owl.carousel.min.js') }}"></script>
     <!-- slick js -->
-    <script src="js/slick.min.js"></script>
+    <script src="{{ url_for('static', filename='js/slick.min.js') }}"></script>
     <!-- wow js -->
-    <script src="js/wow.min.js"></script>
+    <script src="{{ url_for('static', filename='js/wow.min.js') }}"></script>
     <!-- price slider js -->
-    <script src="js/jquery-ui.min.js"></script>
-    <script src="js/jquery.countdown.min.js"></script>
+    <script src="{{ url_for('static', filename='js/jquery-ui.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jquery.countdown.min.js') }}"></script>
     <!-- nivo slider js -->
-    <script src="js/jquery.nivo.slider.js"></script>
+    <script src="{{ url_for('static', filename='js/jquery.nivo.slider.js') }}"></script>
     <!-- fancybox js -->
-    <script src="js/jquery.fancybox.min.js"></script>
+    <script src="{{ url_for('static', filename='js/jquery.fancybox.min.js') }}"></script>
     <!-- bootstrap -->
-    <script src="js/bootstrap.min.js"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
     <!-- plugins -->
-    <script src="js/plugins.js"></script>
+    <script src="{{ url_for('static', filename='js/plugins.js') }}"></script>
     <!-- main js -->
-    <script src="js/main.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 
 
