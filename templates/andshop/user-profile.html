@@ -41,7 +41,7 @@
 			<div id="sidebar" class="sidebar ec-sidebar-footer">
 
 				<div class="ec-brand">
-					<a href="index.php">
+					<a href="/vendor_dashboard">
 						<img class="ec-brand-icon" src="assets/img/logo/favicon.png" alt="" />
 						<span class="ec-brand-name text-truncate">ANDSHOP</span>
 					</a>
@@ -53,44 +53,11 @@
 					<ul class="nav sidebar-inner" id="sidebar-menu">
 						<!-- Dashboard -->
 						<li class="">
-							<a class="sidenav-item-link" href="index.php">
+							<a class="sidenav-item-link" href="/vendor_dashboard">
 								<i class="mdi mdi-view-dashboard-outline"></i>
 								<span class="nav-text">Dashboard</span>
 							</a>
 							<hr>
-						</li>
-
-						<!-- Vendors -->
-						<li class="has-sub">
-							<a class="sidenav-item-link" href="javascript:void(0)">
-								<i class="mdi mdi-briefcase-outline"></i>
-								<span class="nav-text">Vendors</span> <b class="caret"></b>
-							</a>
-							<div class="collapse">
-								<ul class="sub-menu" id="vendors" data-parent="#sidebar-menu">
-									<li class="">
-										<a class="sidenav-item-link" href="vendor-card.php">
-											<span class="nav-text">Vendor Grid</span>
-										</a>
-									</li>
-
-									<li class="">
-										<a class="sidenav-item-link" href="vendor-list.php">
-											<span class="nav-text">Vendor List</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="vendor-profile.php">
-											<span class="nav-text">Vendors Profile</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="add-vendor.php">
-											<span class="nav-text">Add Vendors</span>
-										</a>
-									</li>
-								</ul>
-							</div>
 						</li>
 
 						<!-- Users -->
@@ -101,20 +68,10 @@
 							</a>
 							<div class="collapse">
 								<ul class="sub-menu" id="users" data-parent="#sidebar-menu">
-									<li>
-										<a class="sidenav-item-link" href="user-card.php">
-											<span class="nav-text">User Grid</span>
-										</a>
-									</li>
 
 									<li class="">
-										<a class="sidenav-item-link" href="user-list.php">
+										<a class="sidenav-item-link" href="/user-list">
 											<span class="nav-text">User List</span>
-										</a>
-									</li>
-									<li class="active">
-										<a class="sidenav-item-link" href="user-profile.php">
-											<span class="nav-text">Users Profile</span>
 										</a>
 									</li>
 								</ul>
@@ -131,12 +88,12 @@
 							<div class="collapse">
 								<ul class="sub-menu" id="categorys" data-parent="#sidebar-menu">
 									<li class="">
-										<a class="sidenav-item-link" href="main-category.php">
+										<a class="sidenav-item-link" href="/main-category">
 											<span class="nav-text">All Category</span>
 										</a>
 									</li>
 									<li class="">
-										<a class="sidenav-item-link" href="add-category.php">
+										<a class="sidenav-item-link" href="/add-category">
 											<span class="nav-text">Add Category</span>
 										</a>
 									</li>
@@ -154,23 +111,13 @@
 							<div class="collapse">
 								<ul class="sub-menu" id="products" data-parent="#sidebar-menu">
 									<li class="">
-										<a class="sidenav-item-link" href="product-add.php">
+										<a class="sidenav-item-link" href="/product-add">
 											<span class="nav-text">Add Product</span>
 										</a>
 									</li>
 									<li class="">
-										<a class="sidenav-item-link" href="product-list.php">
+										<a class="sidenav-item-link" href="/products">
 											<span class="nav-text">List Product</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="product-grid.php">
-											<span class="nav-text">Grid Product</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="product-detail.php">
-											<span class="nav-text">Product Detail</span>
 										</a>
 									</li>
 								</ul>
@@ -230,14 +177,6 @@
 							</a>
 						</li>
 
-						<!-- Brands -->
-						<li class="">
-							<a class="sidenav-item-link" href="brand-list.php">
-								<i class="mdi mdi-tag-outline"></i>
-								<span class="nav-text">Brands</span>
-							</a>
-							<hr>
-						</li>
 						<!-- Transactions -->
 						<li class="has-sub">
 							<a class="sidenav-item-link" href="javascript:void(0)">
@@ -254,34 +193,6 @@
 									<li class="">
 										<a href="transaction-details.php">
 											<span class="nav-text">Transaction details</span>
-										</a>
-									</li>
-								</ul>
-							</div>
-						</li>
-						<!-- Setting -->
-						<li class="">
-							<a class="sidenav-item-link" href="setting.php">
-								<i class="mdi mdi-cogs"></i>
-								<span class="nav-text">Setting</span>
-							</a>
-						</li>
-						<!-- Authentication --> 
-						<li class="has-sub">
-							<a class="sidenav-item-link" href="javascript:void(0)">
-								<i class="mdi mdi-login-variant"></i>
-								<span class="nav-text">Authentication</span> <b class="caret"></b>
-							</a>
-							<div class="collapse">
-								<ul class="sub-menu" id="authentication" data-parent="#sidebar-menu">
-									<li class="">
-										<a href="sign-in.php">
-											<span class="nav-text">Sign In</span>
-										</a>
-									</li>
-									<li class="">
-										<a href="sign-up.php">
-											<span class="nav-text">Sign Up</span>
 										</a>
 									</li>
 								</ul>
@@ -331,18 +242,18 @@
 							<li class="dropdown user-menu">
 								<button class="dropdown-toggle nav-link ec-drop" data-bs-toggle="dropdown"
 									aria-expanded="false">
-									<img src="assets/img/user/user-1.png" class="user-image" alt="User Image" />
+									<img src="{{ user.profile_pic }}" class="user-image" alt="User Image" />
 								</button>
 								<ul class="dropdown-menu dropdown-menu-right ec-dropdown-menu">
 									<!-- User image -->
 									<li class="dropdown-header">
 										<div class="d-inline-block">
-											<h5>Alex Dor</h5>
-											<p class="pt-2">demo@gmail.com</p>
+											<h5>{{ user.name }}</h5>
+											<p class="pt-2">{{ user.email }}</p>
 										</div>
 									</li>
 									<li>
-										<a href="user-profile.php">
+										<a href="/user-profile">
 											<i class="mdi mdi-account"></i> My Profile
 										</a>
 									</li>
@@ -524,9 +435,7 @@
 								<span><i class="mdi mdi-chevron-right"></i></span>Profile
 							</p>
 						</div>
-						<div>
-							<a href="user-list.php" class="btn btn-primary">Edit</a>
-						</div>
+						
 					</div>
 					<div class="user_profile_wrapper_top card">
 						<div class="user_profile_top_bg"></div>

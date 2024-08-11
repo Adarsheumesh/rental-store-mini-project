@@ -2,8 +2,7 @@
 <html lang="en" dir="ltr">
 
 
-<!-- Mirrored from andit.co/projects/html/andshop/andshop-dashboard//products by HTTrack Website Copier/3.x [XR&CO'2014], Sat, 25 Feb 2023 08:14:32 GMT -->
-
+<!-- Mirrored from andit.co/projects/html/andshop/andshop-dashboard/product-add.php by HTTrack Website Copier/3.x [XR&CO'2014], Sat, 25 Feb 2023 08:14:29 GMT -->
 <head>
 	<meta charset="utf-8" />
 	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -15,25 +14,22 @@
 	<!-- GOOGLE FONTS -->
 	<link rel="preconnect" href="https://fonts.googleapis.com/">
 	<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
-	<link
-		href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700;800&amp;family=Poppins:wght@300;400;500;600;700;800;900&amp;family=Roboto:wght@400;500;700;900&amp;display=swap"
-		rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700;800&amp;family=Poppins:wght@300;400;500;600;700;800;900&amp;family=Roboto:wght@400;500;700;900&amp;display=swap" rel="stylesheet">
 
-	<link href="../../../../cdn.jsdelivr.net/npm/%40mdi/font%404.4.95/css/materialdesignicons.min.php"
-		rel="stylesheet" />
-		<link href="{{ url_for('static', filename='assets/css/materialdesignicons.min.css') }}" rel="stylesheet" />
+	<link href="{{ url_for('static', filename='assets/css/materialdesignicons.min.css') }}" rel="stylesheet" />
 
-		<!-- PLUGINS CSS STYLE -->
-		<link href="{{ url_for('static', filename='assets/plugins/simplebar/simplebar.css') }}" rel="stylesheet">
-	
-		<!-- custom css -->
-		<link id="style.css" href="{{ url_for('static', filename='assets/css/style.css') }}" rel="stylesheet" />
-	
-		<!-- FAVICON -->
-		<link rel="icon" href="{{ url_for('static', filename='images/favicon.png') }}" type="image/png">
+	<!-- PLUGINS CSS STYLE -->
+	<link href="{{ url_for('static', filename='assets/plugins/simplebar/simplebar.css') }}" rel="stylesheet">
+
+	<!-- custom css -->
+	<link id="style.css" href="{{ url_for('static', filename='assets/css/style.css') }}" rel="stylesheet" />
+
+	<!-- FAVICON -->
+	<link rel="icon" href="{{ url_for('static', filename='images/favicon.png') }}" type="image/png">
+
 </head>
 
-<body id="body">
+<body class="ec-header-fixed ec-sidebar-fixed ec-sidebar-dark ec-header-light" id="body">
 
 	<!-- WRAPPER -->
 	<div class="wrapper">
@@ -61,6 +57,7 @@
 							</a>
 							<hr>
 						</li>
+
 						<!-- Users -->
 						<li class="has-sub">
 							<a class="sidenav-item-link" href="javascript:void(0)">
@@ -69,14 +66,12 @@
 							</a>
 							<div class="collapse">
 								<ul class="sub-menu" id="users" data-parent="#sidebar-menu">
-									
 
 									<li class="">
 										<a class="sidenav-item-link" href="/user-list">
 											<span class="nav-text">User List</span>
 										</a>
 									</li>
-									
 								</ul>
 							</div>
 							<hr>
@@ -113,12 +108,12 @@
 							</a>
 							<div class="collapse">
 								<ul class="sub-menu" id="products" data-parent="#sidebar-menu">
-									<li class="">
+									<li class="active">
 										<a class="sidenav-item-link" href="/product-add">
 											<span class="nav-text">Add Product</span>
 										</a>
 									</li>
-									<li class="active">
+									<li class="">
 										<a class="sidenav-item-link" href="/products">
 											<span class="nav-text">List Product</span>
 										</a>
@@ -145,7 +140,7 @@
 											<span class="nav-text">Order Detail</span>
 										</a>
 									</li>
-
+									
 								</ul>
 							</div>
 						</li>
@@ -258,7 +253,7 @@
 										</div>
 									</li>
 									<li>
-										<a href="user-profile.php">
+										<a href="/user-profile">
 											<i class="mdi mdi-account"></i> My Profile
 										</a>
 									</li>
@@ -431,63 +426,118 @@
 			</header>
 
 			<!-- CONTENT WRAPPER -->
-			<!-- product list code -->
 			<div class="ec-content-wrapper">
 				<div class="content">
 					<div class="breadcrumb-wrapper d-flex align-items-center justify-content-between">
 						<div>
-							<h1>All products</h1>
+							<h1>Update Product</h1>
 							<p class="breadcrumbs"><span><a href="/vendor_dashboard">Home</a></span>
-								<span><i class="mdi mdi-chevron-right"></i></span>Product
-							</p>
+								<span><i class="mdi mdi-chevron-right"></i></span>Product</p>
 						</div>
 						<div>
-							<a href="/product-add" class="btn btn-primary"> Add Porduct</a>
+							<a href="/products" class="btn btn-primary"> View All
+							</a>
 						</div>
 					</div>
 					<div class="row">
 						<div class="col-12">
 							<div class="card card-default">
+								<div class="card-header card-header-border-bottom">
+									<h2>Update Product</h2>
+								</div>
 								<div class="card-body">
-									<div class="table-responsive">
-										<table id="responsive-data-table" class="table" style="width:100%">
-											<thead>
-												<tr>
-													<th>Photo</th>
-													<th>Product name</th>
-													<th>Category</th>
-													<th>Price</th>
-													<th>Stock</th>
-													<th>Action</th>
-												</tr>
-											</thead>
-											<tbody>
-												{% for product_id, product in products.items() %}
-												<tr>
-													<td><img class="tbl-thumb" src="{{ product['product_image'] }}" alt="Product Image" /></td>
-													<td>{{ product['product_name'] }}</td>
-													<td>{{ product['main_category'] }}</td>
-													<td>{{ product['product_price'] }}</td>
-													<td>{{ product['product_quantity'] }}</td>
-													<td>
-														<div class="btn-group mb-1">
-															<button type="button" class="btn btn-outline-success">Info</button>
-															<button type="button" class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
-																	data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-display="static">
-																<span class="sr-only">Info</span>
-															</button>
-															<div class="dropdown-menu">
-																<a class="dropdown-item ,btn btn-outline-danger" href="{{ url_for('update_product', product_id=product_id) }}">Edit</a>
-																<form method="POST" action="{{ url_for('delete_product', product_id=product_id) }}" style="display:inline;">
-																	<button type="submit" class="btn btn-outline-danger">Delete</button>
-																</form>																
+									<div class="row ec-vendor-uploads">
+										<div class="col-lg-8">
+											<div class="ec-vendor-upload-detail">
+												<form method="POST" action="{{ url_for('update_product', product_id=product_id) }}" class="row g-3" enctype="multipart/form-data">
+													<div class="col-md-6">
+														<label for="productName" class="form-label">Product Name</label>
+														<input type="text" class="form-control" name="product_name" placeholder="Cutting Tool" id="productName" value="{{ product['product_name'] }}">
+													</div>
+													<div class="col-md-6">
+														<label class="form-label">Product Type</label>
+														<select name="product_type" class="form-select">
+															<option value="Cutting Tool" {% if product['product_type'] == 'Cutting Tool' %}selected{% endif %}>Cutting Tool</option>
+															<option value="Drilling and Fastening Tools" {% if product['product_type'] == 'Drilling and Fastening Tools' %}selected{% endif %}>Drilling and Fastening Tools</option>
+															<option value="Air Tools" {% if product['product_type'] == 'Air Tools' %}selected{% endif %}>Air Tools</option>
+															<option value="Welding and Soldering Tools" {% if product['product_type'] == 'Welding and Soldering Tools' %}selected{% endif %}>Welding and Soldering Tools</option>
+														</select>
+													</div>
+													<div class="col-md-6">
+														<label class="form-label">Category</label>
+														<select name="main_category" class="form-select">
+															<option value="Cutting Tool" {% if product['main_category'] == 'Cutting Tool' %}selected{% endif %}>Cutting Tool</option>
+															<option value="Drilling and Fastening Tools" {% if product['main_category'] == 'Drilling and Fastening Tools' %}selected{% endif %}>Drilling and Fastening Tools</option>
+															<option value="Air Tools" {% if product['main_category'] == 'Air Tools' %}selected{% endif %}>Air Tools</option>
+															<option value="Welding and Soldering Tools" {% if product['main_category'] == 'Welding and Soldering Tools' %}selected{% endif %}>Welding and Soldering Tools</option>
+														</select>
+													</div>
+													<div class="col-md-6">
+														<label for="productQuantity" class="form-label">Product Quantity</label>
+														<input type="text" class="form-control" name="product_quantity" placeholder="Product quantity" id="productQuantity" value="{{ product['product_quantity'] }}">
+													</div>
+													<div class="col-md-6">
+														<label for="productPrice" class="form-label">Product Price</label>
+														<input type="text" class="form-control" name="product_price" placeholder="Product price" id="productPrice" value="{{ product['product_price'] }}">
+													</div>
+													<div class="col-md-12">
+														<div class="product_add_cancel_button">
+															<button type="button" class="btn btn-border" onclick="window.location.href='{{ url_for('product_list') }}'">Cancel</button>
+															<button type="submit" class="btn btn-primary">Update Product</button>
+														</div>
+													</div>
+											</div>
+										</div>										
+													<div class="col-lg-4">
+														<div class="ec-vendor-img-upload">
+															<div class="ec-vendor-main-img">
+																<div class="avatar-upload">
+																	<div class="avatar-edit">
+																		<!-- File input for uploading images -->
+																		<input type='file' id="imageUpload" name="product_image" class="ec-image-upload" accept=".png, .jpg, .jpeg" />
+																		<label for="imageUpload">
+																			<img src="{{ url_for('static', filename='assets/img/icons/edit.svg') }}" class="svg_img header_svg" alt="edit" />
+																		</label>
+																	</div>
+																	<div class="avatar-preview ec-preview">
+																		<div class="imagePreview ec-div-preview">
+																			<!-- Preview image will be updated with JavaScript -->
+																			<img id="imagePreview" class="ec-image-preview" src="{{product.product_image}}" alt="preview" />
+																		</div>
+																	</div>
+																</div>
 															</div>
 														</div>
-													</td>
-												</tr>
-												{% endfor %}
-											</tbody>
-										</table>
+													</div>
+												</form>
+													<!-- JavaScript to handle image preview -->
+													<script>
+													document.getElementById('imageUpload').addEventListener('change', function() {
+														const file = this.files[0];
+														if (file) {
+															const reader = new FileReader();
+															reader.onload = function(e) {
+																document.getElementById('imagePreview').src = e.target.result;
+															};
+															reader.readAsDataURL(file);
+														}
+													});
+													</script>
+												
+												
+									<!-- Flash Messages Section -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+	{% if messages %}
+		<div class="flash-messages">
+			{% for category, message in messages %}
+				<div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+					{{ message }}
+					<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+				</div>
+			{% endfor %}
+		</div>
+	{% endif %}
+{% endwith %}
 									</div>
 								</div>
 							</div>
@@ -496,13 +546,12 @@
 				</div> <!-- End Content -->
 			</div> <!-- End Content Wrapper -->
 
-
 			<!-- Footer -->
 			<footer class="footer mt-auto">
 				<div class="copyright bg-white">
 					<p>
 						Copyright © 2023. All right reserved.
-					</p>
+					  </p>
 				</div>
 			</footer>
 
@@ -524,7 +573,5 @@
 </body>
 
 
-
-<!-- Mirrored from andit.co/projects/html/andshop/andshop-dashboard//products by HTTrack Website Copier/3.x [XR&CO'2014], Sat, 25 Feb 2023 08:14:35 GMT -->
-
+<!-- Mirrored from andit.co/projects/html/andshop/andshop-dashboard/product-add.php by HTTrack Website Copier/3.x [XR&CO'2014], Sat, 25 Feb 2023 08:14:32 GMT -->
 </html>

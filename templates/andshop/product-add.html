@@ -39,7 +39,7 @@
 			<div id="sidebar" class="sidebar ec-sidebar-footer">
 
 				<div class="ec-brand">
-					<a href="index.php">
+					<a href="/vendor_dashboard">
 						<img class="ec-brand-icon" src="assets/img/logo/favicon.png" alt="" />
 						<span class="ec-brand-name text-truncate">ANDSHOP</span>
 					</a>
@@ -51,44 +51,11 @@
 					<ul class="nav sidebar-inner" id="sidebar-menu">
 						<!-- Dashboard -->
 						<li class="">
-							<a class="sidenav-item-link" href="index.php">
+							<a class="sidenav-item-link" href="/vendor_dashboard">
 								<i class="mdi mdi-view-dashboard-outline"></i>
 								<span class="nav-text">Dashboard</span>
 							</a>
 							<hr>
-						</li>
-
-						<!-- Vendors -->
-						<li class="has-sub">
-							<a class="sidenav-item-link" href="javascript:void(0)">
-								<i class="mdi mdi-briefcase-outline"></i>
-								<span class="nav-text">Vendors</span> <b class="caret"></b>
-							</a>
-							<div class="collapse">
-								<ul class="sub-menu" id="vendors" data-parent="#sidebar-menu">
-									<li class="">
-										<a class="sidenav-item-link" href="vendor-card.php">
-											<span class="nav-text">Vendor Grid</span>
-										</a>
-									</li>
-
-									<li class="">
-										<a class="sidenav-item-link" href="vendor-list.php">
-											<span class="nav-text">Vendor List</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="vendor-profile.php">
-											<span class="nav-text">Vendors Profile</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="add-vendor.php">
-											<span class="nav-text">Add Vendors</span>
-										</a>
-									</li>
-								</ul>
-							</div>
 						</li>
 
 						<!-- Users -->
@@ -99,20 +66,11 @@
 							</a>
 							<div class="collapse">
 								<ul class="sub-menu" id="users" data-parent="#sidebar-menu">
-									<li>
-										<a class="sidenav-item-link" href="user-card.php">
-											<span class="nav-text">User Grid</span>
-										</a>
-									</li>
+									
 
 									<li class="">
-										<a class="sidenav-item-link" href="user-list.php">
+										<a class="sidenav-item-link" href="/user-list">
 											<span class="nav-text">User List</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="user-profile.php">
-											<span class="nav-text">Users Profile</span>
 										</a>
 									</li>
 								</ul>
@@ -129,12 +87,12 @@
 							<div class="collapse">
 								<ul class="sub-menu" id="categorys" data-parent="#sidebar-menu">
 									<li class="">
-										<a class="sidenav-item-link" href="main-category.php">
+										<a class="sidenav-item-link" href="/main-category">
 											<span class="nav-text">All Category</span>
 										</a>
 									</li>
 									<li class="">
-										<a class="sidenav-item-link" href="add-category.php">
+										<a class="sidenav-item-link" href="/add-category">
 											<span class="nav-text">Add Category</span>
 										</a>
 									</li>
@@ -152,23 +110,13 @@
 							<div class="collapse">
 								<ul class="sub-menu" id="products" data-parent="#sidebar-menu">
 									<li class="active">
-										<a class="sidenav-item-link" href="product-add.php">
+										<a class="sidenav-item-link" href="/product-add">
 											<span class="nav-text">Add Product</span>
 										</a>
 									</li>
 									<li class="">
-										<a class="sidenav-item-link" href="product-list.php">
+										<a class="sidenav-item-link" href="/products">
 											<span class="nav-text">List Product</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="product-grid.php">
-											<span class="nav-text">Grid Product</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="product-detail.php">
-											<span class="nav-text">Product Detail</span>
 										</a>
 									</li>
 								</ul>
@@ -228,14 +176,6 @@
 							</a>
 						</li>
 
-						<!-- Brands -->
-						<li class="">
-							<a class="sidenav-item-link" href="brand-list.php">
-								<i class="mdi mdi-tag-outline"></i>
-								<span class="nav-text">Brands</span>
-							</a>
-							<hr>
-						</li>
 						<!-- Transactions -->
 						<li class="has-sub">
 							<a class="sidenav-item-link" href="javascript:void(0)">
@@ -252,34 +192,6 @@
 									<li class="">
 										<a href="transaction-details.php">
 											<span class="nav-text">Transaction details</span>
-										</a>
-									</li>
-								</ul>
-							</div>
-						</li>
-						<!-- Setting -->
-						<li>
-							<a class="sidenav-item-link" href="setting.php">
-								<i class="mdi mdi-cogs"></i>
-								<span class="nav-text">Setting</span>
-							</a>
-						</li>
-						<!-- Authentication --> 
-						<li class="has-sub">
-							<a class="sidenav-item-link" href="javascript:void(0)">
-								<i class="mdi mdi-login-variant"></i>
-								<span class="nav-text">Authentication</span> <b class="caret"></b>
-							</a>
-							<div class="collapse">
-								<ul class="sub-menu" id="authentication" data-parent="#sidebar-menu">
-									<li class="">
-										<a href="sign-in.php">
-											<span class="nav-text">Sign In</span>
-										</a>
-									</li>
-									<li class="">
-										<a href="sign-up.php">
-											<span class="nav-text">Sign Up</span>
 										</a>
 									</li>
 								</ul>
@@ -340,7 +252,7 @@
 										</div>
 									</li>
 									<li>
-										<a href="user-profile.php">
+										<a href="/user-profile">
 											<i class="mdi mdi-account"></i> My Profile
 										</a>
 									</li>
@@ -522,7 +434,7 @@
 								<span><i class="mdi mdi-chevron-right"></i></span>Product</p>
 						</div>
 						<div>
-							<a href="product-list.php" class="btn btn-primary"> View All
+							<a href="/products" class="btn btn-primary"> View All
 							</a>
 						</div>
 					</div>
@@ -550,13 +462,15 @@
 															<option value="Welding and Soldering Tools">Welding and Soldering Tools</option>
 														</select>
 													</div>
-													<div class="col-md-6">
-														<label class="form-label">Category</label>
-														<select name="main_category" class="form-select">
+													<div>
+														<label for="main_category">Main Category:</label>
+														<select id="main_category" name="main_category" required>
+															<option value="" disabled selected>Select a category</option>
 															<option value="Cutting Tool">Cutting Tool</option>
-															<option value="Drilling and Fastening Tools">Drilling and Fastening Tools</option>
+															<option value="Drilling Tools">Drilling Tools</option>
 															<option value="Air Tools">Air Tools</option>
-															<option value="Welding and Soldering Tools">Welding and Soldering Tools</option>
+															<option value="Welding  Tools">Welding Tools</option>
+															<option value=" Soldering Tools">Soldering Tools</option>
 														</select>
 													</div>
 													<div class="col-md-6">
@@ -569,7 +483,7 @@
 													</div>
 													<div class="col-md-12">
 														<div class="product_add_cancel_button">
-															<button type="button" class="btn btn-border">Cancel</button>
+															<button type="button" class="btn btn-border" onclick="window.location.href='{{ url_for('vendor_dashboard') }}'">Cancel</button>
 															<button type="submit" class="btn btn-primary">Add Product</button>
 														</div>
 													</div>											
@@ -583,7 +497,7 @@
 															<!-- File input for uploading images -->
 															<input type='file' id="imageUpload" name="product_image" class="ec-image-upload" accept=".png, .jpg, .jpeg" />
 															<label for="imageUpload">
-																<img src="{{ url_for('static', filename='img/icons/edit.svg') }}" class="svg_img header_svg" alt="edit" />
+																<img src="{{ url_for('static', filename='assets/img/icons/edit.svg') }}" class="svg_img header_svg" alt="edit" />
 															</label>
 														</div>
 														<div class="avatar-preview ec-preview">

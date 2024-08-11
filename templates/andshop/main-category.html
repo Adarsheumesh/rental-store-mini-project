@@ -18,20 +18,22 @@
 		href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700;800&amp;family=Poppins:wght@300;400;500;600;700;800;900&amp;family=Roboto:wght@400;500;700;900&amp;display=swap"
 		rel="stylesheet">
 
-	<link href="assets/css/materialdesignicons.min.css" rel="stylesheet" />
+<!-- Material Design Icons -->
+<link href="{{ url_for('static', filename='assets/css/materialdesignicons.min.css') }}" rel="stylesheet" />
 
-	<!-- PLUGINS CSS STYLE -->
-	<link href="assets/plugins/simplebar/simplebar.css" rel="stylesheet" />
+<!-- PLUGINS CSS STYLE -->
+<link href="{{ url_for('static', filename='assets/plugins/simplebar/simplebar.css') }}" rel="stylesheet" />
 
-	<!-- Data Tables -->
-	<link href='assets/plugins/data-tables/datatables.bootstrap5.min.css' rel='stylesheet'>
-	<link href='assets/plugins/data-tables/responsive.datatables.min.css' rel='stylesheet'>
+<!-- Data Tables -->
+<link href="{{ url_for('static', filename='assets/plugins/data-tables/datatables.bootstrap5.min.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='assets/plugins/data-tables/responsive.datatables.min.css') }}" rel="stylesheet">
 
-	<!-- custom css -->
-	<link id="style.css" rel="stylesheet" href="assets/css/style.css" />
+<!-- Custom CSS -->
+<link id="style.css" rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}" />
 
-	<!-- FAVICON -->
-	<link href="assets/img/favicon.png" rel="shortcut icon" />
+<!-- Favicon -->
+<link href="{{ url_for('static', filename='assets/img/favicon.png') }}" rel="shortcut icon" />
+
 </head>
 
 <body class="ec-header-fixed ec-sidebar-fixed ec-sidebar-dark ec-header-light" id="body">
@@ -44,9 +46,9 @@
 			<div id="sidebar" class="sidebar ec-sidebar-footer">
 
 				<div class="ec-brand">
-					<a href="index.php">
+					<a href="/vendor_dashboard">
 						<img class="ec-brand-icon" src="assets/img/logo/favicon.png" alt="" />
-						<span class="ec-brand-name text-truncate">E-Kart</span>
+						<span class="ec-brand-name text-truncate">Andshop</span>
 					</a>
 				</div>
 
@@ -56,45 +58,13 @@
 					<ul class="nav sidebar-inner" id="sidebar-menu">
 						<!-- Dashboard -->
 						<li class="">
-							<a class="sidenav-item-link" href="index.php">
+							<a class="sidenav-item-link" href="/vendor_dashboard">
 								<i class="mdi mdi-view-dashboard-outline"></i>
 								<span class="nav-text">Dashboard</span>
 							</a>
 							<hr>
 						</li>
 
-						<!-- Vendors -->
-						<li class="has-sub">
-							<a class="sidenav-item-link" href="javascript:void(0)">
-								<i class="mdi mdi-briefcase-outline"></i>
-								<span class="nav-text">Vendors</span> <b class="caret"></b>
-							</a>
-							<div class="collapse">
-								<ul class="sub-menu" id="vendors" data-parent="#sidebar-menu">
-									<li class="">
-										<a class="sidenav-item-link" href="vendor-card.php">
-											<span class="nav-text">Vendor Grid</span>
-										</a>
-									</li>
-
-									<li class="">
-										<a class="sidenav-item-link" href="vendor-list.php">
-											<span class="nav-text">Vendor List</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="vendor-profile.php">
-											<span class="nav-text">Vendors Profile</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="add-vendor.php">
-											<span class="nav-text">Add Vendors</span>
-										</a>
-									</li>
-								</ul>
-							</div>
-						</li>
 
 						<!-- Users -->
 						<li class="has-sub">
@@ -104,20 +74,10 @@
 							</a>
 							<div class="collapse">
 								<ul class="sub-menu" id="users" data-parent="#sidebar-menu">
-									<li>
-										<a class="sidenav-item-link" href="user-card.php">
-											<span class="nav-text">User Grid</span>
-										</a>
-									</li>
 
 									<li class="">
-										<a class="sidenav-item-link" href="user-list.php">
+										<a class="sidenav-item-link" href="/user-list">
 											<span class="nav-text">User List</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="user-profile.php">
-											<span class="nav-text">Users Profile</span>
 										</a>
 									</li>
 								</ul>
@@ -134,12 +94,12 @@
 							<div class="collapse">
 								<ul class="sub-menu" id="categorys" data-parent="#sidebar-menu">
 									<li class="active">
-										<a class="sidenav-item-link" href="main-category.php">
+										<a class="sidenav-item-link" href="/main-category">
 											<span class="nav-text">All Category</span>
 										</a>
 									</li>
 									<li class="">
-										<a class="sidenav-item-link" href="add-category.php">
+										<a class="/add-category" href="/add-category">
 											<span class="nav-text">Add Category</span>
 										</a>
 									</li>
@@ -157,23 +117,13 @@
 							<div class="collapse">
 								<ul class="sub-menu" id="products" data-parent="#sidebar-menu">
 									<li class="">
-										<a class="sidenav-item-link" href="product-add.php">
+										<a class="sidenav-item-link" href="/add-product'">
 											<span class="nav-text">Add Product</span>
 										</a>
 									</li>
 									<li class="">
-										<a class="sidenav-item-link" href="product-list.php">
+										<a class="sidenav-item-link" href="/products">
 											<span class="nav-text">List Product</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="product-grid.php">
-											<span class="nav-text">Grid Product</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="product-detail.php">
-											<span class="nav-text">Product Detail</span>
 										</a>
 									</li>
 								</ul>
@@ -232,15 +182,6 @@
 								<span class="nav-text">Reviews</span>
 							</a>
 						</li>
-
-						<!-- Brands -->
-						<li class="">
-							<a class="sidenav-item-link" href="brand-list.php">
-								<i class="mdi mdi-tag-outline"></i>
-								<span class="nav-text">Brands</span>
-							</a>
-							<hr>
-						</li>
 						<!-- Transactions -->
 						<li class="has-sub">
 							<a class="sidenav-item-link" href="javascript:void(0)">
@@ -262,35 +203,6 @@
 								</ul>
 							</div>
 						</li>
-						<!-- Setting -->
-						<li>
-							<a class="sidenav-item-link" href="setting.php">
-								<i class="mdi mdi-cogs"></i>
-								<span class="nav-text">Setting</span>
-							</a>
-						</li>
-						<!-- Authentication --> 
-						<li class="has-sub">
-							<a class="sidenav-item-link" href="javascript:void(0)">
-								<i class="mdi mdi-login-variant"></i>
-								<span class="nav-text">Authentication</span> <b class="caret"></b>
-							</a>
-							<div class="collapse">
-								<ul class="sub-menu" id="authentication" data-parent="#sidebar-menu">
-									<li class="">
-										<a href="sign-in.php">
-											<span class="nav-text">Sign In</span>
-										</a>
-									</li>
-									<li class="">
-										<a href="sign-up.php">
-											<span class="nav-text">Sign Up</span>
-										</a>
-									</li>
-								</ul>
-							</div>
-						</li>
-
 						<!-- Error page -->
 						<li class="">
 							<a class="sidenav-item-link" href="404.php">
@@ -345,12 +257,12 @@
 										</div>
 									</li>
 									<li>
-										<a href="user-profile.php">
+										<a href="/user-profile">
 											<i class="mdi mdi-account"></i> My Profile
 										</a>
 									</li>
 									<li class="dropdown-footer">
-										<a href="index.php"> <i class="mdi mdi-logout"></i> Log Out </a>
+										<a href="/logout"> <i class="mdi mdi-logout"></i> Log Out </a>
 									</li>
 								</ul>
 							</li>
@@ -523,13 +435,13 @@
 					<div class="breadcrumb-wrapper breadcrumb-contacts">
 						<div>
 							<h1>All Category</h1>
-							<p class="breadcrumbs"><span><a href="index.php">Home</a></span>
+							<p class="breadcrumbs"><span><a href="/vendor_dashboard">Home</a></span>
 								<span><i class="mdi mdi-chevron-right"></i></span>All Category
 							</p>
 						</div>
 
 						<div>
-							<a href="add-category.php" class="btn btn-primary">Add category</a>
+							<a href="/add-category" class="btn btn-primary">Add category</a>
 						</div>
 					</div>
 					<div class="row">
@@ -540,274 +452,51 @@
 										<table id="responsive-data-table" class="table">
 											<thead>
 												<tr>
-													<th>ID</th>
-													<th>Photo</th>
 													<th>Category</th>
-													<th>Sub category</th>
-													<th>Products</th>
-													<th>Total sales</th>
-													<th>Slug</th>
-													<th>Amount</th>
-													<th>Status</th>
+													<th>Add-Date</th>
 													<th>Action</th>
 												</tr>
 											</thead>
-
 											<tbody>
-												<tr>
-													<td>#001 </td>
-													<td><img class="cat-thumb" src="assets/img/products/pro-1.png"
-															alt="Product Image" /></td>
-													<td>Chair</td>
-													<td>Office, Home, Decoration, Wood</td>
-													<td>1794</td>
-													<td>5782</td>
-													<td>/chair</td>
-													<td>40,892</td>
-													<td><span class="badge badge-success">Active</span></td>
-													<td>
-														<div class="btn-group">
-															<button type="button"
-																class="btn btn-outline-success">Info</button>
-															<button type="button"
-																class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
-																data-bs-toggle="dropdown" aria-haspopup="true"
-																aria-expanded="false" data-display="static">
-																<span class="sr-only">Info</span>
-															</button>
-															<div class="dropdown-menu">
-																<a class="dropdown-item" href="#">Edit</a>
-																<a class="dropdown-item" href="#">Delete</a>
+												{% if categories %}
+													{% for category in categories %}
+													<tr>
+														<td>{{ category.category_name }}</td>
+														<td>{{ category.created_at }}</td>
+														<td>
+															<div class="btn-group">
+																<button type="button" class="btn btn-outline-success">Info</button>
+																<button type="button" class="btn btn-outline-success dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-display="static">
+																	<span class="sr-only">Info</span>
+																</button>
+																<div class="dropdown-menu">
+																	<form action="{{ url_for('delete_category', id=category.id) }}" method="POST">
+																		<button type="submit">Delete</button>
+																	</form>
+																</div>
 															</div>
-														</div>
-													</td>
-												</tr>
-												<tr>
-													<td>#002</td>
-													<td><img class="cat-thumb" src="assets/img/products/pro-2.png"
-															alt="Product Image" /></td>
-													<td>T-shirt</td>
-													<td>Casual, Men, Boys, Summer</td>
-													<td>1794</td>
-													<td>5782</td>
-													<td>/chair</td>
-													<td>40,892</td>
-													<td><span class="badge badge-success">Active</span></td>
-													<td>
-														<div class="btn-group">
-															<button type="button"
-																class="btn btn-outline-success">Info</button>
-															<button type="button"
-																class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
-																data-bs-toggle="dropdown" aria-haspopup="true"
-																aria-expanded="false" data-display="static">
-																<span class="sr-only">Info</span>
-															</button>
-															<div class="dropdown-menu">
-																<a class="dropdown-item" href="#">Edit</a>
-																<a class="dropdown-item" href="#">Delete</a>
-															</div>
-														</div>
-													</td>
-												</tr>
-												<tr>
-													<td>#003 </td>
-													<td><img class="cat-thumb" src="assets/img/products/pro-3.png"
-															alt="Product Image" /></td>
-													<td>Chair</td>
-													<td>Office, Home, Decoration, Wood</td>
-													<td>1794</td>
-													<td>5782</td>
-													<td>/chair</td>
-													<td>40,892</td>
-													<td><span class="badge badge-success">Active</span></td>
-													<td>
-														<div class="btn-group">
-															<button type="button"
-																class="btn btn-outline-success">Info</button>
-															<button type="button"
-																class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
-																data-bs-toggle="dropdown" aria-haspopup="true"
-																aria-expanded="false" data-display="static">
-																<span class="sr-only">Info</span>
-															</button>
-															<div class="dropdown-menu">
-																<a class="dropdown-item" href="#">Edit</a>
-																<a class="dropdown-item" href="#">Delete</a>
-															</div>
-														</div>
-													</td>
-												</tr>
-												<tr>
-													<td>#004</td>
-													<td><img class="cat-thumb" src="assets/img/products/pro-4.png"
-															alt="Product Image" /></td>
-													<td>Chair</td>
-													<td>Office, Home, Decoration, Wood</td>
-													<td>1794</td>
-													<td>5782</td>
-													<td>/chair</td>
-													<td>40,892</td>
-													<td><span class="badge badge-success">Active</span></td>
-													<td>
-														<div class="btn-group">
-															<button type="button"
-																class="btn btn-outline-success">Info</button>
-															<button type="button"
-																class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
-																data-bs-toggle="dropdown" aria-haspopup="true"
-																aria-expanded="false" data-display="static">
-																<span class="sr-only">Info</span>
-															</button>
-															<div class="dropdown-menu">
-																<a class="dropdown-item" href="#">Edit</a>
-																<a class="dropdown-item" href="#">Delete</a>
-															</div>
-														</div>
-													</td>
-												</tr>
-												<tr>
-													<td>#005 </td>
-													<td><img class="cat-thumb" src="assets/img/products/pro-1.png"
-															alt="Product Image" /></td>
-													<td>Chair</td>
-													<td>Office, Home, Decoration, Wood</td>
-													<td>1794</td>
-													<td>5782</td>
-													<td>/chair</td>
-													<td>40,892</td>
-													<td><span class="badge badge-secondary">Deactive</span></td>
-													<td>
-														<div class="btn-group">
-															<button type="button"
-																class="btn btn-outline-success">Info</button>
-															<button type="button"
-																class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
-																data-bs-toggle="dropdown" aria-haspopup="true"
-																aria-expanded="false" data-display="static">
-																<span class="sr-only">Info</span>
-															</button>
-															<div class="dropdown-menu">
-																<a class="dropdown-item" href="#">Edit</a>
-																<a class="dropdown-item" href="#">Delete</a>
-															</div>
-														</div>
-													</td>
-												</tr>
-												<tr>
-													<td>#006 </td>
-													<td><img class="cat-thumb" src="assets/img/products/pro-1.png"
-															alt="Product Image" /></td>
-													<td>Chair</td>
-													<td>Office, Home, Decoration, Wood</td>
-													<td>1794</td>
-													<td>5782</td>
-													<td>/chair</td>
-													<td>40,892</td>
-													<td><span class="badge badge-success">Active</span></td>
-													<td>
-														<div class="btn-group">
-															<button type="button"
-																class="btn btn-outline-success">Info</button>
-															<button type="button"
-																class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
-																data-bs-toggle="dropdown" aria-haspopup="true"
-																aria-expanded="false" data-display="static">
-																<span class="sr-only">Info</span>
-															</button>
-															<div class="dropdown-menu">
-																<a class="dropdown-item" href="#">Edit</a>
-																<a class="dropdown-item" href="#">Delete</a>
-															</div>
-														</div>
-													</td>
-												</tr>
-												<tr>
-													<td>#007 </td>
-													<td><img class="cat-thumb" src="assets/img/products/pro-4.png"
-															alt="Product Image" /></td>
-													<td>Chair</td>
-													<td>Office, Home, Decoration, Wood</td>
-													<td>1794</td>
-													<td>5782</td>
-													<td>/chair</td>
-													<td>40,892</td>
-													<td><span class="badge badge-success">Active</span></td>
-													<td>
-														<div class="btn-group">
-															<button type="button"
-																class="btn btn-outline-success">Info</button>
-															<button type="button"
-																class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
-																data-bs-toggle="dropdown" aria-haspopup="true"
-																aria-expanded="false" data-display="static">
-																<span class="sr-only">Info</span>
-															</button>
-															<div class="dropdown-menu">
-																<a class="dropdown-item" href="#">Edit</a>
-																<a class="dropdown-item" href="#">Delete</a>
-															</div>
-														</div>
-													</td>
-												</tr>
-												<tr>
-													<td>#008 </td>
-													<td><img class="cat-thumb" src="assets/img/products/pro-5.png"
-															alt="Product Image" /></td>
-													<td>Chair</td>
-													<td>Office, Home, Decoration, Wood</td>
-													<td>1794</td>
-													<td>5782</td>
-													<td>/chair</td>
-													<td>40,892</td>
-													<td><span class="badge badge-success">Active</span></td>
-													<td>
-														<div class="btn-group">
-															<button type="button"
-																class="btn btn-outline-success">Info</button>
-															<button type="button"
-																class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
-																data-bs-toggle="dropdown" aria-haspopup="true"
-																aria-expanded="false" data-display="static">
-																<span class="sr-only">Info</span>
-															</button>
-															<div class="dropdown-menu">
-																<a class="dropdown-item" href="#">Edit</a>
-																<a class="dropdown-item" href="#">Delete</a>
-															</div>
-														</div>
-													</td>
-												</tr>
-												<tr>
-													<td>#009 </td>
-													<td><img class="cat-thumb" src="assets/img/products/pro-3.png"
-															alt="Product Image" /></td>
-													<td>Chair</td>
-													<td>Office, Home, Decoration, Wood</td>
-													<td>1794</td>
-													<td>5782</td>
-													<td>/chair</td>
-													<td>40,892</td>
-													<td><span class="badge badge-success">Active</span></td>
-													<td>
-														<div class="btn-group">
-															<button type="button"
-																class="btn btn-outline-success">Info</button>
-															<button type="button"
-																class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
-																data-bs-toggle="dropdown" aria-haspopup="true"
-																aria-expanded="false" data-display="static">
-																<span class="sr-only">Info</span>
-															</button>
-															<div class="dropdown-menu">
-																<a class="dropdown-item" href="#">Edit</a>
-																<a class="dropdown-item" href="#">Delete</a>
-															</div>
-														</div>
-													</td>
-												</tr>
+														</td>
+													</tr>
+													{% endfor %}
+												{% else %}
+													<tr>
+														<td colspan="3" class="text-center">No categories found.</td>
+													</tr>
+												{% endif %}
 											</tbody>
 										</table>
+										{% with messages = get_flashed_messages(with_categories=true) %}
+										{% if messages %}
+											{% for category, message in messages %}
+												<div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+													{{ message }}
+													<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+														<span aria-hidden="true">&times;</span>
+													</button>
+												</div>
+											{% endfor %}
+										{% endif %}
+									{% endwith %}
 									</div>
 								</div>
 							</div>
@@ -829,24 +518,25 @@
 
 	</div> <!-- End Wrapper -->
 
-	<!-- Common Javascript -->
-	<script src="assets/plugins/jquery/jquery-3.5.1.min.js"></script>
-	<script src="assets/js/bootstrap.bundle.min.js"></script>
-	<script src="assets/plugins/tags-input/bootstrap-tagsinput.js"></script>
-	<script src="assets/plugins/simplebar/simplebar.min.js"></script>
-	<script src="assets/plugins/jquery-zoom/jquery.zoom.min.js"></script>
-	<script src="assets/plugins/slick/slick.min.js"></script>
+<!-- Common JavaScript -->
+<script src="{{ url_for('static', filename='assets/plugins/jquery/jquery-3.5.1.min.js') }}"></script>
+<script src="{{ url_for('static', filename='assets/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='assets/plugins/tags-input/bootstrap-tagsinput.js') }}"></script>
+<script src="{{ url_for('static', filename='assets/plugins/simplebar/simplebar.min.js') }}"></script>
+<script src="{{ url_for('static', filename='assets/plugins/jquery-zoom/jquery.zoom.min.js') }}"></script>
+<script src="{{ url_for('static', filename='assets/plugins/slick/slick.min.js') }}"></script>
 
-	<!-- Data Tables -->
-	<script src='assets/plugins/data-tables/jquery.datatables.min.js'></script>
-	<script src='assets/plugins/data-tables/datatables.bootstrap5.min.js'></script>
-	<script src='assets/plugins/data-tables/datatables.responsive.min.js'></script>
+<!-- Data Tables -->
+<script src="{{ url_for('static', filename='assets/plugins/data-tables/jquery.datatables.min.js') }}"></script>
+<script src="{{ url_for('static', filename='assets/plugins/data-tables/datatables.bootstrap5.min.js') }}"></script>
+<script src="{{ url_for('static', filename='assets/plugins/data-tables/datatables.responsive.min.js') }}"></script>
 
-	<!-- Option Switcher -->
-	<script src="assets/plugins/options-sidebar/optionswitcher.js"></script>
+<!-- Option Switcher -->
+<script src="{{ url_for('static', filename='assets/plugins/options-sidebar/optionswitcher.js') }}"></script>
 
-	<!-- custom js -->
-	<script src="assets/js/custom.js"></script>
+<!-- Custom JavaScript -->
+<script src="{{ url_for('static', filename='assets/js/custom.js') }}"></script>
+
 </body>
 
 

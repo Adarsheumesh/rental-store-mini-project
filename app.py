@@ -1,5 +1,6 @@
+from sqlite3 import Date
 from weakref import ref
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, jsonify, render_template, request, redirect, url_for, session, flash, logging
 import pyrebase
 import re
 import json
@@ -12,6 +13,11 @@ from firebase_admin import credentials
 from dotenv import load_dotenv  # type: ignore
 from datetime import datetime  # Import datetime
 from werkzeug.utils import secure_filename
+import traceback
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
 load_dotenv()
 
 # Allow insecure transport for development
@@ -438,7 +444,7 @@ def user_list():
                 return render_template('/andshop/user-list.html', users={})
         except Exception as e:
             flash(f"Error fetching user list: {str(e)}", 'danger')
-            return redirect(url_for('index'))
+            return redirect(url_for('vendor_dashboard'))
     else:
         flash('You need to log in first.', 'danger')
         return redirect(url_for('login'))
@@ -453,13 +459,26 @@ def user_profile():
         return redirect(url_for('login'))
     
 
-@app.route('/add-product', methods=['POST'])
+@app.route('/add-product', methods=['GET', 'POST'])
 def add_product():
     if 'email' not in session or 'user_info' not in session:
         return redirect(url_for('login'))
 
-    user_info = session['user_info']
-    user_type = user_info.get('user_type')
+    categories_list = []
+    try:
+        # Fetch categories from Firebase
+        categories_data = db.child("categories").get().val()
+        print("Raw categories data:", categories_data)  # Debug print
+        if categories_data:
+            for key, value in categories_data.items():
+                categories_list.append({
+                    "id": key,
+                    "category_name": value.get('category_name', 'N/A')
+                })
+        print("Categories fetched:", categories_list)  # Debug print
+    except Exception as e:
+        flash(f"Failed to fetch categories: {str(e)}", 'danger')
+        return redirect(url_for('index'))  # Redirect to a safe page
 
     if request.method == 'POST':
         product_name = request.form.get('product_name')
@@ -471,8 +490,8 @@ def add_product():
 
         # Validate inputs
         if not product_name or not product_price:
-            flash('Product name and product_price are required.', 'danger')
-            return redirect(url_for('add_product_page'))
+            flash('Product name and product price are required.', 'danger')
+            return render_template('andshop/product-add.html', categories=categories_list)
 
         # Save the product image if it exists
         product_image_url = None
@@ -491,21 +510,20 @@ def add_product():
             })
 
             flash('Product added successfully!', 'success')
-            return redirect(url_for('product_list'))  # Adjust the redirect URL as needed
+            return redirect(url_for('product_list'))
         except Exception as e:
             flash(f"Failed to add product: {str(e)}", 'danger')
 
-    return redirect(url_for('add_product_page'))  # Redirect if method is not POST
+    # Render the product addition form with the categories data
+    return render_template('andshop/product-add.html', categories=categories_list)
 
 def save_product_image(product_image):
     filename = secure_filename(product_image.filename)
-    # Create the 'products' folder in 'static/uploads' if it does not exist
     products_folder = os.path.join('static/uploads', 'products')
     os.makedirs(products_folder, exist_ok=True)
     filepath = os.path.join(products_folder, filename)
     product_image.save(filepath)
     return url_for('static', filename=f'uploads/products/{filename}')
-
 
 @app.route('/add-product-page')
 def add_product_page():
@@ -534,7 +552,316 @@ def product_detail(product_id):
         return redirect(url_for('product_list'))
 
     # Render the product detail template with the fetched product details
-    return render_template('product.html', product_det=product_details)
+    return render_template('product.html', product_details=product_details)
+@app.route('/products')
+def product_list():
+    try:
+        # Fetch all products from the Firebase database
+        products = db.child("products").get()
+        product_list = products.val() if products else {}
+
+        if not product_list:
+            flash('No products found.', 'warning')
+
+    except Exception as e:
+        flash(f"Failed to fetch product list: {str(e)}", 'danger')
+        return redirect(url_for('index'))  # Redirect to home or an appropriate page
+
+    # Render the product list template with the fetched product data
+    return render_template('/andshop/product-list.html', products=product_list)
+            # edit product_page 
+@app.route('/edit-product/<product_id>', methods=['GET', 'POST'])
+def update_product(product_id):
+    print(f"Accessing edit-product route for product_id: {product_id}")
+    try:
+        # Retrieve the existing product data
+        product = db.child("products").child(product_id).get().val()
+        print(f"Product retrieved: {product}")
+
+        if not product:
+            print(f"Product with ID {product_id} not found in the database.")
+            flash('Product not found.', 'danger')
+            return redirect(url_for('product_list'))
+
+        if request.method == 'POST':
+            # Extract form data
+            product_name = request.form.get('product_name', product['product_name'])
+            product_quantity = request.form.get('product_quantity', product['product_quantity'])
+            main_category = request.form.get('main_category', product['main_category'])
+            product_type = request.form.get('product_type', product['product_type'])
+            product_price = request.form.get('product_price', product['product_price'])
+
+            # Prepare data for update
+            update_data = {
+                "product_name": product_name,
+                "product_quantity": product_quantity,
+                "main_category": main_category,
+                "product_type": product_type,
+                "product_price": product_price
+            }
+
+            # Handle product image
+            product_image = request.files.get('product_image')
+            if product_image:
+                filename = secure_filename(product_image.filename)
+                image_path = os.path.join('static/img/products', filename)
+                print(f"Saving product image to {image_path}")
+                product_image.save(image_path)
+                update_data['product_image'] = image_path
+            else:
+                # Keep existing image if no new image is uploaded
+                update_data['product_image'] = product.get('product_image')
+
+            # Update the product in the database
+            db.child("products").child(product_id).update(update_data)
+            print("Product successfully updated.")
+            flash('Product updated successfully!', 'success')
+            return redirect(url_for('product_list'))
+
+        # Render the edit product page if the request method is GET
+        return render_template('andshop/edit_product.html', product=product, product_id=product_id)
+
+    except Exception as e:
+        print(f"Exception caught: {str(e)}")
+        flash(f"Failed to update product: {str(e)}", 'danger')
+        return redirect(url_for('product_list'))
+
+    # delete_product
+@app.route('/delete-product/<product_id>', methods=['POST'])
+def delete_product(product_id):
+    try:
+        # Delete the product from the Firebase database
+        db.child("products").child(product_id).remove()
+        flash('Product deleted successfully!', 'success')
+    except Exception as e:
+        flash(f"Failed to delete product: {str(e)}", 'danger')
+    
+    return redirect(url_for('product_list'))
+from flask import render_template, request, redirect, url_for, flash, session
+
+from flask import render_template, request, redirect, url_for, flash
+@app.route('/add-category')
+def add_category_page():
+    return render_template('/andshop/add-category.html')  
+@app.route('/add-category', methods=['POST'])
+def add_category():
+    if request.method == 'POST':
+        # Retrieve category name from form
+        category_name = request.form.get('category-name')
+
+        # Validate category name
+        if not category_name:
+            flash('Category name is required.', 'danger')
+            return redirect(url_for('add_category_page'))
+
+        try:
+            # Insert category into Firebase Realtime Database
+            db.child("categories").push({
+                "category_name": category_name,
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Optional: add a timestamp
+            })
+
+            flash('Category added successfully!', 'success')
+            return redirect(url_for('main_category'))  # Redirect to the category list page
+        except Exception as e:
+            flash(f"Failed to add category: {str(e)}", 'danger')
+
+    return redirect(url_for('add_category_page'))  # Redirect if method is not POST
+@app.route('/categories', methods=['GET'])
+def categories():
+    try:
+        # Fetch categories from Firebase
+        categories_data = db.child("categories").get().val()
+        print("Raw categories data:", categories_data)  # Debug print
+        # Convert data into a list of dictionaries for easier processing
+        categories_list = []
+        if categories_data:
+            for key, value in categories_data.items():
+                categories_list.append({
+                    "id": key,
+                    "category_name": value.get('category_name', 'N/A'),
+                    "created_at": value.get('created_at', 'N/A')
+                })
+        
+        print("Processed categories list:", categories_list)  # Debug print
+
+        # Pass the categories list to the template
+        return render_template('/andshop/main-category.html', categories=categories_list)
+        
+    except Exception as e:
+        error_message = f"Error fetching categories: {str(e)}"
+        print(error_message)  # Print to console for debugging
+        flash(error_message, 'danger')
+        return render_template('/andshop/main-category.html', categories=[])
+
+@app.route('/main-category')
+def main_category():
+    return categories()
+@app.route('/delete-category/<id>', methods=['POST'])
+def delete_category(id):
+    try:
+        # Delete the category from the database using the provided ID
+        db.child("categories").child(id).remove()
+        flash('Category deleted successfully!', 'success')
+    except Exception as e:
+        flash(f"Failed to delete category: {str(e)}", 'danger')
+
+    return redirect(url_for('main_category'))  # Redirect back to the main category page
+import logging
+from flask import abort, render_template
+
+@app.route('/add-to-cart/', methods=['GET', 'POST'])
+@app.route('/add-to-cart/<product_id>', methods=['POST'])
+def add_to_cart(product_id=None):
+    if 'email' not in session or 'user_info' not in session:
+        flash('Please log in to add items to your cart.', 'warning')
+        return redirect(url_for('login'))
+
+    try:
+        product_name = request.form.get('product_name')
+        product_image = request.form.get('product_image')
+        product_price = request.form.get('product_price')
+        quantity = request.form.get('quantity')
+
+        if not all([product_name, product_image, product_price, quantity]):
+            missing_fields = [field for field in ['product_name', 'product_image', 'product_price', 'quantity'] if not request.form.get(field)]
+            flash(f"Missing required product information: {', '.join(missing_fields)}", 'danger')
+            return redirect(url_for('index'))
+
+        try:
+            product_price = float(product_price)
+            quantity = int(quantity)
+        except ValueError:
+            flash('Invalid price or quantity.', 'danger')
+            return redirect(url_for('index'))
+
+        cart_item = {
+            "product_id": product_id,
+            "product_name": product_name,
+            "product_image": product_image,
+            "product_price": product_price,
+            "quantity": quantity,
+            "total_price": product_price * quantity,
+            "user_email": session['email']
+        }
+        
+        result = db.child("cart").push(cart_item)
+        
+        if result:
+            flash('Product added to cart!', 'success')
+            return redirect(url_for('view_cart'))
+        else:
+            flash('Failed to add product to cart. Please try again.', 'danger')
+            return redirect(url_for('index'))
+
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", 'danger')
+        return redirect(url_for('index'))
+
+@app.errorhandler(400)
+def bad_request(e):
+    return render_template('error.html', error=str(e.description)), 400
+
+@app.route('/cart')
+def cart():
+    user_id = session.get('user_id')
+    if not user_id:
+        flash('You need to log in first.', 'danger')
+        return redirect(url_for('login'))
+
+    try:
+        # Fetch cart items for the logged-in user from Firebase
+        cart_data = db.child("cart").order_by_child("user_email").equal_to(session['email']).get().val()
+        
+        print("Fetched cart data:", cart_data)  # Debug print to check fetched data
+        
+        cart_items = []
+        if cart_data:
+            for key, value in cart_data.items():
+                cart_items.append({
+                    "product_image": value.get('product_image', ''),
+                    "product_name": value.get('product_name', ''),
+                    "product_price": float(value.get('product_price', 0)),
+                    "product_quantity": int(value.get('quantity', 1)),
+                    "total_price": float(value.get('product_price', 0)) * int(value.get('quantity', 1))
+                })
+        else:
+            print("No cart data found for the user.")  # Debug print if no data is found
+
+    except Exception as e:
+        print(f"Error fetching cart items: {str(e)}")  # Print the error message
+        flash(f"Failed to fetch cart items: {str(e)}", 'danger')
+        cart_items = []
+
+    print("Cart items to display:", cart_items)  # Debug print to check processed cart items
+
+    return render_template('cart.html', cart_items=cart_items)
+
+@app.route('/update-cart', methods=['POST'])
+def update_cart():
+    if 'email' not in session:
+        return jsonify({'success': False, 'message': 'User not logged in'}), 403
+
+    try:
+        cart_data = request.json
+        print('Received cart data:', cart_data)  # Debug log
+
+        if not isinstance(cart_data, list):
+            return jsonify({'success': False, 'message': 'Invalid data format'}), 400
+
+        user_email = session['email']
+        total_amount = 0
+
+        for item in cart_data:
+            product_id = item.get('product_id')
+            quantity = int(item.get('quantity', 1))
+            
+            # Fetch the current product data
+            product = db.child("cart").child(user_email).child(product_id).get().val()
+            print(f'Product data for {product_id}:', product)  # Debug log
+            
+            if product:
+                product_price = float(product.get('product_price', 0))
+                total_price = product_price * quantity
+                
+                # Update the cart item
+                db.child("cart").child(user_email).child(product_id).update({
+                    "quantity": quantity,
+                    "total_price": total_price
+                })
+                
+                total_amount += total_price
+
+        return jsonify({'success': True, 'total': total_amount}), 200
+
+    except Exception as e:
+        print(f"Error updating cart: {str(e)}")
+        traceback.print_exc()  # Print full traceback
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/remove-from-cart/<product_id>', methods=['POST'])
+def remove_from_cart(product_id):
+    if 'email' not in session:
+        return jsonify({'success': False, 'message': 'User not logged in'}), 403
+
+    try:
+        user_email = session['email']
+        print(f'Removing product {product_id} for user {user_email}')  # Debug log
+
+        db.child("cart").child(user_email).child(product_id).remove()
+        
+        # Recalculate total price
+        cart_items = db.child("cart").child(user_email).get().val()
+        print('Updated cart items:', cart_items)  # Debug log
+
+        total_amount = sum(float(item.get('total_price', 0)) for item in cart_items.values() if item)
+
+        return jsonify({'success': True, 'total': total_amount}), 200
+
+    except Exception as e:
+        print(f"Error removing item from cart: {str(e)}")
+        traceback.print_exc()  # Print full traceback
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
