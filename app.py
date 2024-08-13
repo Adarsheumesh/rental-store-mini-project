@@ -1,6 +1,7 @@
 from sqlite3 import Date
 from weakref import ref
 from flask import Flask, jsonify, render_template, request, redirect, url_for, session, flash, logging
+from networkx import is_path
 import pyrebase
 import re
 import json
@@ -336,26 +337,60 @@ def account_details():
 def shop():
     return render_template('shop.html')
 
-@app.route('/forgot-password', methods=['GET', 'POST'])
-def forgot_password():
+
+@app.route('/reset_password', methods=['GET', 'POST'])
+def reset_password():
     if request.method == 'POST':
-        email = request.form.get('email')
+        email = request.form['email']
         try:
             auth.send_password_reset_email(email)
-            flash('Password reset email sent.', 'success')
+            flash('Password reset email sent successfully. Please check your inbox.', 'success')
+            return redirect(url_for('login'))
         except Exception as e:
             flash(f'Failed to send password reset email: {str(e)}', 'danger')
-
+            return render_template('reset_password.html')
+    
+    # If it's a GET request, render the reset password form
     return render_template('reset_password.html')
 
 @app.route('/logout')
 def logout():
+    # Clear the session
     session.pop('email', None)
     session.pop('user_info', None)
     session.pop('user_id', None)
-    session.pop('google_token', None)  # Correct this line
+    session.pop('google_token', None)
+
+    # Flash message
     flash('You have been logged out.', 'info')
-    return redirect(url_for('index'))
+    
+    # Redirect to the index page
+    response = redirect(url_for('index'))
+
+    # Prevent caching to ensure the user can't go back to the previous page
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+
+    return response
+
+
+def save_profile_picture(profile_picture):
+    # Generate a secure filename
+    filename = secure_filename(profile_picture.filename)
+    
+    # Define the full path where the image will be saved
+    UPLOAD_FOLDER = os.path.join('static', 'uploads', 'profile_pictures')
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    
+    # Generate the full file path
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    
+    # Save the file to the specified location
+    profile_picture.save(file_path)
+    
+    # Return the relative file path to store in the database
+    return os.path.join('uploads', 'profile_pictures', filename)
 
 @app.route('/update-account', methods=['GET', 'POST'])
 def update_account():
@@ -415,7 +450,6 @@ def update_account():
             flash('Account updated successfully!', 'success')
             
             # Redirect based on user type
-            print("sdsdsdsdsdsds",user_type)
             if user_type == "vendor":
                 return redirect(url_for('user_profile'))  # Redirect to the vendor profile route
             else:
@@ -436,9 +470,16 @@ def user_list():
         try:
             # Fetch all users from the Firebase database
             users = db.child("users").get().val()
-            # If users data exists, render it in the template
+            
+            # Filter users where user_type is 'customer'
             if users:
-                return render_template('/andshop/user-list.html', users=users)
+                customers = {user_id: user for user_id, user in users.items() if user.get('user_type') == 'customer'}
+                
+                if customers:
+                    return render_template('/andshop/user-list.html', users=customers)
+                else:
+                    flash('No customers found.', 'warning')
+                    return render_template('/andshop/user-list.html', users={})
             else:
                 flash('No users found.', 'warning')
                 return render_template('/andshop/user-list.html', users={})
@@ -448,6 +489,7 @@ def user_list():
     else:
         flash('You need to log in first.', 'danger')
         return redirect(url_for('login'))
+
 
 @app.route('/user-profile')
 def user_profile():
