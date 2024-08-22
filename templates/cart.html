@@ -1,8 +1,6 @@
 <!doctype html>
 <html class="no-js" lang="en-US">
 
-
-<!-- Mirrored from htmldemo.net/jantrik/jantrik/cart.html by HTTrack Website Copier/3.x [XR&CO'2014], Fri, 05 Jul 2024 04:21:08 GMT -->
 <head>
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
@@ -10,583 +8,380 @@
     <meta name="description" content="Default Description">
     <meta name="keywords" content="E-commerce" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- place favicon.ico in the root directory -->
     
     <!-- Google Font css -->
     <link href="https://fonts.googleapis.com/css?family=Lily+Script+One" rel="stylesheet"> 
 
- <!-- mobile menu css -->
- <link rel="stylesheet" href="{{ url_for('static', filename='css/meanmenu.min.css') }}">
- <!-- animate css -->
- <link rel="stylesheet" href="{{ url_for('static', filename='css/animate.css') }}">
- <!-- nivo slider css -->
- <link rel="stylesheet" href="{{ url_for('static', filename='css/nivo-slider.css') }}">
- <!-- owl carousel css -->
- <link rel="stylesheet" href="{{ url_for('static', filename='css/owl.carousel.min.css') }}">
- <!-- slick css -->
- <link rel="stylesheet" href="{{ url_for('static', filename='css/slick.css') }}">
- <!-- price slider css -->
- <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.min.css') }}">
- <!-- fontawesome css -->
- <link rel="stylesheet" href="{{ url_for('static', filename='css/font-awesome.min.css') }}">
- <!-- fancybox css -->
- <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.fancybox.css') }}">
- <!-- bootstrap css -->
- <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
- <!-- default css -->
- <link rel="stylesheet" href="{{ url_for('static', filename='css/default.css') }}">
- <!-- style css -->
- <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
- <!-- responsive css -->
- <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    <!-- mobile menu css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/meanmenu.min.css') }}">
+    <!-- animate css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/animate.css') }}">
+    <!-- nivo slider css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/nivo-slider.css') }}">
+    <!-- owl carousel css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/owl.carousel.min.css') }}">
+    <!-- slick css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/slick.css') }}">
+    <!-- price slider css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.min.css') }}">
+    <!-- fontawesome css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/font-awesome.min.css') }}">
+    <!-- fancybox css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.fancybox.css') }}">
+    <!-- bootstrap css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <!-- default css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/default.css') }}">
+    <!-- style css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- responsive css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
 
- <!-- modernizr js -->
- <script src="{{ url_for('static', filename='js/vendor/modernizr-2.8.3.min.js') }}"></script>
+    <!-- modernizr js -->
+    <script src="{{ url_for('static', filename='js/vendor/modernizr-2.8.3.min.js') }}"></script>
 </head>
 
 <body>
-    <!--[if lt IE 8]>
-    <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
-    <![endif]-->
-    <!-- Wrapper Start -->
-    <div class="wrapper">
-        <!-- Header Area Start -->
-        <header>
-            <!-- Header Top Start -->
-            <!-- Header Top End -->
-            <!-- Header Bottom Start -->
-            <div class="header-bottom header-sticky">
-                <div class="container">
-                    <div class="row justify-content-between">
-                        <!--  logo Start-->
-                        <div class="col-auto">
-                            <div class="logo">
-                                <a href="/index"><img src="{{ url_for('static', filename='img/logo/logo.png') }}"></a>
-                            </div>
+    <!-- Header Area Start -->
+    <header>
+        <!-- Header content (navigation, logo, etc.) goes here -->
+    </header>
+    <!-- Header Area End -->
+
+    <!-- Breadcrumb Start -->
+    <div class="breadcrumb-area pt-60 pb-55 pt-sm-30 pb-sm-20">
+        <div class="container">
+            <div class="breadcrumb">
+                <ul>
+                    <li><a href="/index">Home</a></li>
+                    <li class="active"><a href="/cart">Cart</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- Breadcrumb End -->
+
+    <!-- Cart Main Area Start -->
+    <div class="cart-main-area pb-80 pb-sm-50">
+        <div class="container">
+           <h2 class="text-capitalize sub-heading">cart</h2>
+            <div class="row">
+                <div class="col-md-12">
+                    <!-- Form Start -->
+                    <form id="cart-form" action="#">
+                        <!-- Table Content Start -->
+                        <div class="table-content table-responsive mb-50">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th class="product-thumbnail">Image</th>
+                                        <th class="product-name">Product</th>
+                                        <th class="product-price">Price</th>
+                                        <th class="product-quantity">Quantity</th>
+                                        <th class="product-subtotal">Total</th>
+                                        <th class="product-remove">Remove</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in cart_items %}
+                                    <tr data-product-id="{{ item.product_id }}">
+                                        <td class="product-thumbnail">
+                                            <a href="#"><img src="{{ item.product_image }}" alt="cart-image" /></a>
+                                        </td>
+                                        <td class="product-name"><a href="#">{{ item.product_name }}</a></td>
+                                        <td class="product-price"><span class="amount" id="price_{{ item.product_id }}">£{{ item.product_price }}</span></td>
+                                        <td class="product-quantity">
+                                            <div class="quantity-wrapper">
+                                                <button type="button" onclick="decrementQuantity('{{ item.product_id }}')">-</button>
+                                                <input type="number" id="quantity_{{ item.product_id }}" name="quantity" class="quantity" value="{{ item.product_quantity }}" min="1" max="100" onchange="updatePrice('{{ item.product_id }}')" />
+                                                <button type="button" onclick="incrementQuantity('{{ item.product_id }}')">+</button>
+                                            </div>
+                                        </td>
+                                        <td class="product-subtotal">£<span id="total_{{ item.product_id }}">{{ item.total_price }}</span></td>
+                                        <td class="product-remove">
+                                            <button onclick="removeFromCart('{{ item.product_id }}')">
+                                                <i class="fa fa-times" aria-hidden="true"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
-                       <!--  logo End -->
-                        <!--  Desktop Memu End -->
-                        
-                        <!--  Cartt Box  Start -->
-                        <div class="col-auto">
-                            <div class="cart-box text-end">
-                                <ul>
-                                    <li><a href="compare.html"><i class="fa fa-cog"></i></a>
-                                        <ul class="ht-dropdown">
-                                            {% if 'email' in session %}
-                                            <li><a href="/account">Account</a></li> 
-                                            {% else %}
-                                            <li><a href="/login">Login</a></li>
-                                            <li><a href="/register">Register</a></li>
-                                            {% endif %}                                            
-                                        </ul>
-                                    </li>                                    
-                                    <li><a href="wishlist.html"><i class="fa fa-heart-o"></i></a></li>
-                                    <li><a href="/cart"><i class="fa fa-shopping-basket"></i><span class="cart-counter">2</span></a>
-                                        
-                                    </li>
-                                </ul>
+                        <!-- Table Content End -->
+                    
+                        <!-- Cart Buttons Start -->
+                        <div class="row">
+                            <div class="col-lg-8 col-md-7">
+                                <div class="buttons-cart">
+                                    <input type="submit" value="Update Cart" />
+                                    <a href="#">Continue Shopping</a>
+                                </div>
                             </div>
-                        </div>
-                        <!--  Cartt Box  End-->
-                        <!-- Mobile Menu Start -->
-                        <div class="col-sm-12 d-lg-none">
-                            <div class="mobile-menu">
-                                <nav>
-                                    <ul>
-                                        <li><a href="/index">home</a>
-                                            <!-- Home Version Dropdown Start -->
-                                            <ul>
-                                                <li><a href="index.html">Home Version One</a></li>
-                                                <li><a href="index-2.html">Home Version Two</a></li>
-                                                <li><a href="index-3.html">Home Box Layout</a></li>
-                                            </ul>
-                                            <!-- Home Version Dropdown End -->
-                                        </li>
-                                        <li><a href="shop.html">shop</a>
-                                            <!-- Mobile Menu Dropdown Start -->
-                                            <ul>
-                                                <li><a href="product.html">Shop</a>
-                                                    <ul>
-                                                        <li><a href="shop.html">Product Category Name</a>
-                                                            <!-- Start Three Step -->
-                                                            <ul>
-                                                                <li><a href="shop.html">Product Category Name</a></li>
-                                                                <li><a href="shop.html">Product Category Name</a></li>
-                                                                <li><a href="shop.html">Product Category Name</a></li>
-                                                            </ul>
-                                                        </li>
-                                                        <li><a href="shop.html">Product Category Name</a></li>
-                                                        <li><a href="shop.html">Product Category Name</a></li>
-                                                    </ul>
-                                                </li>
-                                                <li><a href="product.html">product details Page</a></li>
-                                                <li><a href="compare.html">Compare Page</a></li>
-                                                <li><a href="cart.html">Cart Page</a></li>
-                                                <li><a href="checkout.html">Checkout Page</a></li>
-                                                <li><a href="wishlist.html">Wishlist Page</a></li>
-                                            </ul>
-                                            <!-- Mobile Menu Dropdown End -->
-                                        </li>
-                                        <li><a href="blog.html">Blog</a>
-                                            <!-- Mobile Menu Dropdown Start -->
-                                            <ul>
-                                                <li><a href="blog-details.html">Blog Details Page</a></li>
-                                            </ul>
-                                            <!-- Mobile Menu Dropdown End -->
-                                        </li>
-                                        <li><a href="#">pages</a>
-                                            <!-- Mobile Menu Dropdown Start -->
-                                            <ul>
-                                                <li><a href="login.html">login Page</a></li>
-                                                <li><a href="register.html">Register Page</a></li>
-                                                <li><a href="404.html">404 Page</a></li>
-                                            </ul>
-                                            <!-- Mobile Menu Dropdown End -->
-                                        </li>
-                                        <li><a href="about.html">about us</a></li>
-                                        <li><a href="contact.html">contact us</a></li>
-                                    </ul>
-                                </nav>
+                            <!-- Cart Totals Start -->
+                            <div class="col-lg-4 col-md-12">
+                                <div class="cart_totals">
+                                    <h2>Cart Totals</h2>
+                                    <br />
+                                    <table>
+                                        <tbody>
+                                            <tr class="order-total">
+                                                <th>Total</th>
+                                                <td>
+                                                    <strong><span class="amount" id="cart_total">£0.00</span></strong>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <div class="wc-proceed-to-checkout">
+                                        <a href="#">Proceed to Checkout</a>
+                                    </div>
+                                </div>
                             </div>
+                            <!-- Cart Totals End -->
                         </div>
-                        <!-- Mobile Menu  End -->                        
+                        <!-- Row End -->
+                    </form>
+                    <!-- Form End -->
+                    </div>
                     </div>
                     <!-- Row End -->
-                </div>
-                <!-- Container End -->
-            </div>
-            <!-- Header Bottom End -->
-        </header>
-        <!-- Header Area End -->  
-        <!-- Breadcrumb Start -->
-        <div class="breadcrumb-area pt-60 pb-55 pt-sm-30 pb-sm-20">
-            <div class="container">
-                <div class="breadcrumb">
-                    <ul>
-                        <li><a href="/index">Home</a></li>
-                        <li class="active"><a href="/cart">Cart</a></li>
-                    </ul>
-                </div>
-            </div>
-            <!-- Container End -->
-        </div>
-        <!-- Breadcrumb End -->
-        <!-- Cart Main Area Start -->
-        <div class="cart-main-area pb-80 pb-sm-50">
-            <div class="container">
-               <h2 class="text-capitalize sub-heading">cart</h2>
-                <div class="row">
-                    <div class="col-md-12">
-                        <!-- Form Start -->
-                        <form id="cart-form" action="#">
-                            <!-- Table Content Start -->
-                            <div class="table-content table-responsive mb-50">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th class="product-thumbnail">Image</th>
-                                            <th class="product-name">Product</th>
-                                            <th class="product-price">Price</th>
-                                            <th class="product-quantity">Quantity</th>
-                                            <th class="product-subtotal">Total</th>
-                                            <th class="product-remove">Remove</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for item in cart_items %}
-                                        <tr data-product-id="{{ item.product_id }}">
-                                            <td class="product-thumbnail">
-                                                <a href="#"><img src="{{ item.product_image }}" alt="cart-image" /></a>
-                                            </td>
-                                            <td class="product-name"><a href="#">{{ item.product_name }}</a></td>
-                                            <td class="product-price"><span class="amount">£{{ item.product_price }}</span></td>
-                                            <td class="product-quantity">
-                                                <input type="number" name="quantity" class="quantity" value="{{ item.product_quantity }}" min="1" />
-                                            </td>
-                                            <td class="product-subtotal">£{{ item.total_price }}</td>
-                                            <td class="product-remove">
-                                                <a href="#" class="remove-item" data-product-id="{{ item.product_id }}">
-                                                    <i class="fa fa-times" aria-hidden="true"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <!-- Table Content End -->
-                            
-                            <!-- Cart Buttons Start -->
-                            <div class="row">
-                                <div class="col-lg-8 col-md-7">
-                                    <div class="buttons-cart">
-                                        <input type="submit" value="Update Cart" />
-                                        <a href="#">Continue Shopping</a>
-                                    </div>
-                                </div>
-                                <!-- Cart Totals Start -->
-                                <div class="col-lg-4 col-md-12">
-                                    <div class="cart_totals">
-                                        <h2>Cart Totals</h2>
-                                        <br />
-                                        <table>
-                                            <tbody>
-                                                <tr class="order-total">
-                                                    <th>Total</th>
-                                                    <td>
-                                                        <strong><span class="amount" id="cart-total">£0.00</span></strong>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                        <div class="wc-proceed-to-checkout">
-                                            <a href="#">Proceed to Checkout</a>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Cart Totals End -->
-                            </div>
-                            <!-- Row End -->
-                        </form>                        
-                        <!-- Form End -->
                     </div>
-                </div>
-                 <!-- Row End -->
-            </div>
-        </div>
-        <script>
-            $(document).ready(function() {
-                function updateCart() {
-                    var cartData = [];
-                    $('table tbody tr').each(function() {
-                        var $row = $(this);
-                        var productId = $row.data('product-id');
-                        var quantity = parseInt($row.find('.quantity').val(), 10);
-                        
-                        if (productId && quantity) {
-                            cartData.push({
-                                product_id: productId,
-                                quantity: quantity
+                    </div>
+                    <!-- Cart Main Area End -->
+                    
+                    <!-- Footer Start -->
+                    <footer>
+                        <!-- Footer content goes here -->
+                    </footer>
+                    <!-- Footer End -->
+                        <!-- Include Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- Include your Firebase configuration -->
+    <script>
+        // Your web app's Firebase configuration
+        var firebaseConfig = {
+            apiKey: "AIzaSyB42nHmPcpj7BmOPPdO93lXqzA3PjjXZOc",
+            authDomain: "project-dbebd.firebaseapp.com",
+            projectId: "project-dbebd",
+            storageBucket: "project-dbebd.appspot.com",
+            messagingSenderId: "374516311348",
+            appId: "1:374516311348:web:d916facf6720a4e275f161",
+            databaseURL: "https://project-dbebd-default-rtdb.asia-southeast1.firebasedatabase.app/"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        // Get a reference to the database service
+        var database = firebase.database();
+
+        // Function to update cart UI (you can implement this later)
+        function updateCartUI(cartItems) {
+            console.log('Updating cart UI with:', cartItems);
+            // Implement your logic here to update the cart UI
+        }
+
+        // Listen for changes in the cart
+        const userId = "{{ user_id }}"; // Make sure this is populated from your Flask template
+        database.ref('/cart/' + userId).on('value', (snapshot) => {
+            const cartItems = snapshot.val();
+            updateCartUI(cartItems);
+        });
+    </script>
+                    <!-- JavaScript -->
+                    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+                    
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            // Initial calculation of cart total
+                            updateCartTotal();
+                    
+                            // Handle form submission
+                            $('#cart-form').on('submit', function(event) {
+                                event.preventDefault();
+                                console.log('Form submitted');
+                                updateCart();
+                            });
+                        });
+                    
+                        // Function to get the user's UID
+                        function getUserId() {
+                            return "{{ user_id }}";  // This will be populated from the Flask template
+                        }
+                    
+                        // Update the price for a specific item
+                        function updatePrice(itemKey) {
+                            const quantityInput = document.getElementById('quantity_' + itemKey);
+                            if (quantityInput) {
+                                const quantity = parseInt(quantityInput.value);
+                                const pricePerUnit = parseFloat(document.getElementById('price_' + itemKey).textContent.replace('£', ''));
+                                const totalPrice = quantity * pricePerUnit;
+                                document.getElementById('total_' + itemKey).textContent = '£' + totalPrice.toFixed(2);
+                                updateCartTotal();
+                                updateQuantityInBackend(itemKey, quantity);
+                            } else {
+                                console.error('Quantity input not found for item:', itemKey);
+                            }
+                        }
+                    
+                        // Increment the quantity of a specific item
+                        function incrementQuantity(itemKey) {
+                            const quantityInput = document.getElementById('quantity_' + itemKey);
+                            if (quantityInput) {
+                                let quantity = parseInt(quantityInput.value);
+                                const maxQuantity = parseInt(quantityInput.getAttribute('max'));
+                                if (quantity < maxQuantity) {
+                                    quantity += 1;
+                                    quantityInput.value = quantity;
+                                    updatePrice(itemKey);
+                                } else {
+                                    console.log('Max quantity reached');
+                                }
+                            } else {
+                                console.error('Quantity input not found for item:', itemKey);
+                            }
+                        }
+                    
+                        // Decrement the quantity of a specific item
+                        function decrementQuantity(itemKey) {
+                            const quantityInput = document.getElementById('quantity_' + itemKey);
+                            if (quantityInput) {
+                                let quantity = parseInt(quantityInput.value);
+                                if (quantity > 1) {
+                                    quantity -= 1;
+                                    quantityInput.value = quantity;
+                                    updatePrice(itemKey);
+                                }
+                            } else {
+                                console.error('Quantity input not found for item:', itemKey);
+                            }
+                        }
+                    
+                        // Update the total price of the cart
+                        function updateCartTotal() {
+                            let totalElements = document.querySelectorAll('[id^="total_"]');
+                            let cartTotal = 0;
+                            totalElements.forEach(function(element) {
+                                cartTotal += parseFloat(element.textContent.replace('£', ''));
+                            });
+                            document.getElementById('cart_total').textContent = '£' + cartTotal.toFixed(2);
+                        }
+                    
+                        // Send updated quantity information to the backend
+                        function updateQuantityInBackend(itemKey, quantity) {
+                            const userId = getUserId();
+                            if (!userId) {
+                                alert('User ID is missing. Please log in again.');
+                                return;
+                            }
+
+                            $.ajax({
+                                url: '/update-cart',
+                                method: 'POST',
+                                contentType: 'application/json',
+                                data: JSON.stringify({
+                                    user_id: userId,
+                                    cart: [{ product_id: itemKey, quantity: quantity }]
+                                }),
+                                success: function(response) {
+                                    console.log('Quantity updated successfully', response);
+                                    if (response.success) {
+                                        $('#cart_total').text('£' + response.total.toFixed(2));
+                                    }
+                                },
+                                error: function(jqXHR, textStatus, errorThrown) {
+                                    console.error('Error updating quantity:', textStatus, errorThrown, jqXHR.responseText);
+                                    alert('Error updating quantity. Please try again.');
+                                }
                             });
                         }
-                    });
-            
-                    console.log('Sending cart data:', cartData); // Debug log
-            
-                    $.ajax({
-                        url: '/update-cart',
-                        method: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify(cartData),
-                        success: function(response) {
-                            console.log('Update cart response:', response); // Debug log
-                            if (response.success) {
-                                $('#cart-total').text('£' + response.total.toFixed(2));
-                                alert('Cart updated successfully!');
-                                location.reload();
-                            } else {
-                                alert('Failed to update cart: ' + response.message);
-                            }
-                        },
-                        error: function(xhr, status, error) {
-                            console.error('AJAX Error:', xhr.responseText);
-                            alert('An error occurred while updating the cart.');
-                        }
-                    });
-                }
-            
-                // Handle form submission
-                $('#cart-form').on('submit', function(event) {
-                    event.preventDefault();
-                    console.log('Form submitted'); // Debug log
-                    updateCart();
-                });
-            
-                // Handle remove item
-                $('.remove-item').on('click', function(event) {
-                    event.preventDefault();
-                    var productId = $(this).data('product-id');
-                    console.log('Removing product:', productId); // Debug log
-            
-                    $.ajax({
-                        url: '/remove-from-cart/' + productId,
-                        method: 'POST',
-                        success: function(response) {
-                            console.log('Remove item response:', response); // Debug log
-                            if (response.success) {
-                                location.reload();
-                            } else {
-                                alert('Failed to remove item from cart: ' + response.message);
-                            }
-                        },
-                        error: function(xhr, status, error) {
-                            console.error('AJAX Error:', xhr.responseText);
-                            alert('An error occurred while removing the item.');
-                        }
-                    });
-                });
-            
-                // Update cart when quantity changes
-                $('.quantity').on('change', function() {
-                    updateCart();
-                });
-            });
-            </script>
-            
-            </body>
-            </html>
-        <script>
-            $(document).ready(function() {
-                function loadCart() {
-                    $.ajax({
-                        url: '/api/cart',
-                        method: 'GET',
-                        dataType: 'json',
-                        success: function(data) {
-                            var $tableBody = $('#cart-table tbody');
-                            var totalAmount = 0;
-                            $tableBody.empty(); // Clear existing rows
-            
-                            if (data.error) {
-                                $tableBody.append('<tr><td colspan="6">' + data.error + '</td></tr>');
-                            } else {
-                                $.each(data, function(index, item) {
-                                    var productPrice = parseFloat(item.product_price) || 0;
-                                    var quantity = parseInt(item.product_quantity, 10) || 1;
-                                    var rowTotal = productPrice * quantity;
-                                    totalAmount += rowTotal;
-            
-                                    var row = '<tr>' +
-                                        '<td class="product-thumbnail"><a href="#"><img src="' + item.product_image + '" alt="cart-image" /></a></td>' +
-                                        '<td class="product-name"><a href="#">' + item.product_name + '</a></td>' +
-                                        '<td class="product-price"><span class="amount">£' + productPrice.toFixed(2) + '</span></td>' +
-                                        '<td class="product-quantity"><input type="number" value="' + quantity + '" /></td>' +
-                                        '<td class="product-subtotal">£' + rowTotal.toFixed(2) + '</td>' +
-                                        '<td class="product-remove"><a href="#"><i class="fa fa-times" aria-hidden="true"></i></a></td>' +
-                                        '</tr>';
-                                    $tableBody.append(row);
+                    
+                        // Remove an item from the cart
+                        function removeFromCart(itemKey) {
+                            console.log('Attempting to remove item:', itemKey);
+                            if (confirm('Are you sure you want to remove this item from your cart?')) {
+                                $.ajax({
+                                    url: '/remove-from-cart/' + itemKey,
+                                    method: 'POST',
+                                    success: function(response) {
+                                        console.log('Server response:', response);
+                                        if (response.success) {
+                                            console.log('Item removed successfully');
+                                            $('tr[data-product-id="' + itemKey + '"]').remove();
+                                            updateCartTotal();
+                                        } else {
+                                            console.error('Failed to remove item:', response.message);
+                                            alert('Failed to remove item: ' + response.message);
+                                        }
+                                    },
+                                    error: function(jqXHR, textStatus, errorThrown) {
+                                        console.error('Error removing item:', textStatus, errorThrown);
+                                        console.error('Response text:', jqXHR.responseText);
+                                        let errorMessage = 'Error removing item. ';
+                                        try {
+                                            let errorResponse = JSON.parse(jqXHR.responseText);
+                                            errorMessage += errorResponse.message || '';
+                                        } catch (e) {
+                                            errorMessage += 'Please try again.';
+                                        }
+                                        alert(errorMessage);
+                                    }
                                 });
-            
-                                // Update the total amount
-                                $('#cart-total').text('£' + totalAmount.toFixed(2));
                             }
-                        },
-                        error: function(xhr, status, error) {
-                            console.error('AJAX Error: ' + status + error);
-                            $('#cart-table tbody').append('<tr><td colspan="6">Error fetching cart data.</td></tr>');
                         }
-                    });
-                }
-            
-                loadCart(); // Load cart data on page load
-            });
-            </script>
-        <!-- Cart Main Area End -->
-        <!-- Brand Logo Start -->
-        <div class="brand-area pb-60">
-            <div class="container">
-                <!-- Brand Banner Start -->
-                <div class="brand-banner owl-carousel">
-                    <div class="single-brand">
-                        <a href="#"><img class="img" src="{{ url_for('static', filename='img/brand/1.png') }}" alt="brand-image"></a>
-                    </div>
-                    <div class="single-brand">
-                        <a href="#"><img src="{{ url_for('static', filename='img/brand/2.png') }}" alt="brand-image"></a>
-                    </div>
-                    <div class="single-brand">
-                        <a href="#"><img src="{{ url_for('static', filename='img/brand/3.png') }}" alt="brand-image"></a>
-                    </div>
-                    <div class="single-brand">
-                        <a href="#"><img src="{{ url_for('static', filename='img/brand/4.png') }}" alt="brand-image"></a>
-                    </div>
-                    <div class="single-brand">
-                        <a href="#"><img src="{{ url_for('static', filename='img/brand/5.png') }}" alt="brand-image"></a>
-                    </div>
-                    <div class="single-brand">
-                        <a href="#"><img class="img" src="{{ url_for('static', filename='img/brand/1.png') }}" alt="brand-image"></a>
-                    </div>
-                    <div class="single-brand">
-                        <a href="#"><img src="{{ url_for('static', filename='img/brand/2.png') }}" alt="brand-image"></a>
-                    </div>
-                    <div class="single-brand">
-                        <a href="#"><img src="{{ url_for('static', filename='img/brand/3.png') }}" alt="brand-image"></a>
-                    </div>
-                    <div class="single-brand">
-                        <a href="#"><img src="{{ url_for('static', filename='img/brand/4.png') }}" alt="brand-image"></a>
-                    </div>
-                    <div class="single-brand">
-                        <a href="#"><img src="{{ url_for('static', filename='img/brand/5.png') }}" alt="brand-image"></a>
-                    </div>
-                </div>
-                <!-- Brand Banner End -->                
-            </div>
-        </div>
-        <!-- Brand Logo End -->
-
-        <footer class="off-white-bg">
-            <!-- Footer Top Start -->
-            <div class="footer-top pt-50 pb-60">
-                <div class="container">
-                    <div class="row justify-content-center">
-                        <div class="col-lg-6 mr-auto ml-auto">
-                            <div class="newsletter text-center">
-                                <div class="main-news-desc">
-                                     <div class="news-desc">
-                                         <h3>Sign Up For Newsletters</h3>
-                                         <p>Get e-mail updates about our latest shop and special offers.</p>
-                                     </div>
-                                </div>
-                                <div class="newsletter-box">
-                                    <form action="#">
-                                        <input class="subscribe" placeholder="Enter your email address" name="email" id="subscribe" type="text">
-                                        <button type="submit" class="submit">subscribe</button>
-                                    </form>
-                                </div>
-                             </div>                            
-                        </div>
-                    </div>                    
-                    <div class="row">
-                        <!-- Single Footer Start -->
-                        <div class="col-lg-4  col-md-7 col-sm-6">
-                            <div class="single-footer">
-                                <h3>Contact us</h3>
-                                <div class="footer-content">
-                                    <div class="loc-address">
-                                        <span><i class="fa fa-map-marker"></i>Your address goes here.</span>
-                                        <span><i class="fa fa-envelope-o"></i>Mail Us: demo@example.com</span>
-                                        <span><i class="fa fa-phone"></i>Phone: 0123456789</span>
-                                    </div>
-                                    <div class="payment-mth"><a href="#"><img class="img" src="img/footer/1.png" alt="payment-image"></a></div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Single Footer Start -->
-                        <!-- Single Footer Start -->
-                        <div class="col-lg-2  col-md-5 col-sm-6 footer-full">
-                            <div class="single-footer">
-                                <h3 class="footer-title">Information</h3>
-                                <div class="footer-content">
-                                    <ul class="footer-list">
-                                        <li><a href="#">Site Map</a></li>
-                                        <li><a href="#">Specials</a></li>
-                                        <li><a href="#">Jobs</a></li>
-                                        <li><a href="#">Delivery Information</a></li>
-                                        <li><a href="#">Order History</a></li>
-                                        <li><a href="#">Privacy Policy</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Single Footer Start -->
-                        <!-- Single Footer Start -->
-                        <div class="col-lg-2  col-md-4 col-md-4 col-sm-6 footer-full">
-                            <div class="single-footer">
-                                <h3 class="footer-title">My Account</h3>
-                                <div class="footer-content">
-                                    <ul class="footer-list">
-                                        <li><a href="account.html">My account</a></li>
-                                        <li><a href="#">Checkout</a></li>
-                                        <li><a href="#">Login</a></li>
-                                        <li><a href="#">address</a></li>
-                                        <li><a href="#">Order status</a></li>
-                                        <li><a href="#">Site Map</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Single Footer Start -->
-                        <!-- Single Footer Start -->
-                        <div class="col-lg-2 col-md-4 col-sm-6 footer-full">
-                            <div class="single-footer">
-                                <h3 class="footer-title">customer service</h3>
-                                <div class="footer-content">
-                                    <ul class="footer-list">
-                                        <li><a href="account.html">My account</a></li>
-                                        <li><a href="#">New</a></li>
-                                        <li><a href="#">Gift Cards</a></li>
-                                        <li><a href="#">Return Policy</a></li>
-                                        <li><a href="#">Your Orders</a></li>
-                                        <li><a href="#">Subway</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Single Footer Start -->
-                        <!-- Single Footer Start -->
-                        <div class="col-lg-2 col-md-4 col-sm-6 footer-full">
-                            <div class="single-footer">
-                                <h3 class="footer-title">Let Us Help You</h3>
-                                <div class="footer-content">
-                                    <ul class="footer-list">
-                                        <li><a href="#">Your Account</a></li>
-                                        <li><a href="#">Your Orders</a></li>
-                                        <li><a href="#">Shipping</a></li>
-                                        <li><a href="#">Amazon Prime</a></li>
-                                        <li><a href="#">Replacements</a></li>
-                                        <li><a href="#">Manage </a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Single Footer Start -->
-                    </div>
-                    <!-- Row End -->
-                </div>
-                <!-- Container End -->
-            </div>
-            <!-- Footer Top End -->
-            <!-- Footer Bottom Start -->
-            <div class="footer-bottom off-white-bg2">
-                <div class="container">
-                    <div class="footer-bottom-content">
-                        <p class="copy-right-text">&copy; 2023 <strong> Jantrik </strong> Made with <i class="fa fa-heart text-danger"></i> by <a href="https://hasthemes.com/" target="_blank"><strong>HasThemes</strong></a></p>
-                        <div class="footer-social-content">
-                            <ul class="social-content-list">
-                                <li><a href="#"><i class="fa fa-twitter"></i></a></li>
-                                <li><a href="#"><i class="fa fa-wifi"></i></a></li>
-                                <li><a href="#"><i class="fa fa-google-plus"></i></a></li>
-                                <li><a href="#"><i class="fa fa-facebook"></i></a></li>
-                                <li><a href="#"><i class="fa fa-youtube"></i></a></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                <!-- Container End -->
-            </div>
-            <!-- Footer Bottom End -->
-        </footer>
-        <!-- Footer End -->
-    </div>
-    <!-- Wrapper End -->
-    <!-- jquery 3.12.4 -->
+                    
+                        // Update the cart with new data
+                        function updateCart() {
+                            const userId = getUserId();  // Get the user's UID
+                            if (!userId) {
+                                alert('User ID is missing. Please log in again.');
+                                return;  // Exit the function or handle the error appropriately
+                            }
+                    
+                            var cartData = [];
+                            $('table tbody tr').each(function() {
+                                var $row = $(this);
+                                var productId = $row.data('product-id');
+                                var quantity = $row.find('.quantity').val();
+                                cartData.push({ product_id: productId, quantity: quantity });
+                            });
+                    
+                            $.ajax({
+                                url: '/update-cart',
+                                method: 'POST',
+                                contentType: 'application/json',
+                                data: JSON.stringify({ user_id: userId, cart: cartData }),
+                                success: function(response) {
+                                    if (response.success) {
+                                        console.log('Cart updated successfully');
+                                        updateCartTotal();
+                                    }
+                                },
+                                error: function(jqXHR, textStatus, errorThrown) {
+                                    console.error('Error updating cart:', textStatus, errorThrown, jqXHR.responseText);
+                                }
+                            });
+                        }
+                    </script>
+                    
+                    
+    
+    
+    <!-- Additional Scripts -->
     <script src="{{ url_for('static', filename='js/vendor/jquery-1.12.4.min.js') }}"></script>
-<!-- mobile menu js  -->
-<script src="{{ url_for('static', filename='js/jquery.meanmenu.min.js') }}"></script>
-<!-- scroll-up js -->
-<script src="{{ url_for('static', filename='js/jquery.scrollUp.js') }}"></script>
-<!-- owl-carousel js -->
-<script src="{{ url_for('static', filename='js/owl.carousel.min.js') }}"></script>
-<!-- slick js -->
-<script src="{{ url_for('static', filename='js/slick.min.js') }}"></script>
-<!-- wow js -->
-<script src="{{ url_for('static', filename='js/wow.min.js') }}"></script>
-<!-- price slider js -->
-<script src="{{ url_for('static', filename='js/jquery-ui.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/jquery.countdown.min.js') }}"></script>
-<!-- nivo slider js -->
-<script src="{{ url_for('static', filename='js/jquery.nivo.slider.js') }}"></script>
-<!-- fancybox js -->
-<script src="{{ url_for('static', filename='js/jquery.fancybox.min.js') }}"></script>
-<!-- bootstrap -->
-<script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
-<!-- plugins -->
-<script src="{{ url_for('static', filename='js/plugins.js') }}"></script>
-<!-- main js -->
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
-
+    <script src="{{ url_for('static', filename='js/jquery.meanmenu.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jquery.scrollUp.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/owl.carousel.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/slick.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/wow.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jquery-ui.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jquery.countdown.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jquery.nivo.slider.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jquery.fancybox.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/plugins.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
-
-
-<!-- Mirrored from htmldemo.net/jantrik/jantrik/cart.html by HTTrack Website Copier/3.x [XR&CO'2014], Fri, 05 Jul 2024 04:21:08 GMT -->
 </html>

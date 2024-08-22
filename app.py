@@ -183,10 +183,8 @@ def login():
                 flash('Email not verified. Please check your email for the verification link.', 'danger')
                 return render_template('login.html')
 
-            session['user_id'] = user_id
+            session['user_id'] = user_id  # Store user_id in session
             user_data = db.child("users").child(user_id).get().val()
-
-
 
             if user_data:
                 session['email'] = email
@@ -752,12 +750,33 @@ def delete_category(id):
 import logging
 from flask import abort, render_template
 
+import requests
+def get_user_id_by_email(email):
+    try:
+        users = db.child("users").order_by_child("email").equal_to(email).get().val()
+        print(f"Users data for email {email}: {users}")  # Debug print
+        if users:
+            user_id = list(users.keys())[0]
+            print(f"Found user ID: {user_id}")  # Debug print
+            return user_id
+        else:
+            print(f"No user found for email: {email}")  # Debug print
+    except Exception as e:
+        print(f"Error in get_user_id_by_email: {str(e)}")
+        traceback.print_exc()
+    return None
+
 @app.route('/add-to-cart/', methods=['GET', 'POST'])
 @app.route('/add-to-cart/<product_id>', methods=['POST'])
 def add_to_cart(product_id=None):
     if 'email' not in session or 'user_info' not in session:
         flash('Please log in to add items to your cart.', 'warning')
         return redirect(url_for('login'))
+
+    user_id = get_user_id_by_email(session['email'])
+    if not user_id:
+        flash('User not found.', 'danger')
+        return redirect(url_for('index'))
 
     try:
         product_name = request.form.get('product_name')
@@ -778,12 +797,13 @@ def add_to_cart(product_id=None):
             return redirect(url_for('index'))
 
         cart_item = {
-            "product_id": product_id,
+             "product_id": product_id,
             "product_name": product_name,
             "product_image": product_image,
             "product_price": product_price,
             "quantity": quantity,
             "total_price": product_price * quantity,
+            "user_id": user_id,
             "user_email": session['email']
         }
         
@@ -803,17 +823,19 @@ def add_to_cart(product_id=None):
 @app.errorhandler(400)
 def bad_request(e):
     return render_template('error.html', error=str(e.description)), 400
-
 @app.route('/cart')
+@app.route('/cart/')
 def cart():
-    user_id = session.get('user_id')
-    if not user_id:
+    if 'user_id' not in session:
         flash('You need to log in first.', 'danger')
         return redirect(url_for('login'))
 
+    user_id = session['user_id']
+    print(f"User ID: {user_id}")  # Debug print
+
     try:
         # Fetch cart items for the logged-in user from Firebase
-        cart_data = db.child("cart").order_by_child("user_email").equal_to(session['email']).get().val()
+        cart_data = db.child("cart").order_by_child("user_id").equal_to(user_id).get().val()
         
         print("Fetched cart data:", cart_data)  # Debug print to check fetched data
         
@@ -821,53 +843,56 @@ def cart():
         if cart_data:
             for key, value in cart_data.items():
                 cart_items.append({
+                    "product_id": key,  # Add this line to include the product_id
                     "product_image": value.get('product_image', ''),
                     "product_name": value.get('product_name', ''),
                     "product_price": float(value.get('product_price', 0)),
                     "product_quantity": int(value.get('quantity', 1)),
                     "total_price": float(value.get('product_price', 0)) * int(value.get('quantity', 1))
                 })
+            print(f"Processed cart items: {cart_items}")  # Debug print
         else:
             print("No cart data found for the user.")  # Debug print if no data is found
 
     except Exception as e:
         print(f"Error fetching cart items: {str(e)}")  # Print the error message
+        traceback.print_exc()  # Print the full traceback
         flash(f"Failed to fetch cart items: {str(e)}", 'danger')
         cart_items = []
 
-    print("Cart items to display:", cart_items)  # Debug print to check processed cart items
-
-    return render_template('cart.html', cart_items=cart_items)
+    return render_template('cart.html', cart_items=cart_items, user_id=user_id)
 
 @app.route('/update-cart', methods=['POST'])
 def update_cart():
-    if 'email' not in session:
+    if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'User not logged in'}), 403
 
+    user_id = session['user_id']
+    
     try:
         cart_data = request.json
-        print('Received cart data:', cart_data)  # Debug log
+        logging.debug(f'Received cart data: {cart_data}')
 
-        if not isinstance(cart_data, list):
+        if not isinstance(cart_data, dict) or 'cart' not in cart_data:
             return jsonify({'success': False, 'message': 'Invalid data format'}), 400
 
-        user_email = session['email']
+        cart_items = cart_data['cart']
         total_amount = 0
 
-        for item in cart_data:
+        for item in cart_items:
             product_id = item.get('product_id')
             quantity = int(item.get('quantity', 1))
             
             # Fetch the current product data
-            product = db.child("cart").child(user_email).child(product_id).get().val()
-            print(f'Product data for {product_id}:', product)  # Debug log
+            product = db.child("cart").child(product_id).get().val()
+            logging.debug(f'Product data for {product_id}: {product}')
             
             if product:
                 product_price = float(product.get('product_price', 0))
                 total_price = product_price * quantity
                 
                 # Update the cart item
-                db.child("cart").child(user_email).child(product_id).update({
+                db.child("cart").child(product_id).update({
                     "quantity": quantity,
                     "total_price": total_price
                 })
@@ -877,32 +902,47 @@ def update_cart():
         return jsonify({'success': True, 'total': total_amount}), 200
 
     except Exception as e:
-        print(f"Error updating cart: {str(e)}")
-        traceback.print_exc()  # Print full traceback
+        logging.error(f"Error updating cart: {str(e)}")
+        logging.error(traceback.format_exc())
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@app.route('/remove-from-cart/<product_id>', methods=['POST'])
-def remove_from_cart(product_id):
-    if 'email' not in session:
+# ... (previous imports remain unchanged)
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
+# ... (previous code remains unchanged)
+
+@app.route('/remove-from-cart/<item_key>', methods=['POST'])
+def remove_from_cart(item_key):
+    if 'user_id' not in session:
+        logging.error("User not logged in")
         return jsonify({'success': False, 'message': 'User not logged in'}), 403
 
+    user_id = session['user_id']
+    logging.info(f"Attempting to remove item {item_key} for user {user_id}")
+
     try:
-        user_email = session['email']
-        print(f'Removing product {product_id} for user {user_email}')  # Debug log
-
-        db.child("cart").child(user_email).child(product_id).remove()
+        # Fetch all cart items for the user
+        cart_ref = db.child("cart").order_by_child("user_id").equal_to(user_id)
+        cart_items = cart_ref.get().val()
         
-        # Recalculate total price
-        cart_items = db.child("cart").child(user_email).get().val()
-        print('Updated cart items:', cart_items)  # Debug log
-
-        total_amount = sum(float(item.get('total_price', 0)) for item in cart_items.values() if item)
-
-        return jsonify({'success': True, 'total': total_amount}), 200
-
+        logging.debug(f"Cart items for user {user_id}: {cart_items}")
+        
+        if cart_items:
+            for cart_item_key, cart_item in cart_items.items():
+                logging.debug(f"Checking cart item: {cart_item_key} - {cart_item}")
+                if cart_item_key == item_key:  # Changed this line
+                    logging.info(f"Found item to remove: {cart_item_key}")
+                    db.child("cart").child(cart_item_key).remove()
+                    logging.info("Item removed successfully")
+                    return jsonify({'success': True, 'message': 'Cart item removed successfully'}), 200
+        
+        logging.warning(f"Cart item {item_key} not found for user {user_id}")
+        return jsonify({'success': False, 'message': 'Cart item not found'}), 404
     except Exception as e:
-        print(f"Error removing item from cart: {str(e)}")
-        traceback.print_exc()  # Print full traceback
+        logging.error(f"Error removing item from cart: {str(e)}")
+        logging.error(traceback.format_exc())
         return jsonify({'success': False, 'message': str(e)}), 500
 
 if __name__ == '__main__':
