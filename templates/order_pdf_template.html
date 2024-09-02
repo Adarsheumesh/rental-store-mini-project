@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Order Details</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Order Details</h1>
+    <p><strong>Order ID:</strong> {{ order['id'] }}</p>
+    <p><strong>Date:</strong> {{ order.get('date', 'N/A') }}</p>
+    <p><strong>Status:</strong> {{ order.get('status', 'N/A') }}</p>
+    <p><strong>Total:</strong> ${{ "%.2f"|format(order.get('total', 0)) }}</p>
+
+    <h2>Items</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Price</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in order.get('items', []) %}
+            <tr>
+                <td>{{ item.get('product_name', 'Unknown Product') }}</td>
+                <td>{{ item.get('quantity', 0) }}</td>
+                <td>${{ "%.2f"|format(item.get('price', 0)) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

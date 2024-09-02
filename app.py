@@ -1,6 +1,6 @@
 from sqlite3 import Date
 from weakref import ref
-from flask import Flask, jsonify, render_template, request, redirect, url_for, session, flash, logging
+from flask import Flask, jsonify, render_template, request, redirect, url_for, session, flash, logging, send_file
 from networkx import is_path
 import pyrebase
 import re
@@ -9,13 +9,18 @@ from oauthlib.oauth2 import WebApplicationClient
 import requests
 import os
 import firebase_admin
-from firebase_admin import db
-from firebase_admin import credentials
+from firebase_admin import credentials, db
 from dotenv import load_dotenv  # type: ignore
 from datetime import datetime  # Import datetime
 from werkzeug.utils import secure_filename
 import traceback
 import logging
+import stripe
+import uuid
+import random
+import string
+from decimal import Decimal
+import pdfkit  # You'll need to install this: pip install pdfkit
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -306,7 +311,24 @@ def index():
         products = None
         flash(f"Failed to retrieve products: {str(e)}", 'danger')
 
-    return render_template('index.html', email=email, user_info=user_info, products=products)
+    # Fetch best seller products
+    try:
+        # You might want to implement a logic to determine best sellers
+        # For now, let's assume the first 5 products are best sellers
+        best_seller_products = []
+        if products:
+            for product_id, product in list(products.items())[:5]:
+                product['id'] = product_id
+                best_seller_products.append(product)
+    except Exception as e:
+        best_seller_products = None
+        flash(f"Failed to retrieve best seller products: {str(e)}", 'danger')
+
+    return render_template('index.html', 
+                           email=email, 
+                           user_info=user_info, 
+                           products=products, 
+                           best_seller_products=best_seller_products)
 
 
 @app.route('/vendor_dashboard')
@@ -320,12 +342,61 @@ def vendor_dashboard():
 
 @app.route('/account')
 def account():
-    if 'email' in session and 'user_info' in session:
-        email = session['email']
-        user_info = session['user_info']
-        return render_template('account.html', email=email, user_info=user_info)
-    else:
-        return redirect(url_for('login'))
+    # Fetch user info
+    user_info = session.get('user_info')
+
+    # Fetch orders for the current user
+    user_id = session.get('user_id')
+    orders = []
+    try:
+        # Fetch orders from Firebase
+        orders_data = db.child("orders").order_by_child("user_id").equal_to(user_id).get()
+        
+        if orders_data.each():
+            for order in orders_data.each():
+                order_data = order.val()
+                order_data['id'] = order.key()  # Add the Firebase key as 'id'
+                orders.append(order_data)
+        
+        # Sort orders by date (assuming there's a 'date' field)
+        orders.sort(key=lambda x: x.get('date', ''), reverse=True)
+        
+        # Debug print
+        print(f"User ID: {user_id}")
+        print(f"Number of orders: {len(orders)}")
+        for order in orders:
+            print(f"Order ID: {order['id']}, Date: {order.get('date')}, Total: {order.get('total')}")
+
+    except Exception as e:
+        print(f"Error fetching orders: {str(e)}")
+        flash('An error occurred while fetching your orders.', 'danger')
+
+    # Ensure all necessary fields are present in each order
+    for order in orders:
+        order['id'] = order.get('id', 'N/A')
+        order['date'] = order.get('date', 'N/A')
+        order['status'] = order.get('status', 'N/A')
+        order['total'] = float(order.get('total', 0))
+        order['item_count'] = int(order.get('item_count', 0))
+        order['items'] = order.get('items', [])
+
+    return render_template('account.html', user_info=user_info, orders=orders)
+
+@app.route('/get-order-details')
+def get_order_details():
+    order_id = request.args.get('order_id')
+    user_id = session.get('user_id')
+    
+    try:
+        order = db.child("orders").child(order_id).get().val()
+        if order and order.get('user_id') == user_id:
+            # Render a template with order details
+            return render_template('order_details.html', order=order)
+        else:
+            return "Order not found or unauthorized", 404
+    except Exception as e:
+        print(f"Error fetching order details: {str(e)}")
+        return "Error fetching order details", 500
 
 @app.route('/account-details')
 def account_details():
@@ -577,7 +648,9 @@ def product_detail(product_id):
         product_details = product.val() if product else None
 
         if product_details:
-            print(f"Product Details: {product_details}")
+            # Add the id to the product_details dictionary
+            product_details['id'] = product_id
+            print(f"Product Details: {product_details}")  # Debug print
         else:
             print("No product details found.")
 
@@ -666,7 +739,7 @@ def update_product(product_id):
         flash(f"Failed to update product: {str(e)}", 'danger')
         return redirect(url_for('product_list'))
 
-    # delete_product
+# delete_product
 @app.route('/delete-product/<product_id>', methods=['POST'])
 def delete_product(product_id):
     try:
@@ -677,9 +750,7 @@ def delete_product(product_id):
         flash(f"Failed to delete product: {str(e)}", 'danger')
     
     return redirect(url_for('product_list'))
-from flask import render_template, request, redirect, url_for, flash, session
 
-from flask import render_template, request, redirect, url_for, flash
 @app.route('/add-category')
 def add_category_page():
     return render_template('/andshop/add-category.html')  
@@ -766,59 +837,58 @@ def get_user_id_by_email(email):
         traceback.print_exc()
     return None
 
-@app.route('/add-to-cart/', methods=['GET', 'POST'])
-@app.route('/add-to-cart/<product_id>', methods=['POST'])
-def add_to_cart(product_id=None):
-    if 'email' not in session or 'user_info' not in session:
-        flash('Please log in to add items to your cart.', 'warning')
-        return redirect(url_for('login'))
+def get_cart_count(user_id):
+    try:
+        cart_items = db.child("cart").order_by_child("user_id").equal_to(user_id).get().val()
+        return len(cart_items) if cart_items else 0
+    except Exception as e:
+        print(f"Error getting cart count: {str(e)}")
+        return 0
 
-    user_id = get_user_id_by_email(session['email'])
-    if not user_id:
-        flash('User not found.', 'danger')
-        return redirect(url_for('index'))
+@app.route('/add-to-cart', methods=['POST'])
+def add_to_cart():
+    if 'user_id' not in session:
+        
+        return jsonify({'success': False, 'message': 'User not logged in'}), 403
 
     try:
-        product_name = request.form.get('product_name')
-        product_image = request.form.get('product_image')
-        product_price = request.form.get('product_price')
-        quantity = request.form.get('quantity')
+        data = request.get_json()
+        if not data or 'product_id' not in data:
+            return jsonify({'success': False, 'message': 'Invalid request data'}), 400
 
-        if not all([product_name, product_image, product_price, quantity]):
-            missing_fields = [field for field in ['product_name', 'product_image', 'product_price', 'quantity'] if not request.form.get(field)]
-            flash(f"Missing required product information: {', '.join(missing_fields)}", 'danger')
-            return redirect(url_for('index'))
+        user_id = session['user_id']
+        product_id = data['product_id']
+        quantity = data.get('quantity', 1)  # Default to 1 if quantity is not provided
 
-        try:
-            product_price = float(product_price)
-            quantity = int(quantity)
-        except ValueError:
-            flash('Invalid price or quantity.', 'danger')
-            return redirect(url_for('index'))
+        # Check if the product already exists in the cart
+        existing_item = db.child("cart").order_by_child("user_id").equal_to(user_id).get().val()
+        if existing_item:
+            for item_key, item in existing_item.items():
+                if item.get('product_id') == product_id:
+                    # Update quantity if the product is already in the cart
+                    new_quantity = item['quantity'] + quantity
+                    db.child("cart").child(item_key).update({"quantity": new_quantity})
+                    cart_count = get_cart_count(user_id)
+                    return jsonify({'success': True, 'message': 'Product quantity updated in cart!', 'cart_count': cart_count}), 200
 
+        # If the product is not in the cart, add it
         cart_item = {
-             "product_id": product_id,
-            "product_name": product_name,
-            "product_image": product_image,
-            "product_price": product_price,
+            "product_id": product_id,
             "quantity": quantity,
-            "total_price": product_price * quantity,
             "user_id": user_id,
-            "user_email": session['email']
         }
         
         result = db.child("cart").push(cart_item)
         
         if result:
-            flash('Product added to cart!', 'success')
-            return redirect(url_for('view_cart'))
+            cart_count = get_cart_count(user_id)
+            return jsonify({'success': True, 'message': 'Product added to cart!', 'cart_count': cart_count}), 200
         else:
-            flash('Failed to add product to cart. Please try again.', 'danger')
-            return redirect(url_for('index'))
+            return jsonify({'success': False, 'message': 'Failed to add product to cart. Please try again.'}), 400
 
     except Exception as e:
-        flash(f"An error occurred: {str(e)}", 'danger')
-        return redirect(url_for('index'))
+        app.logger.error(f"Error adding to cart: {str(e)}")
+        return jsonify({'success': False, 'message': f"An error occurred: {str(e)}"}), 500
 
 @app.errorhandler(400)
 def bad_request(e):
@@ -841,18 +911,36 @@ def cart():
         
         cart_items = []
         if cart_data:
-            for key, value in cart_data.items():
-                cart_items.append({
-                    "product_id": key,  # Add this line to include the product_id
-                    "product_image": value.get('product_image', ''),
-                    "product_name": value.get('product_name', ''),
-                    "product_price": float(value.get('product_price', 0)),
-                    "product_quantity": int(value.get('quantity', 1)),
-                    "total_price": float(value.get('product_price', 0)) * int(value.get('quantity', 1))
-                })
+            for cart_item_id, cart_item in cart_data.items():
+                print(f"Processing cart item: {cart_item_id}, {cart_item}")  # Debug print
+                product_id = cart_item.get('product_id')
+                if not product_id:
+                    print(f"No product_id found for cart item: {cart_item_id}")
+                    continue
+
+                # Fetch product details from the products table
+                product_details = db.child("products").child(product_id).get().val()
+                print(f"Product details for {product_id}: {product_details}")  # Debug print
+                
+                if product_details:
+                    cart_items.append({
+                        "cart_item_id": cart_item_id,
+                        "product_id": product_id,
+                        "product_image": product_details.get('product_image', ''),
+                        "product_name": product_details.get('product_name', ''),
+                        "product_price": float(product_details.get('product_price', 0)),
+                        "product_quantity": int(cart_item.get('quantity', 1)),
+                        "total_price": float(product_details.get('product_price', 0)) * int(cart_item.get('quantity', 1))
+                    })
+                else:
+                    print(f"No product details found for product_id: {product_id}")
             print(f"Processed cart items: {cart_items}")  # Debug print
         else:
             print("No cart data found for the user.")  # Debug print if no data is found
+
+        for item in cart_items:
+            item['product_price'] = f"₹{item['product_price']:.2f}"
+            item['total_price'] = f"₹{item['total_price']:.2f}"
 
     except Exception as e:
         print(f"Error fetching cart items: {str(e)}")  # Print the error message
@@ -878,40 +966,150 @@ def update_cart():
 
         cart_items = cart_data['cart']
         total_amount = 0
+        updated_items = []
+
+        # Fetch all cart items for the user
+        user_cart = db.child("cart").order_by_child("user_id").equal_to(user_id).get().val()
 
         for item in cart_items:
             product_id = item.get('product_id')
-            quantity = int(item.get('quantity', 1))
+            requested_quantity = int(item.get('quantity', 1))
             
-            # Fetch the current product data
-            product = db.child("cart").child(product_id).get().val()
+            # Fetch the current product data from the products table
+            product = db.child("products").child(product_id).get().val()
             logging.debug(f'Product data for {product_id}: {product}')
             
             if product:
+                product_name = product.get('product_name', 'Unknown Product')
                 product_price = float(product.get('product_price', 0))
-                total_price = product_price * quantity
+                product_quantity = int(product.get('product_quantity', 0))
                 
-                # Update the cart item
-                db.child("cart").child(product_id).update({
-                    "quantity": quantity,
-                    "total_price": total_price
-                })
+                # Limit the quantity to the available quantity
+                quantity = min(requested_quantity, product_quantity)
+                
+                # Find the existing cart item for this product
+                existing_cart_item_key = None
+                existing_cart_item = None
+                for key, cart_item in user_cart.items():
+                    if cart_item.get('product_id') == product_id:
+                        existing_cart_item_key = key
+                        existing_cart_item = cart_item
+                        break
+
+                # Calculate rental days and total price
+                rent_from = existing_cart_item.get('rent_from') if existing_cart_item else None
+                rent_to = existing_cart_item.get('rent_to') if existing_cart_item else None
+                
+                if rent_from and rent_to:
+                    rent_from_date = datetime.strptime(rent_from, '%Y-%m-%d')
+                    rent_to_date = datetime.strptime(rent_to, '%Y-%m-%d')
+                    rental_days = (rent_to_date - rent_from_date).days + 1
+                    total_price = product_price * quantity * rental_days
+                else:
+                    rental_days = 0
+                    total_price = 0
+
+                # Update the existing cart item or create a new one
+                if existing_cart_item_key:
+                    db.child("cart").child(existing_cart_item_key).update({
+                        "quantity": quantity,
+                        "total_price": total_price,
+                        "max_quantity": product_quantity,
+                        "rental_days": rental_days
+                    })
+                else:
+                    db.child("cart").push({
+                        "product_id": product_id,
+                        "quantity": quantity,
+                        "total_price": total_price,
+                        "user_id": user_id,
+                        "max_quantity": product_quantity,
+                        "rental_days": rental_days
+                    })
                 
                 total_amount += total_price
+                updated_items.append({
+                    "product_id": product_id,
+                    "product_name": product_name,
+                    "quantity": quantity,
+                    "max_quantity": product_quantity,
+                    "total_price": total_price,
+                    "rental_days": rental_days
+                })
+            else:
+                logging.warning(f"Product {product_id} not found in the database.")
 
-        return jsonify({'success': True, 'total': total_amount}), 200
+        return jsonify({
+            'success': True, 
+            'total': total_amount,
+            'updated_items': updated_items
+        }), 200
 
     except Exception as e:
         logging.error(f"Error updating cart: {str(e)}")
         logging.error(traceback.format_exc())
         return jsonify({'success': False, 'message': str(e)}), 500
 
-# ... (previous imports remain unchanged)
+from flask import jsonify, request
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+@app.route('/update-rent-dates', methods=['POST'])
+def update_rent_dates():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please log in to update rent dates.'}), 401
 
-# ... (previous code remains unchanged)
+    user_id = session['user_id']
+
+    try:
+        data = request.get_json()
+        logging.info(f"Received data: {data}")  # Debug log
+
+        cart_item_id = data.get('cart_item_id')
+        rent_from = data.get('rent_from')
+        rent_to = data.get('rent_to')
+
+        if not cart_item_id or not rent_from or not rent_to:
+            logging.error(f"Missing required data: cart_item_id={cart_item_id}, rent_from={rent_from}, rent_to={rent_to}")
+            return jsonify({'success': False, 'message': 'Missing required data.'}), 400
+
+        # Update the cart item in the database
+        cart_item = db.child("cart").child(cart_item_id).get().val()
+        logging.info(f"Cart item: {cart_item}")  # Debug log
+
+        if cart_item and str(cart_item.get('user_id')) == str(user_id):
+            # Calculate rental days and total price
+            rent_from_date = datetime.strptime(rent_from, '%Y-%m-%d')
+            rent_to_date = datetime.strptime(rent_to, '%Y-%m-%d')
+            rental_days = (rent_to_date - rent_from_date).days + 1
+
+            product_id = cart_item.get('product_id')
+            product_details = db.child("products").child(product_id).get().val()
+            if product_details:
+                price_per_unit = float(product_details.get('product_price', 0))
+                quantity = int(cart_item.get('quantity', 1))
+                total_price = price_per_unit * quantity * rental_days
+
+                db.child("cart").child(cart_item_id).update({
+                    "rent_from": rent_from,
+                    "rent_to": rent_to,
+                    "rental_days": rental_days,
+                    "total_price": total_price
+                })
+                logging.info("Rent dates, rental days, and total price updated successfully")
+                return jsonify({'success': True, 'message': 'Rent dates updated successfully', 'rental_days': rental_days, 'total_price': total_price}), 200
+            else:
+                logging.error(f"Product details not found for product_id: {product_id}")
+                return jsonify({'success': False, 'message': 'Product details not found.'}), 404
+        else:
+            logging.error(f"Cart item not found or unauthorized. cart_item={cart_item}, user_id={user_id}")
+            return jsonify({'success': False, 'message': 'Cart item not found or unauthorized.'}), 404
+
+    except Exception as e:
+        logging.error(f"Error updating rent dates: {str(e)}")
+        return jsonify({'success': False, 'message': f"An error occurred: {str(e)}"}), 500
+
+# Make sure to configure logging at the top of your app.py file
+logging.basicConfig(level=logging.DEBUG)
 
 @app.route('/remove-from-cart/<item_key>', methods=['POST'])
 def remove_from_cart(item_key):
@@ -932,11 +1130,18 @@ def remove_from_cart(item_key):
         if cart_items:
             for cart_item_key, cart_item in cart_items.items():
                 logging.debug(f"Checking cart item: {cart_item_key} - {cart_item}")
-                if cart_item_key == item_key:  # Changed this line
+                if cart_item_key == item_key:
                     logging.info(f"Found item to remove: {cart_item_key}")
+                    product_id = cart_item.get('product_id')
+                    product = db.child("products").child(product_id).get().val()
+                    product_name = product.get('product_name', 'Unknown Product') if product else 'Unknown Product'
                     db.child("cart").child(cart_item_key).remove()
                     logging.info("Item removed successfully")
-                    return jsonify({'success': True, 'message': 'Cart item removed successfully'}), 200
+                    return jsonify({
+                        'success': True, 
+                        'message': f'{product_name} removed from cart successfully',
+                        'removed_item_key': cart_item_key
+                    }), 200
         
         logging.warning(f"Cart item {item_key} not found for user {user_id}")
         return jsonify({'success': False, 'message': 'Cart item not found'}), 404
@@ -944,6 +1149,591 @@ def remove_from_cart(item_key):
         logging.error(f"Error removing item from cart: {str(e)}")
         logging.error(traceback.format_exc())
         return jsonify({'success': False, 'message': str(e)}), 500
+stripe.api_key = 'sk_test_51Pqv8iRsdj1Rwn4ZPqX8neIYjhGs1FPpWoTC7zuT1O1i9qQ1G8BivIbcx9Clzf1kE0AKiVcyOn0a8CpIz1oF75Y500FziKufLt'
 
+@app.route('/checkout', methods=['GET'])
+def checkout():
+    if 'user_id' not in session:
+        flash('Please log in to proceed with checkout', 'warning')
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    cart_items = get_cart_items()
+    
+    # Calculate total price considering rental days
+    total_price = sum(
+        item['product_price'] * item['quantity'] * item.get('rental_days', 1)
+        for item in cart_items
+    )
+
+    # Fetch user details from the database
+    user_details = db.child("users").child(user_id).get().val()
+
+    return render_template('checkout.html', 
+                           cart_items=cart_items, 
+                           total_price=total_price,
+                           user_details=user_details,
+                           stripe_public_key='pk_test_51Pqv8iRsdj1Rwn4Zx6ePlGYpqKw0BC4wWhgxlyxYaqo9hQwJh8pMgWRVKgaFv2DP5IcAF9kuMdZN1DmrkaUVAsQQ008yNC3FFG')
+
+from flask import jsonify, request, session, url_for
+from decimal import Decimal
+
+from flask import jsonify, request, session, url_for
+from werkzeug.exceptions import HTTPException
+import traceback
+from decimal import Decimal, InvalidOperation
+
+@app.route('/create_payment', methods=['POST'])
+def create_payment():
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'User not logged in'}), 401
+
+        # Log the received data for debugging
+        app.logger.debug(f"Received form data: {request.form}")
+
+        # Get form data
+        use_different_shipping = request.form.get('use_different_shipping') == 'true'
+        shipping_address = request.form.get('shipping_address', '')
+        shipping_address2 = request.form.get('shipping_address2', '')
+
+        # Get cart items details
+        product_ids = request.form.getlist('product_ids[]')
+        rent_from = request.form.getlist('rent_from[]')
+        rent_to = request.form.getlist('rent_to[]')
+        rental_days = [int(days) if days else 0 for days in request.form.getlist('rental_days[]')]
+        item_totals = [Decimal(total) if total else Decimal('0') for total in request.form.getlist('item_totals[]')]
+        
+        # Safely convert order_total to Decimal
+        order_total_str = request.form.get('order_total', '0')
+        try:
+            order_total = Decimal(order_total_str)
+        except InvalidOperation:
+            return jsonify({'success': False, 'error': f'Invalid order total: {order_total_str}'}), 400
+
+        # Create order items list
+        order_items = []
+        for i in range(len(product_ids)):
+            order_items.append({
+                'product_id': product_ids[i],
+                'rent_from': rent_from[i],
+                'rent_to': rent_to[i],
+                'rental_days': rental_days[i],
+                'item_total': float(item_totals[i])
+            })
+
+        # Process payment
+        payment_success, payment_intent_id = process_payment(float(order_total))
+
+        if payment_success:
+            try:
+                # Create order in your database
+                order_id = create_order_in_database(user_id, order_items, float(order_total), use_different_shipping, shipping_address, shipping_address2)
+
+                # Update order status to paid
+                update_order_status(order_id, 'paid', payment_intent_id)
+
+                # Clear the cart
+                clear_cart(user_id)
+
+                return jsonify({
+                    'success': True,
+                    'redirect_url': url_for('payment_success', order_id=order_id)
+                })
+            except Exception as e:
+                app.logger.error(f"Error after payment processing: {str(e)}")
+                return jsonify({'success': False, 'error': str(e)}), 500
+        else:
+            return jsonify({'success': False, 'error': 'Payment processing failed'}), 400
+
+    except Exception as e:
+        app.logger.error(f"Error in create_payment: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Pass through HTTP errors
+    if isinstance(e, HTTPException):
+        return jsonify({'success': False, 'error': str(e)}), e.code
+    
+    # Now you're handling non-HTTP exceptions only
+    app.logger.error(f"Unhandled Exception: {str(e)}")
+    app.logger.error(traceback.format_exc())
+    return jsonify({'success': False, 'error': 'An unexpected error occurred'}), 500
+
+# Make sure to implement these functions according to your needs:
+# create_order_in_database, process_payment, update_order_status, clear_cart
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Pass through HTTP errors
+    if isinstance(e, HTTPException):
+        return jsonify({'success': False, 'error': str(e)}), e.code
+    
+    # Now you're handling non-HTTP exceptions only
+    app.logger.error(f"Unhandled Exception: {str(e)}")
+    app.logger.error(traceback.format_exc())
+    return jsonify({'success': False, 'error': 'An unexpected error occurred'}), 500
+
+
+
+def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
+    # Implement your logic to create an order in the database
+    order_data = {
+        'user_id': user_id,
+        'items': order_items,
+        'order_total': order_total,
+        'use_different_shipping': use_different_shipping,
+        'shipping_address': shipping_address,
+        'shipping_address2': shipping_address2,
+        'status': 'pending',
+        'created_at': datetime.now().isoformat()
+    }
+    
+    # Add the order to your database (e.g., using Firebase)
+    new_order = db.child("orders").push(order_data)
+    return new_order['name']  # Return the new order ID
+
+def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
+    try:
+        order_data = {
+            'user_id': user_id,
+            'items': order_items,
+            'order_total': order_total,
+            'use_different_shipping': use_different_shipping,
+            'shipping_address': shipping_address or '',
+            'shipping_address2': shipping_address2 or '',
+            'status': 'pending',
+            'created_at': datetime.now().isoformat()
+        }
+        
+        new_order = db.child("orders").push(order_data)
+        return new_order['name']
+    except Exception as e:
+        app.logger.error(f"Error creating order in database: {str(e)}")
+        raise
+
+def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
+    try:
+        order_data = {
+            'user_id': user_id,
+            'items': order_items,
+            'order_total': order_total,
+            'use_different_shipping': use_different_shipping,
+            'shipping_address': shipping_address or '',
+            'shipping_address2': shipping_address2 or '',
+            'status': 'pending',
+            'created_at': datetime.now().isoformat()
+        }
+        
+        new_order = db.child("orders").push(order_data)
+        return new_order['name']
+    except Exception as e:
+        app.logger.error(f"Error creating order in database: {str(e)}")
+        raise
+
+def process_payment(amount):
+    try:
+        # Implement your payment processing logic here
+        # This is just a placeholder
+        payment_success = True
+        payment_intent_id = 'pi_' + ''.join(random.choices(string.ascii_letters + string.digits, k=24))
+        return payment_success, payment_intent_id
+    except Exception as e:
+        app.logger.error(f"Error processing payment: {str(e)}")
+        raise
+
+def clear_cart(user_id):
+    try:
+        db.reference(f'carts/{user_id}').delete()
+    except Exception as e:
+        app.logger.error(f"Error clearing cart: {str(e)}")
+        raise
+
+def process_payment(amount):
+    # Implement your payment processing logic here
+    # This is just a placeholder
+    payment_success = True
+    payment_intent_id = 'pi_' + ''.join(random.choices(string.ascii_letters + string.digits, k=24))
+    return payment_success, payment_intent_id
+
+def process_payment(amount):
+    # Implement your payment processing logic here
+    # This is just a placeholder
+    payment_success = True
+    payment_intent_id = 'pi_' + ''.join(random.choices(string.ascii_letters + string.digits, k=24))
+    return payment_success, payment_intent_id
+
+def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
+    # Implement your order creation logic here
+    # This is just a placeholder
+    order_data = {
+        'user_id': user_id,
+        'items': order_items,
+        'order_total': order_total,
+        'use_different_shipping': use_different_shipping,
+        'shipping_address': shipping_address,
+        'shipping_address2': shipping_address2,
+        'status': 'pending',
+        'created_at': datetime.now().isoformat()
+    }
+    new_order = db.reference('orders').push(order_data)
+    return new_order.key
+
+def clear_cart(user_id):
+    try:
+        db.reference(f'carts/{user_id}').delete()
+    except Exception as e:
+        app.logger.error(f"Error clearing cart: {str(e)}")
+        raise
+
+def process_payment(amount):
+    try:
+        # Implement your payment processing logic here
+        # This is just a placeholder
+        payment_success = True
+        payment_intent_id = 'pi_' + ''.join(random.choices(string.ascii_letters + string.digits, k=24))
+        return payment_success, payment_intent_id
+    except Exception as e:
+        app.logger.error(f"Error processing payment: {str(e)}")
+        raise
+
+@app.route('/save-order', methods=['POST'])
+def save_order():
+    if 'user_id' not in session:
+        return jsonify({'error': 'User not logged in'}), 403
+
+    user_id = session['user_id']
+    data = request.json
+    order_id = data.get('order_id')
+    payment_intent_id = data.get('payment_intent_id')
+
+    try:
+        # Get cart items
+        cart_items = get_cart_items()
+        
+        # Save order to the database
+        order_data = {
+            'order_id': order_id,
+            'user_id': user_id,
+            'payment_intent_id': payment_intent_id,
+            'items': cart_items,
+            'total_amount': sum(item['total_price'] for item in cart_items),
+            'status': 'paid',
+            'created_at': datetime.now().isoformat()
+        }
+        db.child("orders").push(order_data)
+
+        # Clear the user's cart
+        cart_ref = db.child("cart").order_by_child("user_id").equal_to(user_id)
+        cart_items = cart_ref.get().val()
+        if cart_items:
+            for item_key in cart_items.keys():
+                db.child("cart").child(item_key).remove()
+
+        return jsonify({'success': True, 'order_id': order_id})
+    except Exception as e:
+        print(f"Error saving order: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/payment-success/<order_id>')
+def payment_success(order_id):
+    try:
+        # Fetch order details from the database using order_id
+        order_query = db.child("orders").order_by_child("order_id").equal_to(order_id).get()
+        orders = order_query.val()
+        
+        print(f"Debug - Fetched orders: {orders}")  # Add this debug print
+        
+        if orders:
+            # Get the first (and should be only) order with this ID
+            order_data = next(iter(orders.values()))
+            print(f"Debug - Order data: {order_data}")  # Add this debug print
+            
+            # Ensure order_data is a dictionary
+            if not isinstance(order_data, dict):
+                raise ValueError("Order data is not in the expected format")
+            
+            return render_template('payment_success.html', order_id=order_id, order=order_data)
+        else:
+            print(f"Debug - No order found for ID: {order_id}")
+            return render_template('payment_success.html', order_id=order_id, order=None)
+    except Exception as e:
+        print(f"Error in payment_success route: {str(e)}")
+        import traceback
+        print(traceback.format_exc())  # This will print the full stack trace
+        return render_template('payment_success.html', order_id=order_id, order=None, error=str(e))
+
+def process_payment(amount):
+    # Implement your payment processing logic here
+    # This is just a placeholder
+    payment_success = True
+    payment_intent_id = 'pi_' + ''.join(random.choices(string.ascii_letters + string.digits, k=24))
+    return payment_success, payment_intent_id
+
+def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
+    try:
+        order_data = {
+            'user_id': user_id,
+            'items': order_items,
+            'order_total': order_total,
+            'use_different_shipping': use_different_shipping,
+            'shipping_address': shipping_address,
+            'shipping_address2': shipping_address2,
+            'status': 'pending',
+            'created_at': datetime.now().isoformat()
+        }
+        new_order = db.child("orders").push(order_data)
+        return new_order['name']  # Return the new order ID
+    except Exception as e:
+        app.logger.error(f"Error creating order in database: {str(e)}")
+        raise
+
+def update_order_status(order_id, status, payment_intent_id=None):
+    try:
+        update_data = {
+            'status': status,
+            'updated_at': datetime.now().isoformat()
+        }
+        if payment_intent_id:
+            update_data['payment_intent_id'] = payment_intent_id
+        
+        db.child("orders").child(order_id).update(update_data)
+    except Exception as e:
+        app.logger.error(f"Error updating order status: {str(e)}")
+        raise
+
+def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
+    try:
+        order_data = {
+            'user_id': user_id,
+            'items': order_items,
+            'order_total': order_total,
+            'use_different_shipping': use_different_shipping,
+            'shipping_address': shipping_address,
+            'shipping_address2': shipping_address2,
+            'status': 'pending',
+            'created_at': datetime.now().isoformat()
+        }
+        new_order = db.child("orders").push(order_data)
+        return new_order['name']  # Return the new order ID
+    except Exception as e:
+        app.logger.error(f"Error creating order in database: {str(e)}")
+        raise
+
+def clear_cart(user_id):
+    try:
+        db.child("cart").order_by_child("user_id").equal_to(user_id).remove()
+    except Exception as e:
+        app.logger.error(f"Error clearing cart: {str(e)}")
+        raise
+
+def get_cart_items():
+    if 'user_id' not in session:
+        return []
+
+    user_id = session['user_id']
+    try:
+        # Fetch cart items for the logged-in user from Firebase
+        cart_data = db.child("cart").order_by_child("user_id").equal_to(user_id).get().val()
+        
+        cart_items = []
+        if cart_data:
+            for cart_item_id, cart_item in cart_data.items():
+                product_id = cart_item.get('product_id')
+                if not product_id:
+                    continue
+
+                # Fetch product details from the products table
+                product_details = db.child("products").child(product_id).get().val()
+                
+                if product_details:
+                    quantity = int(cart_item.get('quantity', 1))
+                    price = float(product_details.get('product_price', 0))
+                    rent_from = cart_item.get('rent_from', '')
+                    rent_to = cart_item.get('rent_to', '')
+                    
+                    # Calculate rental days
+                    rental_days = 1
+                    if rent_from and rent_to:
+                        rent_from_date = datetime.strptime(rent_from, '%Y-%m-%d')
+                        rent_to_date = datetime.strptime(rent_to, '%Y-%m-%d')
+                        rental_days = (rent_to_date - rent_from_date).days + 1
+
+                    cart_items.append({
+                        "cart_item_id": cart_item_id,
+                        "product_id": product_id,
+                        "product_image": product_details.get('product_image', ''),
+                        "product_name": product_details.get('product_name', ''),
+                        "product_price": price,
+                        "quantity": quantity,
+                        "rent_from": rent_from,
+                        "rent_to": rent_to,
+                        "rental_days": rental_days
+                    })
+
+        return cart_items
+    except Exception as e:
+        print(f"Error fetching cart items: {str(e)}")
+        return []
+@app.route('/wishlist')
+def wishlist():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    return render_template('wishlist.html')
+
+@app.route('/get-wishlist-items')
+def get_wishlist_items():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'User not logged in'}), 403
+
+    user_id = session['user_id']
+    try:
+        wishlist_items = get_wishlist_items_from_database(user_id)
+        return jsonify({'success': True, 'wishlist_items': wishlist_items})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/add-to-wishlist', methods=['POST'])
+def add_to_wishlist():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'User not logged in'}), 403
+
+    user_id = session['user_id']
+    data = request.get_json()
+    product_id = data.get('product_id')
+
+    try:
+        # Check if the product is already in the wishlist
+        existing_item = db.child("wishlist").order_by_child("user_id").equal_to(user_id).get().val()
+        if existing_item:
+            for item_key, item_data in existing_item.items():
+                if item_data.get('product_id') == product_id:
+                    return jsonify({'success': False, 'message': 'Product already in wishlist'}), 400
+
+        # Add the product to the wishlist
+        wishlist_item = {
+            'user_id': user_id,
+            'product_id': product_id,
+            'added_at': datetime.now().isoformat()
+        }
+        db.child("wishlist").push(wishlist_item)
+
+        return jsonify({'success': True, 'message': 'Product added to wishlist'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/remove-from-wishlist', methods=['POST'])
+def remove_from_wishlist():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'User not logged in'}), 403
+
+    user_id = session['user_id']
+    data = request.get_json()
+    product_id = data.get('product_id')
+
+    try:
+        # Find and remove the wishlist item
+        wishlist_items = db.child("wishlist").order_by_child("user_id").equal_to(user_id).get().val()
+        if wishlist_items:
+            for item_key, item_data in wishlist_items.items():
+                if item_data.get('product_id') == product_id:
+                    db.child("wishlist").child(item_key).remove()
+                    return jsonify({'success': True, 'message': 'Product removed from wishlist'})
+
+        return jsonify({'success': False, 'message': 'Product not found in wishlist'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+def get_wishlist_items_from_database(user_id):
+    try:
+        wishlist_data = db.child("wishlist").order_by_child("user_id").equal_to(user_id).get().val()
+        wishlist_items = []
+
+        if wishlist_data:
+            for item_key, item_data in wishlist_data.items():
+                product_id = item_data.get('product_id')
+                product_details = db.child("products").child(product_id).get().val()
+
+                if product_details:
+                    wishlist_items.append({
+                        'product_id': product_id,
+                        'product_name': product_details.get('product_name', ''),
+                        'product_image': product_details.get('product_image', ''),
+                        'product_price': float(product_details.get('product_price', 0)),
+                        'stock_status': 'In Stock' if int(product_details.get('product_quantity', 0)) > 0 else 'Out of Stock'
+                    })
+
+        return wishlist_items
+    except Exception as e:
+        print(f"Error fetching wishlist items: {str(e)}")
+        return []
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
+from reportlab.lib import colors
+from io import BytesIO
+
+@app.route('/download_order_pdf/<order_id>')
+def download_order_pdf(order_id):
+    order = db.child("orders").child(order_id).get().val()
+    
+    if not order:
+        return "Order not found", 404
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+
+    styles = getSampleStyleSheet()
+    elements.append(Paragraph(f"Order Details - Order ID: {order_id}", styles['Title']))
+    elements.append(Paragraph(f"Date: {order.get('date', 'N/A')}", styles['Normal']))
+    elements.append(Paragraph(f"Status: {order.get('status', 'N/A')}", styles['Normal']))
+    elements.append(Paragraph(f"Total: ${order.get('total_amount', 0):.2f}", styles['Normal']))
+
+    # Create table for items
+    data = [['Product', 'Quantity', 'Price']]
+    for item in order.get('items', []):
+        data.append([
+            item.get('product_name', 'Unknown Product'),
+            str(item.get('quantity', 0)),
+            f"${item.get('total_price', 0):.2f}"
+        ])
+
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 14),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 12),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+
+    elements.append(table)
+
+    doc.build(elements)
+
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True, download_name=f'order_{order_id}.pdf', mimetype='application/pdf')
+@app.route('/order_details/<order_id>')
+def order_details(order_id):
+    try:
+        order = db.child("orders").child(order_id).get().val()
+        if not order:
+            return jsonify({'success': False, 'error': 'Order not found'}), 404
+        return jsonify({'success': True, 'order': order})
+    except Exception as e:
+        app.logger.error(f"Error fetching order details: {str(e)}")
+        return jsonify({'success': False, 'error': 'An unexpected error occurred'}), 500
 if __name__ == '__main__':
     app.run(debug=True)

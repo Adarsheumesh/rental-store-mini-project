@@ -39,6 +39,27 @@
 
     <!-- modernizr js -->
     <script src="{{ url_for('static', filename='js/vendor/modernizr-2.8.3.min.js') }}"></script>
+
+    <style>
+        .custom-popup {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 1000;
+            display: none;
+            animation: fadeInOut 3s ease-in-out;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; }
+            10%, 90% { opacity: 1; }
+        }
+    </style>
 </head>
 
 <body>
@@ -79,32 +100,46 @@
                                         <th class="product-price">Price</th>
                                         <th class="product-quantity">Quantity</th>
                                         <th class="product-subtotal">Total</th>
+                                        <th class="product-rent-from">Rent From</th>
+                                        <th class="product-rent-to">Rent To</th>
                                         <th class="product-remove">Remove</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for item in cart_items %}
-                                    <tr data-product-id="{{ item.product_id }}">
-                                        <td class="product-thumbnail">
-                                            <a href="#"><img src="{{ item.product_image }}" alt="cart-image" /></a>
-                                        </td>
-                                        <td class="product-name"><a href="#">{{ item.product_name }}</a></td>
-                                        <td class="product-price"><span class="amount" id="price_{{ item.product_id }}">£{{ item.product_price }}</span></td>
-                                        <td class="product-quantity">
-                                            <div class="quantity-wrapper">
-                                                <button type="button" onclick="decrementQuantity('{{ item.product_id }}')">-</button>
-                                                <input type="number" id="quantity_{{ item.product_id }}" name="quantity" class="quantity" value="{{ item.product_quantity }}" min="1" max="100" onchange="updatePrice('{{ item.product_id }}')" />
-                                                <button type="button" onclick="incrementQuantity('{{ item.product_id }}')">+</button>
-                                            </div>
-                                        </td>
-                                        <td class="product-subtotal">£<span id="total_{{ item.product_id }}">{{ item.total_price }}</span></td>
-                                        <td class="product-remove">
-                                            <button onclick="removeFromCart('{{ item.product_id }}')">
-                                                <i class="fa fa-times" aria-hidden="true"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
+                                    {% if cart_items %}
+                                        {% for item in cart_items %}
+                                        <tr data-product-id="{{ item.product_id }}" data-cart-item-id="{{ item.cart_item_id }}">
+                                            <td class="product-thumbnail">
+                                                <a href="#"><img src="{{ item.product_image }}" alt="cart-image" /></a>
+                                            </td>
+                                            <td class="product-name"><a href="#">{{ item.product_name }}</a></td>
+                                            <td class="product-price"><span class="amount" id="price_{{ item.product_id }}">{{ item.product_price }}</span></td>
+                                            <td class="product-quantity">
+                                                <div class="quantity-wrapper">
+                                                    <button type="button" onclick="decrementQuantity('{{ item.product_id }}')">-</button>
+                                                    <input type="number" id="quantity_{{ item.product_id }}" name="quantity" class="quantity" value="{{ item.product_quantity }}" min="1" max="{{ item.max_quantity }}" onchange="updatePrice('{{ item.product_id }}')" />
+                                                    <button type="button" onclick="incrementQuantity('{{ item.product_id }}')">+</button>
+                                                </div>
+                                            </td>
+                                            <td class="product-subtotal"><span id="total_{{ item.product_id }}">{{ item.total_price }}</span></td>
+                                            <td class="product-rent-from">
+                                                <input type="date" class="rent-from" value="{{ item.rent_from }}" data-cart-item-id="{{ item.cart_item_id }}" min="">
+                                            </td>
+                                            <td class="product-rent-to">
+                                                <input type="date" class="rent-to" value="{{ item.rent_to }}" data-cart-item-id="{{ item.cart_item_id }}" min="">
+                                            </td>
+                                            <td class="product-remove">
+                                                <button onclick="removeFromCart('{{ item.cart_item_id }}')">
+                                                    <i class="fa fa-times" aria-hidden="true"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="8">Your cart is empty.</td>
+                                        </tr>
+                                    {% endif %}
                                 </tbody>
                             </table>
                         </div>
@@ -114,8 +149,7 @@
                         <div class="row">
                             <div class="col-lg-8 col-md-7">
                                 <div class="buttons-cart">
-                                    <input type="submit" value="Update Cart" />
-                                    <a href="#">Continue Shopping</a>
+                                    <a href="/index">Continue Shopping</a>
                                 </div>
                             </div>
                             <!-- Cart Totals Start -->
@@ -128,13 +162,13 @@
                                             <tr class="order-total">
                                                 <th>Total</th>
                                                 <td>
-                                                    <strong><span class="amount" id="cart_total">£0.00</span></strong>
+                                                    <strong><span class="amount" id="cart_total">0.00</span></strong>
                                                 </td>
                                             </tr>
                                         </tbody>
                                     </table>
                                     <div class="wc-proceed-to-checkout">
-                                        <a href="#">Proceed to Checkout</a>
+                                        <a href="/checkout">Proceed to Checkout</a>
                                     </div>
                                 </div>
                             </div>
@@ -194,7 +228,87 @@
                     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
                     
                     <script>
-                        document.addEventListener('DOMContentLoaded', function() {
+                        $(document).ready(function() {
+                            // Set minimum date and disable past dates for all date inputs
+                            setMinDatesAndDisablePast();
+
+                            function setMinDatesAndDisablePast() {
+                                var today = new Date().toISOString().split('T')[0];
+                                $('.rent-from, .rent-to').attr('min', today);
+                                
+                                $('.rent-from, .rent-to').each(function() {
+                                    $(this).on('input', function() {
+                                        this.setCustomValidity('');
+                                        if (this.value < today) {
+                                            this.setCustomValidity('Please select a date from today onwards.');
+                                        }
+                                    });
+                                });
+                            }
+
+                            function updateRentDates(cartItemId, rentFrom, rentTo) {
+                                console.log('Updating rent dates:', cartItemId, rentFrom, rentTo);
+                                $.ajax({
+                                    url: "{{ url_for('update_rent_dates') }}",
+                                    method: 'POST',
+                                    contentType: 'application/json',
+                                    data: JSON.stringify({
+                                        cart_item_id: cartItemId,
+                                        rent_from: rentFrom,
+                                        rent_to: rentTo
+                                    }),
+                                    success: function(response) {
+                                        console.log('Success response:', response);
+                                        if (response.success) {
+                                            showPopup('Rent dates updated successfully');
+                                        } else {
+                                            showPopup('Failed to update rent dates: ' + response.message);
+                                        }
+                                    },
+                                    error: function(jqXHR, textStatus, errorThrown) {
+                                        console.error('Error updating rent dates:', textStatus, errorThrown);
+                                        console.error('Response:', jqXHR.responseText);
+                                        showPopup('Error updating rent dates. Please try again.');
+                                    }
+                                });
+                            }
+
+                            $('.rent-from').on('change', function() {
+                                var $row = $(this).closest('tr');
+                                var $rentTo = $row.find('.rent-to');
+                                $rentTo.attr('min', $(this).val());
+                                
+                                validateAndUpdate($row);
+                            });
+
+                            $('.rent-to').on('change', function() {
+                                var $row = $(this).closest('tr');
+                                validateAndUpdate($row);
+                            });
+
+                            function validateAndUpdate($row) {
+                                var cartItemId = $row.data('cart-item-id');
+                                var rentFrom = $row.find('.rent-from').val();
+                                var rentTo = $row.find('.rent-to').val();
+                                var today = new Date().toISOString().split('T')[0];
+                                
+                                console.log('Date changed:', cartItemId, rentFrom, rentTo);
+                                
+                                if (cartItemId && rentFrom && rentTo) {
+                                    if (rentFrom < today || rentTo < today) {
+                                        showPopup('Please select dates from today onwards');
+                                        return;
+                                    }
+                                    if (new Date(rentFrom) > new Date(rentTo)) {
+                                        showPopup('Rent-to date must be after rent-from date');
+                                        return;
+                                    }
+                                    updateRentDates(cartItemId, rentFrom, rentTo);
+                                } else {
+                                    console.log('Waiting for both dates to be set');
+                                }
+                            }
+
                             // Initial calculation of cart total
                             updateCartTotal();
                     
@@ -211,34 +325,47 @@
                             return "{{ user_id }}";  // This will be populated from the Flask template
                         }
                     
+                        // Function to calculate rental days
+                        function calculateRentalDays(startDate, endDate) {
+                            if (!startDate || !endDate) return 1;
+                            const start = new Date(startDate);
+                            const end = new Date(endDate);
+                            const diffTime = Math.abs(end - start);
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            return diffDays + 1; // Include both start and end days
+                        }
+                    
                         // Update the price for a specific item
                         function updatePrice(itemKey) {
-                            const quantityInput = document.getElementById('quantity_' + itemKey);
-                            if (quantityInput) {
-                                const quantity = parseInt(quantityInput.value);
-                                const pricePerUnit = parseFloat(document.getElementById('price_' + itemKey).textContent.replace('£', ''));
-                                const totalPrice = quantity * pricePerUnit;
-                                document.getElementById('total_' + itemKey).textContent = '£' + totalPrice.toFixed(2);
-                                updateCartTotal();
-                                updateQuantityInBackend(itemKey, quantity);
-                            } else {
-                                console.error('Quantity input not found for item:', itemKey);
-                            }
+                            const $row = $(`tr[data-product-id="${itemKey}"]`);
+                            const quantity = parseInt($row.find('.quantity').val());
+                            const pricePerUnit = parseFloat($row.find('.product-price .amount').text().replace('₹', ''));
+                            const rentFrom = $row.find('.rent-from').val();
+                            const rentTo = $row.find('.rent-to').val();
+                            const rentalDays = calculateRentalDays(rentFrom, rentTo);
+                            const totalPrice = quantity * pricePerUnit * rentalDays;
+                            $row.find('.product-subtotal span').text('₹' + totalPrice.toFixed(2));
+                            updateCartTotal();
+                            updateQuantityInBackend(itemKey, quantity);
+                        }
+                    
+                        // Update the total price of the cart
+                        function updateCartTotal() {
+                            let total = 0;
+                            $('tr[data-product-id]').each(function() {
+                                const itemTotal = parseFloat($(this).find('.product-subtotal span').text().replace('₹', ''));
+                                total += itemTotal;
+                            });
+                            $('#cart_total').text('₹' + total.toFixed(2));
                         }
                     
                         // Increment the quantity of a specific item
                         function incrementQuantity(itemKey) {
                             const quantityInput = document.getElementById('quantity_' + itemKey);
                             if (quantityInput) {
-                                let quantity = parseInt(quantityInput.value);
-                                const maxQuantity = parseInt(quantityInput.getAttribute('max'));
-                                if (quantity < maxQuantity) {
-                                    quantity += 1;
-                                    quantityInput.value = quantity;
-                                    updatePrice(itemKey);
-                                } else {
-                                    console.log('Max quantity reached');
-                                }
+                                let quantity = parseInt(quantityInput.value) + 1;
+                                quantityInput.value = quantity;
+                                updatePrice(itemKey);
                             } else {
                                 console.error('Quantity input not found for item:', itemKey);
                             }
@@ -253,27 +380,31 @@
                                     quantity -= 1;
                                     quantityInput.value = quantity;
                                     updatePrice(itemKey);
+                                } else {
+                                    showPopup('Quantity cannot be less than 1.');
                                 }
                             } else {
                                 console.error('Quantity input not found for item:', itemKey);
                             }
                         }
                     
-                        // Update the total price of the cart
-                        function updateCartTotal() {
-                            let totalElements = document.querySelectorAll('[id^="total_"]');
-                            let cartTotal = 0;
-                            totalElements.forEach(function(element) {
-                                cartTotal += parseFloat(element.textContent.replace('£', ''));
-                            });
-                            document.getElementById('cart_total').textContent = '£' + cartTotal.toFixed(2);
-                        }
+                        // Event listeners for quantity changes
+                        $('.quantity').on('change', function() {
+                            const itemKey = $(this).closest('tr').data('product-id');
+                            updatePrice(itemKey);
+                        });
+                    
+                        // Event listeners for date changes
+                        $('.rent-from, .rent-to').on('change', function() {
+                            const itemKey = $(this).closest('tr').data('product-id');
+                            updatePrice(itemKey);
+                        });
                     
                         // Send updated quantity information to the backend
                         function updateQuantityInBackend(itemKey, quantity) {
                             const userId = getUserId();
                             if (!userId) {
-                                alert('User ID is missing. Please log in again.');
+                                showPopup('User ID is missing. Please log in again.');
                                 return;
                             }
 
@@ -288,55 +419,68 @@
                                 success: function(response) {
                                     console.log('Quantity updated successfully', response);
                                     if (response.success) {
-                                        $('#cart_total').text('£' + response.total.toFixed(2));
+                                        $('#cart_total').text('₹' + response.total.toFixed(2));
+                                        updateCartTotal();  // Update the cart total display
+                                        
+                                        // Update each item in the cart
+                                        response.updated_items.forEach(function(item) {
+                                            const itemRow = $(`tr[data-product-id="${item.product_id}"]`);
+                                            const quantityInput = itemRow.find('.quantity');
+                                            quantityInput.val(item.quantity);
+                                            quantityInput.attr('max', item.max_quantity);
+                                            itemRow.find('.product-subtotal span').text('₹' + item.total_price.toFixed(2));
+                                            
+                                            if (item.quantity !== quantity) {
+                                                showPopup(`Quantity for ${item.product_name} adjusted to ${item.quantity} due to stock limitations.`);
+                                            }
+                                        });
                                     }
                                 },
                                 error: function(jqXHR, textStatus, errorThrown) {
                                     console.error('Error updating quantity:', textStatus, errorThrown, jqXHR.responseText);
-                                    alert('Error updating quantity. Please try again.');
+                                    showPopup('Error updating quantity. Please try again.');
                                 }
                             });
                         }
                     
                         // Remove an item from the cart
-                        function removeFromCart(itemKey) {
-                            console.log('Attempting to remove item:', itemKey);
-                            if (confirm('Are you sure you want to remove this item from your cart?')) {
-                                $.ajax({
-                                    url: '/remove-from-cart/' + itemKey,
-                                    method: 'POST',
-                                    success: function(response) {
-                                        console.log('Server response:', response);
-                                        if (response.success) {
-                                            console.log('Item removed successfully');
-                                            $('tr[data-product-id="' + itemKey + '"]').remove();
-                                            updateCartTotal();
-                                        } else {
-                                            console.error('Failed to remove item:', response.message);
-                                            alert('Failed to remove item: ' + response.message);
-                                        }
-                                    },
-                                    error: function(jqXHR, textStatus, errorThrown) {
-                                        console.error('Error removing item:', textStatus, errorThrown);
-                                        console.error('Response text:', jqXHR.responseText);
-                                        let errorMessage = 'Error removing item. ';
-                                        try {
-                                            let errorResponse = JSON.parse(jqXHR.responseText);
-                                            errorMessage += errorResponse.message || '';
-                                        } catch (e) {
-                                            errorMessage += 'Please try again.';
-                                        }
-                                        alert(errorMessage);
+                        function removeFromCart(cartItemId) {
+                            console.log('Attempting to remove item:', cartItemId);
+                            $.ajax({
+                                url: '/remove-from-cart/' + cartItemId,
+                                method: 'POST',
+                                success: function(response) {
+                                    console.log('Server response:', response);
+                                    if (response.success) {
+                                        console.log('Item removed successfully');
+                                        $('tr[data-cart-item-id="' + cartItemId + '"]').remove();
+                                        updateCartTotal();
+                                        showPopup(response.message);  // Use custom pop-up
+                                    } else {
+                                        console.error('Failed to remove item:', response.message);
+                                        showPopup('Failed to remove item: ' + response.message);  // Use custom pop-up
                                     }
-                                });
-                            }
+                                },
+                                error: function(jqXHR, textStatus, errorThrown) {
+                                    console.error('Error removing item:', textStatus, errorThrown);
+                                    console.error('Response text:', jqXHR.responseText);
+                                    let errorMessage = 'Error removing item. ';
+                                    try {
+                                        let errorResponse = JSON.parse(jqXHR.responseText);
+                                        errorMessage += errorResponse.message || '';
+                                    } catch (e) {
+                                        errorMessage += 'Please try again.';
+                                    }
+                                    showPopup(errorMessage);  // Use custom pop-up
+                                }
+                            });
                         }
                     
                         // Update the cart with new data
                         function updateCart() {
                             const userId = getUserId();  // Get the user's UID
                             if (!userId) {
-                                alert('User ID is missing. Please log in again.');
+                                showPopup('User ID is missing. Please log in again.');
                                 return;  // Exit the function or handle the error appropriately
                             }
                     
@@ -364,11 +508,40 @@
                                 }
                             });
                         }
+
+                        function showPopup(message) {
+                            const popup = document.getElementById('custom-popup');
+                            const popupMessage = document.getElementById('popup-message');
+                            popupMessage.textContent = message;
+                            popup.style.display = 'block';
+                            setTimeout(() => {
+                                popup.style.display = 'none';
+                            }, 3000);
+                        }
+
+                        function proceedToCheckout(event) {
+                            event.preventDefault();
+                            
+                            var dateInputs = document.querySelectorAll('.rent-from, .rent-to');
+                            var allDatesSelected = true;
+                            
+                            dateInputs.forEach(function(input) {
+                                if (!input.value) {
+                                    allDatesSelected = false;
+                                    input.style.border = '1px solid red';
+                                } else {
+                                    input.style.border = '';
+                                }
+                            });
+                            
+                            if (allDatesSelected) {
+                                window.location.href = "{{ url_for('checkout') }}";
+                            } else {
+                                showPopup('Please select both "Rent From" and "Rent To" dates for all items before proceeding to checkout.');
+                            }
+                        }
                     </script>
                     
-                    
-    
-    
     <!-- Additional Scripts -->
     <script src="{{ url_for('static', filename='js/vendor/jquery-1.12.4.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/jquery.meanmenu.min.js') }}"></script>
@@ -383,5 +556,9 @@
     <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/plugins.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <div id="custom-popup" class="custom-popup" style="display: none;">
+        <p id="popup-message"></p>
+    </div>
 </body>
 </html>

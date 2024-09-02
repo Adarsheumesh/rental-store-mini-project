@@ -87,44 +87,9 @@
                                             {% endif %}                                            
                                         </ul>
                                     </li>                                    
-                                    <li><a href="wishlist.html"><i class="fa fa-heart-o"></i></a></li>
-                                    <li><a href="#"><i class="fa fa-shopping-basket"></i><span class="cart-counter">2</span></a>
-                                        <ul class="ht-dropdown main-cart-box">
-                                            <li>
-                                                <!-- Cart Box Start -->
-                                                <div class="single-cart-box">
-                                                    <div class="cart-img">
-                                                        <a href="#"><img src="img/menu/1.jpg" alt="cart-image"></a>
-                                                    </div>
-                                                    <div class="cart-content">
-                                                        <h6><a href="product.html">Products Name</a></h6>
-                                                        <span>1 × $399.00</span>
-                                                    </div>
-                                                    <a class="del-icone" href="#"><i class="fa fa-window-close-o"></i></a>
-                                                </div>
-                                                <!-- Cart Box End -->
-                                                <!-- Cart Box Start -->
-                                                <div class="single-cart-box">
-                                                    <div class="cart-img">
-                                                        <a href="#"><img src="img/menu/2.jpg" alt="cart-image"></a>
-                                                    </div>
-                                                    <div class="cart-content">
-                                                        <h6><a href="product.html">Products Name</a></h6>
-                                                        <span>2 × $299.00</span>
-                                                    </div>
-                                                    <a class="del-icone" href="#"><i class="fa fa-window-close-o"></i></a>
-                                                </div>
-                                                <!-- Cart Box End -->
-                                                <!-- Cart Footer Inner Start -->
-                                                <div class="cart-footer fix">
-                                                    <h5>Total:<span class="f-right">$698.00</span></h5>
-                                                    <div class="cart-actions">
-                                                        <a class="checkout" href="checkout.html">Checkout</a>
-                                                    </div>
-                                                </div>
-                                                <!-- Cart Footer Inner End -->
-                                            </li>
-                                        </ul>
+                                    <li><a href="/wishlist"><i class="fa fa-heart-o"></i></a></li>
+                                    <li><a href="/cart"><i class="fa fa-shopping-basket"></i><span class="cart-counter">2</span></a>
+                                        
                                     </li>
                                 </ul>
                             </div>
@@ -290,7 +255,7 @@
                                     <table class="table">
                                         <thead>
                                             <tr>
-                                                <th>Order</th>
+                                                <th>Order ID</th>
                                                 <th>Date</th>
                                                 <th>Status</th>
                                                 <th>Total</th>
@@ -298,20 +263,22 @@
                                             </tr>
                                         </thead>
                                         <tbody>
+                                            {% for order in orders %}
                                             <tr>
-                                                <td>1</td>
-                                                <td>May 10, 2018</td>
-                                                <td>Processing</td>
-                                                <td>$25.00 for 1 item </td>
-                                                <td><a class="view" href="cart.html">view</a></td>
+                                                <td>{{ order['id'] }}</td>
+                                                <td>{{ order.get('created_at', 'N/A') }}</td>
+                                                <td>{{ order.get('status', 'N/A') }}</td>
+                                                <td>₹{{ "%.2f"|format(order.get('order_total', 0)) }} for {{ order.get('items|length', 0) }} item(s)</td>
+                                                <td>
+                                                    <a href="#" class="view-order btn btn-sm btn-info" data-order-id="{{ order['id'] }}">View</a>
+                                                    <a href="{{ url_for('download_order_pdf', order_id=order['id']) }}" class="btn btn-sm btn-primary">Download PDF</a>
+                                                </td>
                                             </tr>
+                                            {% else %}
                                             <tr>
-                                                <td>2</td>
-                                                <td>May 10, 2018</td>
-                                                <td>Processing</td>
-                                                <td>$17.00 for 1 item </td>
-                                                <td><a class="view" href="cart.html">view</a></td>
+                                                <td colspan="5">No orders found.</td>
                                             </tr>
+                                            {% endfor %}
                                         </tbody>
                                     </table>
                                 </div>
@@ -655,6 +622,74 @@
 <script src="{{ url_for('static', filename='js/plugins.js') }}"></script>
 <!-- main js -->
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<!-- Order Details Modal -->
+<div class="modal fade" id="orderDetailsModal" tabindex="-1" role="dialog" aria-labelledby="orderDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="orderDetailsModalLabel">Order Details</h5>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Order ID:</strong> <span id="modalOrderId"></span></p>
+                <p><strong>Date:</strong> <span id="modalOrderDate"></span></p>
+                <p><strong>Status:</strong> <span id="modalOrderStatus"></span></p>
+                <p><strong>Total:</strong> ₹<span id="modalOrderTotal"></span></p>
+                <p><strong>Items:</strong></p>
+                <ul id="modalOrderItems"></ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const viewOrderButtons = document.querySelectorAll('.view-order');
+    viewOrderButtons.forEach(button => {
+        button.addEventListener('click', function(event) {
+            event.preventDefault();
+            const orderId = this.getAttribute('data-order-id');
+            fetch(`/order_details/${orderId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const order = data.order;
+                        document.getElementById('modalOrderId').innerText = order.id;
+                        document.getElementById('modalOrderDate').innerText = order.created_at;
+                        document.getElementById('modalOrderStatus').innerText = order.status;
+                        document.getElementById('modalOrderTotal').innerText = order.order_total.toFixed(2);
+                        const itemsList = document.getElementById('modalOrderItems');
+                        itemsList.innerHTML = '';
+                        order.items.forEach(item => {
+                            const listItem = document.createElement('li');
+                            listItem.innerText = `${item.product_id} - Quantity: ${item.quantity} - Rent From: ${item.rent_from} - Rent To: ${item.rent_to} - Rental Days: ${item.rental_days} - Price: ₹${item.item_total.toFixed(2)}`;
+                            itemsList.appendChild(listItem);
+                        });
+                        const orderDetailsModal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+                        orderDetailsModal.show();
+                    } else {
+                        alert('Error fetching order details: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while fetching the order details.');
+                });
+        });
+    });
+});
+</script>
 
 </body>
 

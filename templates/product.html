@@ -43,6 +43,104 @@
   
     <!-- modernizr js -->
     <script src="{{ url_for('static', filename='js/vendor/modernizr-2.8.3.min.js') }}"></script>
+    <style>
+        .custom-popup {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 15px 25px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            text-align: center;
+            animation: fadeInOut 3s ease-in-out;
+        }
+
+        #popup-message {
+            margin: 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+    <script>
+        $(document).ready(function() {
+            $('.add-cart').on('click', function(e) {
+                e.preventDefault();
+                var productId = $(this).data('product-id');
+                var quantity = parseInt($('#quantity').val()) || 1;
+
+                $.ajax({
+                    url: "{{ url_for('add_to_cart') }}",
+                    type: 'POST',
+                    contentType: 'application/json',  // Set the content type to JSON
+                    data: JSON.stringify({  // Stringify the data
+                        product_id: productId,
+                        quantity: quantity
+                    }),
+                    dataType: 'json',
+                    success: function(response) {
+                        showPopup(response.message);
+                        if (response.success && response.cart_count !== undefined) {
+                            $('#cart-counter').text(response.cart_count);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error:', xhr.responseText);
+                        showPopup('An error occurred. Please try again.');
+                    }
+                });
+            });
+
+            $('.add-to-wishlist').on('click', function(e) {
+                e.preventDefault();
+                var productId = $(this).data('product-id');
+
+                $.ajax({
+                    url: "{{ url_for('add_to_wishlist') }}",
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ product_id: productId }),
+                    success: function(response) {
+                        showPopup(response.message);
+                    },
+                    error: function(xhr, status, error) {
+                        showPopup('An error occurred. Please try again.');
+                        console.error(xhr.responseText);
+                    }
+                });
+            });
+
+            function showPopup(message) {
+                console.log('Showing popup with message:', message);
+                var popup = document.getElementById('custom-popup');
+                var popupMessage = document.getElementById('popup-message');
+                
+                if (popup && popupMessage) {
+                    popupMessage.textContent = message;
+                    popup.style.display = 'block';
+                    
+                    // Remove the popup after 3 seconds
+                    setTimeout(function() {
+                        popup.style.display = 'none';
+                    }, 3000);
+                } else {
+                    console.error('Popup elements not found');
+                    alert(message);
+                }
+            }
+        });
+    </script>
 </head>
 
 <body>
@@ -96,68 +194,7 @@
                             </div>
                         </div>
                         <!--  Cartt Box  End-->
-                        <!-- Mobile Menu Start -->
-                        <div class="col-sm-12 d-lg-none">
-                            <div class="mobile-menu">
-                                <nav>
-                                    <ul>
-                                        <li><a href="index.html">home</a>
-                                            <!-- Home Version Dropdown Start -->
-                                            <ul>
-                                                <li><a href="index.html">Home Version One</a></li>
-                                                <li><a href="index-2.html">Home Version Two</a></li>
-                                                <li><a href="index-3.html">Home Box Layout</a></li>
-                                            </ul>
-                                            <!-- Home Version Dropdown End -->
-                                        </li>
-                                        <li><a href="shop.html">shop</a>
-                                            <!-- Mobile Menu Dropdown Start -->
-                                            <ul>
-                                                <li><a href="product.html">Shop</a>
-                                                    <ul>
-                                                        <li><a href="shop.html">Product Category Name</a>
-                                                            <!-- Start Three Step -->
-                                                            <ul>
-                                                                <li><a href="shop.html">Product Category Name</a></li>
-                                                                <li><a href="shop.html">Product Category Name</a></li>
-                                                                <li><a href="shop.html">Product Category Name</a></li>
-                                                            </ul>
-                                                        </li>
-                                                        <li><a href="shop.html">Product Category Name</a></li>
-                                                        <li><a href="shop.html">Product Category Name</a></li>
-                                                    </ul>
-                                                </li>
-                                                <li><a href="product.html">product details Page</a></li>
-                                                <li><a href="compare.html">Compare Page</a></li>
-                                                <li><a href="cart.html">Cart Page</a></li>
-                                                <li><a href="checkout.html">Checkout Page</a></li>
-                                                <li><a href="wishlist.html">Wishlist Page</a></li>
-                                            </ul>
-                                            <!-- Mobile Menu Dropdown End -->
-                                        </li>
-                                        <li><a href="blog.html">Blog</a>
-                                            <!-- Mobile Menu Dropdown Start -->
-                                            <ul>
-                                                <li><a href="blog-details.html">Blog Details Page</a></li>
-                                            </ul>
-                                            <!-- Mobile Menu Dropdown End -->
-                                        </li>
-                                        <li><a href="#">pages</a>
-                                            <!-- Mobile Menu Dropdown Start -->
-                                            <ul>
-                                                <li><a href="login.html">login Page</a></li>
-                                                <li><a href="register.html">Register Page</a></li>
-                                                <li><a href="404.html">404 Page</a></li>
-                                            </ul>
-                                            <!-- Mobile Menu Dropdown End -->
-                                        </li>
-                                        <li><a href="about.html">about us</a></li>
-                                        <li><a href="contact.html">contact us</a></li>
-                                    </ul>
-                                </nav>
-                            </div>
-                        </div>
-                        <!-- Mobile Menu  End -->                        
+                        
                     </div>
                     <!-- Row End -->
                 </div>
@@ -220,25 +257,18 @@
                                 </div>
                             </div>
                             <div class="pro-price mb-10">
-                                <p><span class="price">${{ product_details['product_price'] }}</span><del class="prev-price"></del></p>
+                                <p><span class="price">₹{{ product_details['product_price'] }}</span><del class="prev-price"></del></p>
                             </div>
                             <div class="pro-ref mb-15">
                                 <p><span class="in-stock">IN STOCK</span><span class="sku">{{ product_details['product_quantity'] }}</span></p>
                             </div>
                             <div class="box-quantity">
-                                <div class="box-quantity">
-                                    <form action="{{ url_for('add_to_cart', product_id=product_details['id']) }}" method="post" enctype="multipart/form-data">
-                                        <input type="hidden" name="product_name" value="{{ product_details['product_name'] }}">
-                                        <input type="hidden" name="product_image" value="{{ product_details['product_image'] }}">
-                                        <input type="hidden" name="product_price" value="{{ product_details['product_price'] }}">
-                                        <input class="number" id="numeric" type="number" name="quantity" min="1" max="{{ product_details['product_quantity'] }}" value="1">
-                                        <button type="submit" class="add-cart">Add to cart</button>
-                                    </form>
-                                </div>                                
+                                <input class="number" id="quantity" type="number" name="quantity" min="1" max="{{ product_details['product_quantity'] }}" value="1">
+                                <button type="button" class="add-cart" data-product-id="{{ product_details['id'] }}">Add to cart</button>
                             </div>
                             <div class="product-link">
                                 <ul class="list-inline">
-                                    <li><a href="wishlist.html">Add to Wish List</a></li>
+                                    <li><a href="#" class="add-to-wishlist" data-product-id="{{ product_details['id'] }}">Add to Wish List</a></li>
                                     <li><a href="compare.html">Add to compare</a></li>
                                 </ul>
                             </div>
@@ -940,8 +970,77 @@
     <script src="{{ url_for('static', filename='js/plugins.js') }}"></script>
     <!-- main js -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        $(document).ready(function() {
+            $('.add-cart').on('click', function(e) {
+                e.preventDefault();
+                var productId = $(this).data('product-id');
+                var quantity = parseInt($('#quantity').val()) || 1;
+
+                $.ajax({
+                    url: "{{ url_for('add_to_cart') }}",
+                    type: 'POST',
+                    contentType: 'application/json',  // Set the content type to JSON
+                    data: JSON.stringify({  // Stringify the data
+                        product_id: productId,
+                        quantity: quantity
+                    }),
+                    dataType: 'json',
+                    success: function(response) {
+                        showPopup(response.message);
+                        if (response.success && response.cart_count !== undefined) {
+                            $('#cart-counter').text(response.cart_count);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error:', xhr.responseText);
+                        showPopup('An error occurred. Please try again.');
+                    }
+                });
+            });
+
+            $('.add-to-wishlist').on('click', function(e) {
+                e.preventDefault();
+                var productId = $(this).data('product-id');
+
+                $.ajax({
+                    url: "{{ url_for('add_to_wishlist') }}",
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ product_id: productId }),
+                    success: function(response) {
+                        showPopup(response.message);
+                    },
+                    error: function(xhr, status, error) {
+                        showPopup('An error occurred. Please try again.');
+                        console.error(xhr.responseText);
+                    }
+                });
+            });
+
+            function showPopup(message) {
+                console.log('Showing popup with message:', message);
+                var popup = document.getElementById('custom-popup');
+                var popupMessage = document.getElementById('popup-message');
+                
+                if (popup && popupMessage) {
+                    popupMessage.textContent = message;
+                    popup.style.display = 'block';
+                    
+                    // Remove the popup after 3 seconds
+                    setTimeout(function() {
+                        popup.style.display = 'none';
+                    }, 3000);
+                } else {
+                    console.error('Popup elements not found');
+                    alert(message);
+                }
+            }
+        });
+    </script>
+    <div id="custom-popup" class="custom-popup" style="display: none;">
+        <p id="popup-message"></p>
+    </div>
 </body>
-
-
 <!-- Mirrored from htmldemo.net/jantrik/jantrik/product.html by HTTrack Website Copier/3.x [XR&CO'2014], Fri, 05 Jul 2024 04:21:08 GMT -->
 </html>
