@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Successful</title>
+    <title>Payment Status</title>
     <style>
         body {
             display: flex;
@@ -118,69 +118,122 @@
             color: #4CAF50;
         }
         .order-details {
-            text-align: center;
+            text-align: left;
             margin-top: 20px;
         }
         .order-details h2 {
             font-size: 20px;
             color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
         }
-        .order-details p, .order-details ul {
-            font-size: 16px;
-            color: #666;
+        .order-details p {
+            margin: 10px 0;
         }
         .order-details ul {
             list-style-type: none;
             padding: 0;
         }
         .order-details ul li {
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+        }
+        .item-details {
+            display: flex;
+            justify-content: space-between;
+        }
+        .total {
+            font-weight: bold;
+            margin-top: 20px;
+            text-align: right;
+            font-size: 1.2em;
+            color: #4CAF50;
         }
         .error {
             color: red;
+            text-align: center;
+        }
+        .total-price {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #e8f5e9;
+            border-radius: 4px;
+        }
+        .product-name {
+            font-weight: bold;
+            color: #333;
+        }
+        .error-message {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 4px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="success-checkmark">
-            <div class="check-icon">
-                <span class="icon-line line-tip"></span>
-                <span class="icon-line line-long"></span>
-                <div class="icon-circle"></div>
-                <div class="icon-fix"></div>
+        {% if order %}
+            <div class="success-checkmark">
+                <div class="check-icon">
+                    <span class="icon-line line-tip"></span>
+                    <span class="icon-line line-long"></span>
+                    <div class="icon-circle"></div>
+                    <div class="icon-fix"></div>
+                </div>
             </div>
-        </div>
-        <div class="message">
-            Payment Successful!
-        </div>
-        <div class="order-details">
-            <h2>Order Details</h2>
-            <p>Order ID: {{ order_id }}</p>
-            {% if order %}
-                <p>Total Amount: ₹{{ order.get('total_amount', 'N/A') }}</p>
+            <div class="message">
+                Payment Successful!
+            </div>
+            <div class="total-price">
+                Total Amount: ₹{{ "%.2f"|format(order.get('order_total', 0)) }}
+            </div>
+            <div class="order-details">
+                <h2>Order Details</h2>
+                <p><strong>Order ID:</strong> {{ order.get('order_id', 'N/A') }}</p>
+                <p><strong>Date:</strong> {{ order.get('created_at', 'N/A') }}</p>
                 <h3>Items:</h3>
                 <ul>
                     {% for item in order.get('items', []) %}
-                        <li>{{ item.get('product_name', 'Unknown Product') }} - Quantity: {{ item.get('quantity', 'N/A') }} - Price: ₹{{ item.get('item_total', 'N/A') }}</li>
+                        <li>
+                            <div class="item-details">
+                                <span class="product-name">{{ item.get('product_name', 'Unknown Product') }}</span>
+                                <span>₹{{ "%.2f"|format(item.get('item_total', 0)) }}</span>
+                            </div>
+                            <p>Quantity: {{ item.get('quantity', 'N/A') }}</p>
+                            <p>Rental Period: {{ item.get('rent_from', 'N/A') }} to {{ item.get('rent_to', 'N/A') }}</p>
+                            <p>Rental Days: {{ item.get('rental_days', 'N/A') }}</p>
+                        </li>
                     {% else %}
                         <li>No items found</li>
                     {% endfor %}
                 </ul>
-            {% else %}
-                <p>Order details not available</p>
-            {% endif %}
-            {% if error %}
-                <p class="error">Error: {{ error }}</p>
-            {% endif %}
-        </div>
+                {% if order.get('use_different_shipping') %}
+                    <h3>Shipping Address:</h3>
+                    <p>{{ order.get('shipping_address', 'N/A') }}</p>
+                    <p>{{ order.get('shipping_address2', '') }}</p>
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="error-message">
+                <h2>Error</h2>
+                <p>{{ error if error else "Order not found or an error occurred." }}</p>
+            </div>
+        {% endif %}
     </div>
 
     <script>
-        // Redirect to index.html after 5 seconds
+        // Redirect to index.html after 10 seconds
         setTimeout(function() {
             window.location.href = "{{ url_for('index') }}";
-        }, 5000);
+        }, 10000);
     </script>
 </body>
 </html>

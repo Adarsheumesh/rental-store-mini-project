@@ -1,6 +1,6 @@
 from sqlite3 import Date
 from weakref import ref
-from flask import Flask, jsonify, render_template, request, redirect, url_for, session, flash, logging, send_file
+from flask import Flask, jsonify, render_template, request, redirect, url_for, session, flash, logging, send_file, abort
 from networkx import is_path
 import pyrebase
 import re
@@ -21,6 +21,9 @@ import random
 import string
 from decimal import Decimal
 import pdfkit  # You'll need to install this: pip install pdfkit
+import io
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -342,45 +345,60 @@ def vendor_dashboard():
 
 @app.route('/account')
 def account():
-    # Fetch user info
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
     user_info = session.get('user_info')
 
-    # Fetch orders for the current user
-    user_id = session.get('user_id')
-    orders = []
     try:
-        # Fetch orders from Firebase
+        # Fetch orders for the current user
         orders_data = db.child("orders").order_by_child("user_id").equal_to(user_id).get()
         
+        orders = []
         if orders_data.each():
             for order in orders_data.each():
                 order_data = order.val()
-                order_data['id'] = order.key()  # Add the Firebase key as 'id'
+                order_data['order_id'] = order.key()
+
+                # Fetch product details for each item in the order
+                items = order_data.get('items', [])
+                for item in items:
+                    product_id = item.get('product_id')
+                    if product_id:
+                        product_details = get_product_details(product_id)
+                        item['product_name'] = product_details.get('product_name', 'Unknown Product')
+                        item['image_url'] = product_details.get('product_image', '')
+                    else:
+                        item['product_name'] = 'Unknown Product'
+                        item['image_url'] = ''
+
                 orders.append(order_data)
         
         # Sort orders by date (assuming there's a 'date' field)
         orders.sort(key=lambda x: x.get('date', ''), reverse=True)
-        
-        # Debug print
-        print(f"User ID: {user_id}")
-        print(f"Number of orders: {len(orders)}")
-        for order in orders:
-            print(f"Order ID: {order['id']}, Date: {order.get('date')}, Total: {order.get('total')}")
 
     except Exception as e:
         print(f"Error fetching orders: {str(e)}")
         flash('An error occurred while fetching your orders.', 'danger')
-
-    # Ensure all necessary fields are present in each order
-    for order in orders:
-        order['id'] = order.get('id', 'N/A')
-        order['date'] = order.get('date', 'N/A')
-        order['status'] = order.get('status', 'N/A')
-        order['total'] = float(order.get('total', 0))
-        order['item_count'] = int(order.get('item_count', 0))
-        order['items'] = order.get('items', [])
+        orders = []
 
     return render_template('account.html', user_info=user_info, orders=orders)
+
+def get_product_details(product_id):
+    try:
+        product = db.child("products").child(product_id).get().val()
+        if product:
+            return {
+                'product_name': product.get('product_name', 'Unknown Product'),
+                'product_image': product.get('product_image', '')
+            }
+        else:
+            print(f"Product not found for ID: {product_id}")
+            return {'product_name': 'Unknown Product', 'product_image': ''}
+    except Exception as e:
+        print(f"Error fetching product details for ID {product_id}: {str(e)}")
+        return {'product_name': 'Unknown Product', 'product_image': ''}
 
 @app.route('/get-order-details')
 def get_order_details():
@@ -390,13 +408,44 @@ def get_order_details():
     try:
         order = db.child("orders").child(order_id).get().val()
         if order and order.get('user_id') == user_id:
-            # Render a template with order details
-            return render_template('order_details.html', order=order)
+            # Fetch product details for each item in the order
+            for item in order.get('items', []):
+                product_id = item.get('product_id')
+                if product_id:
+                    product = get_product_details(product_id)
+                    item['product_name'] = product.get('product_name', 'Unknown Product')
+                    item['image_url'] = product.get('product_image', '')
+                    # The total_price and other details should already be in the item data
+            
+            return jsonify({
+                'success': True,
+                'order': order
+            })
         else:
-            return "Order not found or unauthorized", 404
+            return jsonify({
+                'success': False,
+                'message': 'Order not found or unauthorized'
+            }), 404
     except Exception as e:
         print(f"Error fetching order details: {str(e)}")
-        return "Error fetching order details", 500
+        return jsonify({
+            'success': False,
+            'message': 'Error fetching order details'
+        }), 500
+
+def get_product_details(product_id):
+    try:
+        product = db.child("products").child(product_id).get().val()
+        if product:
+            return {
+                'product_name': product.get('product_name', 'Unknown Product'),
+                'product_image': product.get('product_image', '')
+            }
+        else:
+            return {'product_name': 'Unknown Product', 'product_image': ''}
+    except Exception as e:
+        print(f"Error fetching product details: {str(e)}")
+        return {'product_name': 'Unknown Product', 'product_image': ''}
 
 @app.route('/account-details')
 def account_details():
@@ -1183,73 +1232,55 @@ from werkzeug.exceptions import HTTPException
 import traceback
 from decimal import Decimal, InvalidOperation
 
-@app.route('/create_payment', methods=['POST'])
+@app.route('/create-payment', methods=['POST'])
 def create_payment():
     try:
-        user_id = session.get('user_id')
-        if not user_id:
-            return jsonify({'success': False, 'error': 'User not logged in'}), 401
-
-        # Log the received data for debugging
-        app.logger.debug(f"Received form data: {request.form}")
-
-        # Get form data
-        use_different_shipping = request.form.get('use_different_shipping') == 'true'
-        shipping_address = request.form.get('shipping_address', '')
-        shipping_address2 = request.form.get('shipping_address2', '')
-
-        # Get cart items details
+        # Extract form data
         product_ids = request.form.getlist('product_ids[]')
+        quantities = request.form.getlist('quantities[]')
         rent_from = request.form.getlist('rent_from[]')
         rent_to = request.form.getlist('rent_to[]')
-        rental_days = [int(days) if days else 0 for days in request.form.getlist('rental_days[]')]
-        item_totals = [Decimal(total) if total else Decimal('0') for total in request.form.getlist('item_totals[]')]
-        
-        # Safely convert order_total to Decimal
-        order_total_str = request.form.get('order_total', '0')
-        try:
-            order_total = Decimal(order_total_str)
-        except InvalidOperation:
-            return jsonify({'success': False, 'error': f'Invalid order total: {order_total_str}'}), 400
+        rental_days = request.form.getlist('rental_days[]')
+        item_totals = request.form.getlist('item_totals[]')
+        order_total = float(request.form.get('order_total', 0))
+        use_different_shipping = request.form.get('use_different_shipping') == 'on'
+        shipping_address = request.form.get('shipping_address')
+        shipping_address2 = request.form.get('shipping_address2')
 
-        # Create order items list
-        order_items = []
-        for i in range(len(product_ids)):
-            order_items.append({
-                'product_id': product_ids[i],
-                'rent_from': rent_from[i],
-                'rent_to': rent_to[i],
-                'rental_days': rental_days[i],
-                'item_total': float(item_totals[i])
-            })
+        # Prepare order items
+        order_items = [
+            {
+                'product_id': pid,
+                'quantity': int(qty),
+                'rent_from': rf,
+                'rent_to': rt,
+                'rental_days': int(rd),
+                'item_total': float(it)
+            }
+            for pid, qty, rf, rt, rd, it in zip(product_ids, quantities, rent_from, rent_to, rental_days, item_totals)
+        ]
 
-        # Process payment
-        payment_success, payment_intent_id = process_payment(float(order_total))
+        # Create order in database
+        user_id = session.get('user_id')
+        order_id = create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2)
+
+        # Process payment (implement your payment logic here)
+        payment_success, payment_intent_id = process_payment(order_total)
 
         if payment_success:
-            try:
-                # Create order in your database
-                order_id = create_order_in_database(user_id, order_items, float(order_total), use_different_shipping, shipping_address, shipping_address2)
+            # Update order status
+            update_order_status(order_id, 'paid', payment_intent_id)
+            
+            # Clear the cart
+            clear_cart(user_id)
 
-                # Update order status to paid
-                update_order_status(order_id, 'paid', payment_intent_id)
-
-                # Clear the cart
-                clear_cart(user_id)
-
-                return jsonify({
-                    'success': True,
-                    'redirect_url': url_for('payment_success', order_id=order_id)
-                })
-            except Exception as e:
-                app.logger.error(f"Error after payment processing: {str(e)}")
-                return jsonify({'success': False, 'error': str(e)}), 500
+            return jsonify({'success': True, 'redirect_url': url_for('payment_success', order_id=order_id)})
         else:
-            return jsonify({'success': False, 'error': 'Payment processing failed'}), 400
+            return jsonify({'success': False, 'error': 'Payment processing failed'})
 
     except Exception as e:
         app.logger.error(f"Error in create_payment: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -1439,30 +1470,39 @@ def save_order():
 @app.route('/payment-success/<order_id>')
 def payment_success(order_id):
     try:
-        # Fetch order details from the database using order_id
-        order_query = db.child("orders").order_by_child("order_id").equal_to(order_id).get()
-        orders = order_query.val()
+        # Fetch all orders
+        all_orders = db.child("orders").get().val()
+        app.logger.info(f"All orders: {all_orders}")  # Debug log
         
-        print(f"Debug - Fetched orders: {orders}")  # Add this debug print
+        order_data = None
+        if all_orders:
+            for key, order in all_orders.items():
+                if order.get('order_id') == order_id:
+                    order_data = order
+                    break
         
-        if orders:
-            # Get the first (and should be only) order with this ID
-            order_data = next(iter(orders.values()))
-            print(f"Debug - Order data: {order_data}")  # Add this debug print
+        if order_data:
+            app.logger.info(f"Order found: {order_data}")
             
-            # Ensure order_data is a dictionary
-            if not isinstance(order_data, dict):
-                raise ValueError("Order data is not in the expected format")
+            # Fetch product details for each item in the order
+            for item in order_data.get('items', []):
+                product_id = item.get('product_id')
+                if product_id:
+                    product = db.child("products").child(product_id).get().val()
+                    if product:
+                        item['product_name'] = product.get('product_name', 'Unknown Product')
+                    else:
+                        item['product_name'] = 'Product Not Found'
+                else:
+                    item['product_name'] = 'Unknown Product'
             
-            return render_template('payment_success.html', order_id=order_id, order=order_data)
+            return render_template('payment_success.html', order=order_data)
         else:
-            print(f"Debug - No order found for ID: {order_id}")
-            return render_template('payment_success.html', order_id=order_id, order=None)
+            app.logger.warning(f"Order not found for ID: {order_id}")
+            return render_template('payment_success.html', order=None, error=f"Order not found for ID: {order_id}")
     except Exception as e:
-        print(f"Error in payment_success route: {str(e)}")
-        import traceback
-        print(traceback.format_exc())  # This will print the full stack trace
-        return render_template('payment_success.html', order_id=order_id, order=None, error=str(e))
+        app.logger.error(f"Error in payment_success route: {str(e)}")
+        return render_template('payment_success.html', order=None, error=f"An error occurred: {str(e)}")
 
 def process_payment(amount):
     # Implement your payment processing logic here
@@ -1491,21 +1531,33 @@ def create_order_in_database(user_id, order_items, order_total, use_different_sh
 
 def update_order_status(order_id, status, payment_intent_id=None):
     try:
-        update_data = {
-            'status': status,
-            'updated_at': datetime.now().isoformat()
-        }
-        if payment_intent_id:
-            update_data['payment_intent_id'] = payment_intent_id
+        # Fetch all orders
+        all_orders = db.child("orders").get().val()
         
-        db.child("orders").child(order_id).update(update_data)
+        if all_orders:
+            for key, order in all_orders.items():
+                if order.get('order_id') == order_id:
+                    update_data = {
+                        'status': status,
+                        'updated_at': datetime.now().isoformat()
+                    }
+                    if payment_intent_id:
+                        update_data['payment_intent_id'] = payment_intent_id
+                    
+                    db.child("orders").child(key).update(update_data)
+                    app.logger.info(f"Order status updated for order ID: {order_id}")
+                    return
+        
+        app.logger.warning(f"Order not found for updating status: {order_id}")
     except Exception as e:
         app.logger.error(f"Error updating order status: {str(e)}")
         raise
 
 def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
     try:
+        order_id = str(uuid.uuid4())  # Generate a unique order ID
         order_data = {
+            'order_id': order_id,
             'user_id': user_id,
             'items': order_items,
             'order_total': order_total,
@@ -1516,7 +1568,8 @@ def create_order_in_database(user_id, order_items, order_total, use_different_sh
             'created_at': datetime.now().isoformat()
         }
         new_order = db.child("orders").push(order_data)
-        return new_order['name']  # Return the new order ID
+        app.logger.info(f"New order created with ID: {order_id}")
+        return order_id
     except Exception as e:
         app.logger.error(f"Error creating order in database: {str(e)}")
         raise
@@ -1668,12 +1721,14 @@ def get_wishlist_items_from_database(user_id):
     except Exception as e:
         print(f"Error fetching wishlist items: {str(e)}")
         return []
+
 from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
+from reportlab.lib.units import inch
 from io import BytesIO
+from datetime import datetime
 
 @app.route('/download_order_pdf/<order_id>')
 def download_order_pdf(order_id):
@@ -1682,58 +1737,168 @@ def download_order_pdf(order_id):
     if not order:
         return "Order not found", 404
 
+    # Fetch user details
+    user_id = order.get('user_id')
+    user_data = db.child("users").child(user_id).get().val()
+    user_name = user_data.get('name', 'N/A') if user_data else 'N/A'
+    user_email = user_data.get('email', 'N/A') if user_data else 'N/A'
+
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
+    
     elements = []
 
+    # Styles
     styles = getSampleStyleSheet()
-    elements.append(Paragraph(f"Order Details - Order ID: {order_id}", styles['Title']))
-    elements.append(Paragraph(f"Date: {order.get('date', 'N/A')}", styles['Normal']))
-    elements.append(Paragraph(f"Status: {order.get('status', 'N/A')}", styles['Normal']))
-    elements.append(Paragraph(f"Total: ${order.get('total_amount', 0):.2f}", styles['Normal']))
+    styles.add(ParagraphStyle(name='Center', alignment=1))
+    styles.add(ParagraphStyle(name='Right', alignment=2))
 
-    # Create table for items
-    data = [['Product', 'Quantity', 'Price']]
-    for item in order.get('items', []):
-        data.append([
-            item.get('product_name', 'Unknown Product'),
-            str(item.get('quantity', 0)),
-            f"${item.get('total_price', 0):.2f}"
-        ])
+    # Header
+    elements.append(Paragraph("INVOICE", styles['Title']))
+    elements.append(Spacer(1, 0.25*inch))
 
-    table = Table(data)
+    # Company Info
+    elements.append(Paragraph("Your Company Name", styles['Heading2']))
+    elements.append(Paragraph("123 Business Street, City, Country", styles['Normal']))
+    elements.append(Paragraph("Phone: +1 234 567 890", styles['Normal']))
+    elements.append(Paragraph("Email: info@yourcompany.com", styles['Normal']))
+    elements.append(Spacer(1, 0.25*inch))
+
+    # Customer and Order Info
+    data = [
+        ["Order ID:", order_id],
+        ["Date:", order.get('created_at', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))],
+        ["Customer:", user_name],
+        ["Email:", user_email],
+    ]
+    table = Table(data, colWidths=[2*inch, 4*inch])
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 14),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 12),
-        ('TOPPADDING', (0, 1), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
+        ('FONTNAME', (1,0), (-1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,0), (-1,-1), 10),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
     ]))
-
     elements.append(table)
+    elements.append(Spacer(1, 0.25*inch))
+
+    # Order Items
+    data = [["Item", "Quantity", "Rent From", "Rent To", "Days", "Price"]]
+    for item in order.get('items', []):
+        product_id = item.get('product_id')
+        product_data = db.child("products").child(product_id).get().val()
+        product_name = product_data.get('product_name', 'Unknown Product') if product_data else 'Unknown Product'
+        
+        data.append([
+            product_name,
+            str(item.get('quantity', 0)),
+            item.get('rent_from', 'N/A'),
+            item.get('rent_to', 'N/A'),
+            str(item.get('rental_days', 0)),
+            f"₹{item.get('total_price', 0):.2f}"
+        ])
+    
+    # Add total row
+    total_price = order.get('order_total', 0)
+    data.append(["Total", "", "", "", "", f"₹{total_price:.2f}"])
+
+    table = Table(data, colWidths=[2.5*inch, 0.75*inch, 1*inch, 1*inch, 0.75*inch, 1*inch])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.grey),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 12),
+        ('BOTTOMPADDING', (0,0), (-1,0), 12),
+        ('BACKGROUND', (0,1), (-1,-2), colors.beige),
+        ('TEXTCOLOR', (0,1), (-1,-1), colors.black),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,1), (-1,-1), 10),
+        ('TOPPADDING', (0,1), (-1,-1), 6),
+        ('BOTTOMPADDING', (0,1), (-1,-1), 6),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ('BACKGROUND', (0,-1), (-1,-1), colors.grey),
+        ('TEXTCOLOR', (0,-1), (-1,-1), colors.whitesmoke),
+        ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
+    ]))
+    elements.append(table)
+
+    # Footer
+    elements.append(Spacer(1, 0.5*inch))
+    elements.append(Paragraph("Thank you for your business!", styles['Center']))
 
     doc.build(elements)
 
     buffer.seek(0)
-    return send_file(buffer, as_attachment=True, download_name=f'order_{order_id}.pdf', mimetype='application/pdf')
-@app.route('/order_details/<order_id>')
+    return send_file(buffer, as_attachment=True, download_name=f'invoice_{order_id}.pdf', mimetype='application/pdf')
+from flask import request, render_template, abort, session, redirect, url_for
+
+from flask import render_template, abort, jsonify, session, redirect, url_for, flash
+import traceback
+
+@app.route('/order/<order_id>')
 def order_details(order_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'User not logged in'}), 403
+
+    user_id = session['user_id']
+
     try:
+        # Fetch the specific order
         order = db.child("orders").child(order_id).get().val()
+
         if not order:
-            return jsonify({'success': False, 'error': 'Order not found'}), 404
-        return jsonify({'success': True, 'order': order})
+            return jsonify({'success': False, 'message': 'Order not found'}), 404
+
+        if str(order.get('user_id')) != str(user_id):
+            return jsonify({'success': False, 'message': 'You do not have permission to view this order'}), 403
+
+        # Ensure all necessary fields are present
+        order_data = {
+            'order_id': order_id,
+            'created_at': order.get('created_at', 'N/A'),
+            'status': order.get('status', 'N/A'),
+            'order_total': float(order.get('order_total', 0)),
+            'items': []
+        }
+
+        # Fetch product details for each item in the order
+        items = order.get('items', [])
+        for item in items:
+            product_id = item.get('product_id')
+            product_details = get_product_details(product_id) if product_id else {}
+            order_data['items'].append({
+                'product_name': product_details.get('product_name', 'Unknown Product'),
+                'image_url': product_details.get('product_image', ''),
+                'quantity': item.get('quantity', 'N/A'),
+                'rent_from': item.get('rent_from', 'N/A'),
+                'rent_to': item.get('rent_to', 'N/A'),
+                'rental_days': item.get('rental_days', 'N/A'),
+                'total_price': float(item.get('total_price', 0))
+            })
+
+        return jsonify({'success': True, 'order': order_data})
+
     except Exception as e:
-        app.logger.error(f"Error fetching order details: {str(e)}")
-        return jsonify({'success': False, 'error': 'An unexpected error occurred'}), 500
+        print(f"Error in order_details: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+def get_product_details(product_id):
+    try:
+        product = db.child("products").child(product_id).get().val()
+        print(f"Fetched product details for ID {product_id}: {product}")
+        if product:
+            return {
+                'product_name': product.get('product_name', 'Unknown Product'),
+                'product_image': product.get('product_image', '')
+            }
+        else:
+            print(f"Product not found for ID: {product_id}")
+            return {'product_name': 'Unknown Product', 'product_image': ''}
+    except Exception as e:
+        print(f"Error fetching product details for ID {product_id}: {str(e)}")
+        return {'product_name': 'Unknown Product', 'product_image': ''}
+
 if __name__ == '__main__':
     app.run(debug=True)

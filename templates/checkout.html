@@ -207,6 +207,7 @@
             // Add cart items details to formData
             {% for item in cart_items %}
             formData.append('product_ids[]', '{{ item.product_id|default("") }}');
+            formData.append('quantities[]', '{{ item.quantity|default(1) }}');
             formData.append('rent_from[]', '{{ item.rent_from|default("") }}');
             formData.append('rent_to[]', '{{ item.rent_to|default("") }}');
             formData.append('rental_days[]', '{{ item.rental_days|default(0) }}');

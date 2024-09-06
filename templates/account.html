@@ -14,7 +14,7 @@
    <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/icon/favicon.png') }}">
 
    <!-- Google Font css -->
-   <link href="https://fonts.googleapis.com/css?family=Lily+Script+One" rel="stylesheet"> 
+   <link href="http://fonts.googleapis.com/css?family=Lily+Script+One" rel="stylesheet"> 
 
  <!-- mobile menu css -->
  <link rel="stylesheet" href="{{ url_for('static', filename='css/meanmenu.min.css') }}">
@@ -198,7 +198,7 @@
                            </div>
                            <div class="col-lg-3 col-md-6">
                                <div class="d-single-info text-center">
-                                   <a class="view-cart" href="cart.html"><i class="fa fa-cart-plus" aria-hidden="true"></i>view cart</a>
+                                   <a class="view-cart" href="/cart"><i class="fa fa-cart-plus" aria-hidden="true"></i>view cart</a>
                                </div>
                            </div>
                        </div>
@@ -253,27 +253,30 @@
                                 <h3>Orders</h3>
                                 <div class="table-responsive">
                                     <table class="table">
-                                        <thead>
-                                            <tr>
-                                                <th>Order ID</th>
-                                                <th>Date</th>
-                                                <th>Status</th>
-                                                <th>Total</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
                                         <tbody>
                                             {% for order in orders %}
-                                            <tr>
-                                                <td>{{ order['id'] }}</td>
-                                                <td>{{ order.get('created_at', 'N/A') }}</td>
-                                                <td>{{ order.get('status', 'N/A') }}</td>
-                                                <td>₹{{ "%.2f"|format(order.get('order_total', 0)) }} for {{ order.get('items|length', 0) }} item(s)</td>
-                                                <td>
-                                                    <a href="#" class="view-order btn btn-sm btn-info" data-order-id="{{ order['id'] }}">View</a>
-                                                    <a href="{{ url_for('download_order_pdf', order_id=order['id']) }}" class="btn btn-sm btn-primary">Download PDF</a>
-                                                </td>
-                                            </tr>
+                                                {% for item in order.get('items', []) %}
+                                                <tr>
+                                                    <td>
+                                                        <img src="{{ item.get('image_url', url_for('static', filename='img/default-product.jpg')) }}" 
+                                                             alt="{{ item.get('product_name', 'Product') }}" width="50" height="50">
+                                                    </td>
+                                                    <td>
+                                                        <strong>{{ item.get('product_name', 'Unknown Product') }}</strong><br>
+                                                        {% if item.get('color') %}Color: {{ item.get('color') }}{% endif %}
+                                                        {% if item.get('size') %}Size: {{ item.get('size') }}{% endif %}
+                                                    </td>
+                                                    <td>₹{{ "%.2f"|format(item.get('total_price', 0)) }}</td>
+                                                    <td>
+                                                        <span class="text-success">● Delivered Soon {{ order.get('delivery_date', 'N/A') }}</span><br>
+                                                        Your item will be delivered in 7 Days
+                                                    </td>
+                                                    <td>
+                                                        <button class="btn btn-link view-order-details" data-order-id="{{ order.get('order_id', '') }}">View Order Details</button>
+                                                        <a href="{{ url_for('download_order_pdf', order_id=order.get('order_id', '')) }}" class="btn btn-primary btn-sm" target="_blank">Download PDF</a>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
                                             {% else %}
                                             <tr>
                                                 <td colspan="5">No orders found.</td>
@@ -623,10 +626,10 @@
 <!-- main js -->
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 
-<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<link rel="stylesheet" href="http://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<script src="http://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="http://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+<script src="http://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
 <!-- Order Details Modal -->
 <div class="modal fade" id="orderDetailsModal" tabindex="-1" role="dialog" aria-labelledby="orderDetailsModalLabel" aria-hidden="true">
@@ -644,7 +647,22 @@
                 <p><strong>Status:</strong> <span id="modalOrderStatus"></span></p>
                 <p><strong>Total:</strong> ₹<span id="modalOrderTotal"></span></p>
                 <p><strong>Items:</strong></p>
-                <ul id="modalOrderItems"></ul>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Quantity</th>
+                                <th>Rent From</th>
+                                <th>Rent To</th>
+                                <th>Rental Days</th>
+                                <th>Price</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalOrderItems">
+                        </tbody>
+                    </table>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -655,31 +673,48 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const viewOrderButtons = document.querySelectorAll('.view-order');
+    const viewOrderButtons = document.querySelectorAll('.view-order-details');
+
     viewOrderButtons.forEach(button => {
         button.addEventListener('click', function(event) {
             event.preventDefault();
             const orderId = this.getAttribute('data-order-id');
-            fetch(`/order_details/${orderId}`)
+            fetch(`/get-order-details?order_id=${orderId}`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success) {
+                    console.log('Received data:', data); // Log the received data for debugging
+                    if (data.success && data.order) {
                         const order = data.order;
-                        document.getElementById('modalOrderId').innerText = order.id;
-                        document.getElementById('modalOrderDate').innerText = order.created_at;
-                        document.getElementById('modalOrderStatus').innerText = order.status;
-                        document.getElementById('modalOrderTotal').innerText = order.order_total.toFixed(2);
-                        const itemsList = document.getElementById('modalOrderItems');
-                        itemsList.innerHTML = '';
-                        order.items.forEach(item => {
-                            const listItem = document.createElement('li');
-                            listItem.innerText = `${item.product_id} - Quantity: ${item.quantity} - Rent From: ${item.rent_from} - Rent To: ${item.rent_to} - Rental Days: ${item.rental_days} - Price: ₹${item.item_total.toFixed(2)}`;
-                            itemsList.appendChild(listItem);
-                        });
-                        const orderDetailsModal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
-                        orderDetailsModal.show();
+                        document.getElementById('modalOrderId').textContent = order.order_id || 'N/A';
+                        document.getElementById('modalOrderDate').textContent = order.created_at ? new Date(order.created_at).toLocaleString() : 'N/A';
+                        document.getElementById('modalOrderStatus').textContent = order.status || 'N/A';
+                        document.getElementById('modalOrderTotal').textContent = formatPrice(order.order_total);
+
+                        const itemsTableBody = document.getElementById('modalOrderItems');
+                        itemsTableBody.innerHTML = '';
+                        if (Array.isArray(order.items) && order.items.length > 0) {
+                            order.items.forEach(item => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>
+                                        <img src="${item.image_url || ''}" alt="${item.product_name || 'Product'}" width="50" height="50">
+                                        ${item.product_name || 'N/A'}
+                                    </td>
+                                    <td>${item.quantity || 'N/A'}</td>
+                                    <td>${item.rent_from || 'N/A'}</td>
+                                    <td>${item.rent_to || 'N/A'}</td>
+                                    <td>${item.rental_days || 'N/A'}</td>
+                                    <td>${formatPrice(item.total_price)}</td>
+                                `;
+                                itemsTableBody.appendChild(row);
+                            });
+                        } else {
+                            itemsTableBody.innerHTML = '<tr><td colspan="6">No items found</td></tr>';
+                        }
+
+                        $('#orderDetailsModal').modal('show');
                     } else {
-                        alert('Error fetching order details: ' + data.error);
+                        alert('Error fetching order details: ' + (data.message || 'Unknown error'));
                     }
                 })
                 .catch(error => {
@@ -688,6 +723,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         });
     });
+
+    function formatPrice(price) {
+        if (typeof price === 'number' && !isNaN(price)) {
+            return '₹' + price.toFixed(2);
+        } else {
+            return 'N/A';
+        }
+    }
 });
 </script>
 

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Order Details | Jantrik Tools Store</title>
+    
+    <!-- Include your CSS files here -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/font-awesome.min.css') }}">
+    
+    <style>
+        .breadcrumb { background-color: #f8f9fa; padding: 10px 0; }
+        .order-details { padding: 20px 0; }
+        .order-status { margin-top: 20px; }
+        .status-step { position: relative; padding-bottom: 20px; }
+        .status-step::before { content: ''; position: absolute; left: 15px; top: 30px; bottom: 0; width: 2px; background-color: #ccc; }
+        .status-step:last-child::before { display: none; }
+        .status-step .step-icon { width: 30px; height: 30px; background-color: #28a745; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; }
+        .status-step .step-content { margin-left: 45px; }
+    </style>
+</head>
+
+<body>
+    <!-- Include your header here -->
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb-area">
+        <div class="container">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('home') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('account') }}">My Account</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('account') }}#orders">My Orders</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ order.get('order_id', 'Order Details') }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Order Details -->
+    <div class="order-details">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4">
+                    <h5>Delivery Address</h5>
+                    <p>{{ order.get('customer_name', '') }}<br>
+                    {{ order.get('address', '') }}<br>
+                    {{ order.get('city', '') }}, {{ order.get('state', '') }} {{ order.get('zip', '') }}</p>
+                    <p>Phone number<br>{{ order.get('phone', '') }}</p>
+                </div>
+                <div class="col-md-4">
+                    <h5>Your Rewards</h5>
+                    <p>
+                        <i class="fa fa-coin text-warning"></i>
+                        {{ order.get('rewards', 0) }} SuperCoins Cashback<br>
+                        <small>Use it to save on your next order</small>
+                    </p>
+                </div>
+                <div class="col-md-4">
+                    <h5>More actions</h5>
+                    <a href="{{ url_for('download_invoice', order_id=order.get('order_id', '')) }}" class="btn btn-outline-primary">
+                        <i class="fa fa-download"></i> Download Invoice
+                    </a>
+                </div>
+            </div>
+
+            <div class="order-status mt-5">
+                <div class="row">
+                    <div class="col-md-8">
+                        {% for item in order.get('items', []) %}
+                        <div class="d-flex mb-3">
+                            <img src="{{ item.get('image_url', '') }}" alt="{{ item.get('product_name', 'Product') }}" width="100" height="100" class="mr-3">
+                            <div>
+                                <h5>{{ item.get('product_name', 'Product Name') }}</h5>
+                                <p>Color: {{ item.get('color', 'N/A') }} | Size: {{ item.get('size', 'N/A') }}</p>
+                                <p>Seller: {{ item.get('seller', 'N/A') }}</p>
+                                <h6>₹{{ "%.2f"|format(item.get('price', 0)) }}</h6>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        <div class="status-steps mt-4">
+                            {% for step in order.get('status_steps', []) %}
+                            <div class="status-step">
+                                <div class="step-icon">
+                                    <i class="fa fa-check"></i>
+                                </div>
+                                <div class="step-content">
+                                    <h6>{{ step.get('status', '') }}</h6>
+                                    <p>{{ step.get('date', '') }}</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h5>Order Summary</h5>
+                        <p>Total: ₹{{ "%.2f"|format(order.get('order_total', 0)) }}</p>
+                        <a href="#" class="btn btn-primary mb-2">Rate & Review Products</a>
+                        <a href="#" class="btn btn-outline-secondary">Chat with us</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include your footer here -->
+
+    <!-- Include your JS files here -->
+    <script src="{{ url_for('static', filename='js/jquery-3.5.1.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>
