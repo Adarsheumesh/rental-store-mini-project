@@ -133,12 +133,12 @@
 							<div class="collapse">
 								<ul class="sub-menu" id="orders" data-parent="#sidebar-menu">
 									<li class="">
-										<a class="sidenav-item-link" href="new-order.php">
+										<a class="sidenav-item-link" href="/new-order">
 											<span class="nav-text">Order list</span>
 										</a>
 									</li>
 									<li class="">
-										<a class="sidenav-item-link" href="order-detail.php">
+										<a class="sidenav-item-link" href="order-detail.html">
 											<span class="nav-text">Order Detail</span>
 										</a>
 									</li>
@@ -200,7 +200,7 @@
 
 						<!-- Error page -->
 						<li>
-							<a class="sidenav-item-link" href="404.php">
+							<a class="sidenav-item-link" href="/analysis">
 								<i class="mdi mdi-alert-circle-outline"></i>
 								<span class="nav-text">Error page</span>
 							</a>
@@ -241,7 +241,7 @@
 							<li class="dropdown user-menu">
 								<button class="dropdown-toggle nav-link ec-drop" data-bs-toggle="dropdown"
 									aria-expanded="false">
-									<img src="{{ user_info.profile_pic }}" class="user-image" alt="User Image" />
+									<img src="static/{{ user_info.profile_pic }}" class="user-image" alt="User Image" />
 								</button>
 								<ul class="dropdown-menu dropdown-menu-right ec-dropdown-menu">
 									<!-- User image -->
@@ -467,82 +467,9 @@
 						</div>
 					</div>
 
-					<div class="row">
-						<div class="col-xl-8 col-md-12 p-b-15">
-							<!-- Sales Graph -->
-							<div id="user-acquisition" class="card card-default">
-								<div class="card-header">
-									<h2>Sales Report</h2>
-								</div>
-								<div class="card-body">
-									<div class="tab-content pt-4" id="salesReport">
-										<div class="tab-pane fade show active" id="source-medium" role="tabpanel">
-											<div class="mb-6" style="max-height:247px">
-												<canvas id="linechart"></canvas>
-												<div id="acqLegend" class="customLegend mb-2"></div>
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
+					
 
-						<div class="col-xl-4 col-md-12 p-b-15">
-							<!-- Doughnut Chart -->
-							<div class="card card-default">
-								<div class="card-header justify-content-center">
-									<h2>Orders Overview</h2>
-								</div>
-								<div class="card-body">
-									<canvas id="polar"></canvas>
-								</div>
-								<a href="#" class="pb-5 d-block text-center text-muted"><i
-										class="mdi mdi-download mr-2"></i> Download overall report</a>
-								
-							</div>
-						</div>
-					</div>
-
-					<div class="row">
-						<div class="col-xl-8 col-md-12 p-b-15">
-							<!-- User activity statistics -->
-							<div class="card card-default" id="user-activity">
-								<div class="no-gutters">
-									<div>
-										<div class="card-header justify-content-between">
-											<h2>User Activity</h2>
-											<div class="date-range-report ">
-												<span></span>
-											</div>
-										</div>
-										<div class="card-body">
-											<div class="tab-content" id="userActivityContent"> 
-												<div class="tab-pane fade show active" id="user" role="tabpanel">
-													<canvas id="activity" class="chartjs"></canvas>
-												</div>
-											</div>
-										</div>
-										<div class="card-footer d-flex flex-wrap bg-white border-top">
-											<a href="#" class="text-uppercase py-3">In-Detail Overview</a>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-						<div class="col-xl-4 col-md-12 p-b-15">
-							<div class="card card-default">
-								<div class="card-header flex-column align-items-start">
-									<h2>Current Users</h2>
-								</div>
-								<div class="card-body">
-									<canvas id="currentUser" class="chartjs"></canvas>
-								</div>
-								<div class="card-footer d-flex flex-wrap bg-white border-top">
-									<a href="#" class="text-uppercase py-3">In-Detail Overview</a>
-								</div>
-							</div>
-						</div>
-					</div>
+					
 
 					<div class="row">
 						<div class="col-12 p-b-15">
@@ -570,30 +497,30 @@
 											</tr>
 										</thead>
 										<tbody>
+											{% for order in recent_orders %}
 											<tr>
-												<td>24541</td>
+												<td>{{ order.order_id }}</td>
 												<td>
-													<a class="text-dark" href="#"><img class="vendor-thumb" src="assets/img/products/pro-1.png" alt="user profile" style="    width: 45px;
-														height: 45px;"></a>
+													<a class="text-dark" href="#"><img class="vendor-thumb" src="{{ order.product_image }}" alt="product image" style="width: 45px; height: 45px;"></a>
 												</td>
 												<td>
-													<a class="text-dark" href="#">Dinning table with chair</a>
+													<a class="text-dark" href="#">{{ order.product_name }}</a>
 												</td>
-												<td class="d-none d-lg-table-cell">1 Unit</td>
-												<td class="d-none d-lg-table-cell">Oct 20, 2018</td>
-												<td class="d-none d-lg-table-cell">$230</td>
+												<td class="d-none d-lg-table-cell">{{ order.quantity }} Unit</td>
+												<td class="d-none d-lg-table-cell">{{ order.order_date }}</td>
+												<td class="d-none d-lg-table-cell">{{ order.order_cost }}</td>
 												<td>
-													<span class="badge badge-success">Completed</span>
+													<span class="badge badge-{{ 'success' if order.status == 'Completed' else 'warning' }}">{{ order.status }}</span>
 												</td>
 												<td class="text-right">
 													<div class="dropdown show d-inline-block widget-dropdown">
 														<a class="dropdown-toggle icon-burger-mini" href="#"
-															role="button" id="dropdown-recent-order1"
+															role="button" id="dropdown-recent-order{{ loop.index }}"
 															data-bs-toggle="dropdown" aria-haspopup="true"
 															aria-expanded="false" data-display="static"></a>
 														<ul class="dropdown-menu dropdown-menu-right">
 															<li class="dropdown-item">
-																<a href="#">View</a>
+																<a href="{{ url_for('order_details', order_id=order.order_id) }}">View</a>
 															</li>
 															<li class="dropdown-item">
 																<a href="#">Remove</a>
@@ -602,134 +529,7 @@
 													</div>
 												</td>
 											</tr>
-											<tr>
-												<td>24541</td>
-												<td>
-													<a class="text-dark" href="#"><img class="vendor-thumb" src="assets/img/products/pro-2.png" alt="user profile" style="    width: 45px;
-														height: 45px;"></a>
-												</td>
-												<td>
-													<a class="text-dark" href="#">Corporate office chair</a>
-												</td>
-												<td class="d-none d-lg-table-cell">2 Units</td>
-												<td class="d-none d-lg-table-cell">Nov 15, 2018</td>
-												<td class="d-none d-lg-table-cell">$550</td>
-												<td>
-													<span class="badge badge-primary">Delayed</span>
-												</td>
-												<td class="text-right">
-													<div class="dropdown show d-inline-block widget-dropdown">
-														<a class="dropdown-toggle icon-burger-mini" href="#"
-															role="button" id="dropdown-recent-order2"
-															data-bs-toggle="dropdown" aria-haspopup="true"
-															aria-expanded="false" data-display="static"></a>
-														<ul class="dropdown-menu dropdown-menu-right">
-															<li class="dropdown-item">
-																<a href="#">View</a>
-															</li>
-															<li class="dropdown-item">
-																<a href="#">Remove</a>
-															</li>
-														</ul>
-													</div>
-												</td>
-											</tr>
-											<tr>
-												<td>24541</td>
-												<td>
-													<a class="text-dark" href="#"><img class="vendor-thumb" src="assets/img/products/pro-3.png" alt="user profile" style="    width: 45px;
-														height: 45px;"></a>
-												</td>
-												<td>
-													<a class="text-dark" href="#">5 Set comfortable sofa</a>
-												</td>
-												<td class="d-none d-lg-table-cell">1 Unit</td>
-												<td class="d-none d-lg-table-cell">Nov 18, 2018</td>
-												<td class="d-none d-lg-table-cell">$325</td>
-												<td>
-													<span class="badge badge-warning">On Hold</span>
-												</td>
-												<td class="text-right">
-													<div class="dropdown show d-inline-block widget-dropdown">
-														<a class="dropdown-toggle icon-burger-mini" href="#"
-															role="button" id="dropdown-recent-order3"
-															data-bs-toggle="dropdown" aria-haspopup="true"
-															aria-expanded="false" data-display="static"></a>
-														<ul class="dropdown-menu dropdown-menu-right">
-															<li class="dropdown-item">
-																<a href="#">View</a>
-															</li>
-															<li class="dropdown-item">
-																<a href="#">Remove</a>
-															</li>
-														</ul>
-													</div>
-												</td>
-											</tr>
-											<tr>
-												<td>24541</td>
-												<td>
-													<a class="text-dark" href="#"><img class="vendor-thumb" src="assets/img/products/pro-4.png" alt="user profile" style="    width: 45px;
-														height: 45px;"></a>
-												</td>
-												<td>
-													<a class="text-dark" href="#">Full divan set red</a>
-												</td>
-												<td class="d-none d-lg-table-cell">5 Units</td>
-												<td class="d-none d-lg-table-cell">Dec 13, 2018</td>
-												<td class="d-none d-lg-table-cell">$200</td>
-												<td>
-													<span class="badge badge-success">Completed</span>
-												</td>
-												<td class="text-right">
-													<div class="dropdown show d-inline-block widget-dropdown">
-														<a class="dropdown-toggle icon-burger-mini" href="#"
-															role="button" id="dropdown-recent-order4"
-															data-bs-toggle="dropdown" aria-haspopup="true"
-															aria-expanded="false" data-display="static"></a>
-														<ul class="dropdown-menu dropdown-menu-right">
-															<li class="dropdown-item">
-																<a href="#">View</a>
-															</li>
-															<li class="dropdown-item">
-																<a href="#">Remove</a>
-															</li>
-														</ul>
-													</div>
-												</td>
-											</tr>
-											<tr>
-												<td>24541</td>
-												<td>
-													<a class="text-dark" href="#"><img class="vendor-thumb" src="assets/img/products/pro-5.png" alt="user profile" style="    width: 45px;
-														height: 45px;"></a>
-												</td>
-												<td>
-													<a class="text-dark" href="#"> Single chair</a>
-												</td>
-												<td class="d-none d-lg-table-cell">1 Unit</td>
-												<td class="d-none d-lg-table-cell">Dec 23, 2018</td>
-												<td class="d-none d-lg-table-cell">$150</td>
-												<td>
-													<span class="badge badge-danger">Cancelled</span>
-												</td>
-												<td class="text-right">
-													<div class="dropdown show d-inline-block widget-dropdown">
-														<a class="dropdown-toggle icon-burger-mini" href="#"
-															role="button" id="dropdown-recent-order5"
-															data-bs-toggle="dropdown" aria-haspopup="true"
-															aria-expanded="false" data-display="static"></a>
-														<ul class="dropdown-menu dropdown-menu-right">
-															<li class="dropdown-item">
-																<a href="#">View</a>
-															</li>
-															<li class="dropdown-item">
-																<a href="#">Remove</a>
-															</li>
-														</ul>
-													</div>
-												</td>
-											</tr>
+											{% endfor %}
 										</tbody>
 									</table>
 								</div>

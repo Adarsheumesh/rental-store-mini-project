@@ -489,6 +489,13 @@
     <!-- main js -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
+    <script>
+        // Clear browser history
+        window.history.pushState(null, "", window.location.href);
+        window.onpopstate = function () {
+            window.history.pushState(null, "", window.location.href);
+        };
+    </script>
 </body>
 
 

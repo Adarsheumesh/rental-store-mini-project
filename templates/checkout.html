@@ -49,13 +49,13 @@
                                 <div class="row">
                                     <div class="col-md-12">
                                         <div class="checkout-form-list">
-                                            <label>Address</label>
-                                            <input type="text" name="address" value="{{ user_details.district|default('') }}" placeholder="Street address" readonly />
+                                            <label>Address <span class="required" >*</span></label>
+                                            <input type="text" name="address" value="{{ user_details.district|default('') }}" placeholder="Street address" required readonly />
                                         </div>
                                     </div>
                                     <div class="col-md-12">
                                         <div class="checkout-form-list mtb-30">
-                                            <input type="text" name="address2" value="{{ user_details.address2|default('') }}" placeholder="Apartment, suite, unit etc. (optional)" readonly />
+                                            <input type="text" name="address2" value="{{ user_details.address2|default('') }}" placeholder="Apartment, suite, unit etc. (optional)"  required readonly />
                                         </div>
                                     </div>
                                 </div>
@@ -216,6 +216,20 @@
 
             formData.append('order_total', '{{ total_price|default(0) }}');
 
+            // Add shipping address to formData
+            var shipBox = document.getElementById('ship-box');
+            var shippingAddressInput = document.getElementById('shipping_address');
+            var shippingAddress2Input = document.getElementById('shipping_address2');
+            if (shipBox.checked) {
+                formData.set('use_different_shipping', 'true');
+                formData.set('shipping_address', shippingAddressInput.value);
+                formData.set('shipping_address2', shippingAddress2Input.value);
+            } else {
+                formData.set('use_different_shipping', 'false');
+                formData.set('shipping_address', formData.get('address'));
+                formData.set('shipping_address2', formData.get('address2'));
+            }
+
             // Send form data to server
             fetch('{{ url_for("create_payment") }}', {
                 method: 'POST',
@@ -266,9 +280,18 @@
     document.addEventListener('DOMContentLoaded', function() {
         var shipBox = document.getElementById('ship-box');
         var shipBoxInfo = document.getElementById('ship-box-info');
+        var shippingAddressInput = document.getElementById('shipping_address');
+        var shippingAddress2Input = document.getElementById('shipping_address2');
 
         shipBox.addEventListener('change', function() {
             shipBoxInfo.style.display = this.checked ? 'block' : 'none';
+            if (this.checked) {
+                shippingAddressInput.setAttribute('required', '');
+            } else {
+                shippingAddressInput.removeAttribute('required');
+                shippingAddressInput.value = '';
+                shippingAddress2Input.value = '';
+            }
         });
     });
     </script>

@@ -286,7 +286,7 @@
                                     <div class="actions-secondary">
                                         <a href="#" class="add-to-wishlist" data-product-id="{{ product_id }}" data-toggle="tooltip" title="Add to Wishlist"><i class="fa fa-heart"></i></a>
                                         <a class="add-cart" href="#" data-product-id="{{ product_id }}" data-toggle="tooltip" title="Add to Cart">Add To Cart</a>
-                                        <a href="compare.html" data-toggle="tooltip" title="Add to Compare"><i class="fa fa-signal"></i></a>
+                                        <a href="" data-toggle="tooltip" title="Add to Compare"><i class="fa fa-signal"></i></a>
                                     </div>
                                 </div>
                             </div>
@@ -390,7 +390,7 @@
                             </div>
                               <div class="policy-desc">
                                 <h3>Member Discount</h3>
-                                <p>Onevery order over $30.00</p>
+                                <p>On every order over $30.00</p>
                             </div>
                         </div>
                     </div>
@@ -425,9 +425,9 @@
                                             {% endfor %}
                                         </div>
                                         <h4><a href="{{ url_for('product_detail', product_id=product.id) }}">{{ product.product_name }}</a></h4>
-                                        <p><span class="price">${{ product.product_price }}</span>
+                                        <p><span class="price">₹{{ product.product_price }}</span>
                                         {% if product.original_price %}
-                                            <del class="prev-price">${{ product.original_price }}</del>
+                                            <del class="prev-price">₹{{ product.original_price }}</del>
                                         {% endif %}
                                         </p>
                                     </div>
@@ -588,7 +588,7 @@
             <div class="footer-bottom off-white-bg2">
                 <div class="container">
                     <div class="footer-bottom-content">
-                        <p class="copy-right-text">&copy; 2023 <strong> Jantrik </strong> Made with <i class="fa fa-heart text-danger"></i> by <a href="https://hasthemes.com/" target="_blank"><strong>HasThemes</strong></a></p>
+                        
                         <div class="footer-social-content">
                             <ul class="social-content-list">
                                 <li><a href="#"><i class="fa fa-twitter"></i></a></li>

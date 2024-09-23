@@ -209,8 +209,8 @@
                         <ul class="nav flex-column dashboard-list" role="tablist">
                             <li><a class="active" data-bs-toggle="tab" href="#account-details">Account details</a></li>
                             <li><a data-bs-toggle="tab" href="#orders">Orders</a></li>
-                            <li><a data-bs-toggle="tab" href="#downloads">Downloads</a></li>
-                            <li><a data-bs-toggle="tab" href="#address">Addresses</a></li>
+                            
+                            
                             <li><a data-bs-toggle="tab" href='#edit-account-details'>Edit Account details</a></li>
                             <li><a href="/logout">logout</a></li>
                         </ul>
@@ -255,6 +255,13 @@
                                     <table class="table">
                                         <tbody>
                                             {% for order in orders %}
+                                                <tr>
+                                                    <td colspan="5">
+                                                        <strong>Order ID: {{ order.get('order_id', 'N/A') }}</strong><br>
+                                                        Total Price: ₹{{ "%.2f"|format(order.get('order_total', 0)) }}<br>
+                                                        Order Date: {{ order.get('created_at', 'N/A') }}
+                                                    </td>
+                                                </tr>
                                                 {% for item in order.get('items', []) %}
                                                 <tr>
                                                     <td>
@@ -266,17 +273,20 @@
                                                         {% if item.get('color') %}Color: {{ item.get('color') }}{% endif %}
                                                         {% if item.get('size') %}Size: {{ item.get('size') }}{% endif %}
                                                     </td>
-                                                    <td>₹{{ "%.2f"|format(item.get('total_price', 0)) }}</td>
+                                                    <td>₹{{ "%.2f"|format(item.get('item_total', 0)) }}</td>
                                                     <td>
-                                                        <span class="text-success">● Delivered Soon {{ order.get('delivery_date', 'N/A') }}</span><br>
+                                                        <span class="text-success">● Delivered Soon {{ order.get('delivery_date') }}</span><br>
                                                         Your item will be delivered in 7 Days
                                                     </td>
                                                     <td>
                                                         <button class="btn btn-link view-order-details" data-order-id="{{ order.get('order_id', '') }}">View Order Details</button>
-                                                        <a href="{{ url_for('download_order_pdf', order_id=order.get('order_id', '')) }}" class="btn btn-primary btn-sm" target="_blank">Download PDF</a>
+                                                        <a href="{{ url_for('download_order_pdf', order_id=order.get('order_id', '')) }}" class="btn btn-primary btn-sm" target="_blank">Download Invoice</a>
                                                     </td>
                                                 </tr>
                                                 {% endfor %}
+                                                <tr>
+                                                    <td colspan="5"><hr></td>
+                                                </tr>
                                             {% else %}
                                             <tr>
                                                 <td colspan="5">No orders found.</td>
@@ -286,42 +296,8 @@
                                     </table>
                                 </div>
                             </div>
-                            <div id="downloads" class="tab-pane fade">
-                                <h3>Downloads</h3>
-                                <div class="table-responsive">
-                                    <table class="table">
-                                        <thead>
-                                            <tr>
-                                                <th>Product</th>
-                                                <th>Downloads</th>
-                                                <th>Expires</th>
-                                                <th>Download</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>Product Name Here</td>
-                                                <td>May 10, 2018</td>
-                                                <td>never</td>
-                                                <td><a class="view" href="#">Click Here To Download Your File</a></td>
-                                            </tr>
-                                            <tr>
-                                                <td>Product Name Here</td>
-                                                <td>Sep 11, 2018</td>
-                                                <td>never</td>
-                                                <td><a class="view" href="#">Click Here To Download Your File</a></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div id="address" class="tab-pane">
-                                <p>The following addresses will be used on the checkout page by default.</p>
-                                <h4 class="billing-address">Billing address</h4>
-                                <a class="view" href="#">edit</a>
-                                <p>steven smith</p>
-                                <p>Australia</p>
-                            </div>
+                            
+                          
                             <div id="edit-account-details" class="tab-pane fade">
                                 <h3>Edit Account details </h3>
                                 <div class="register-form login-form clearfix">
@@ -627,45 +603,25 @@
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 
 <link rel="stylesheet" href="http://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-<script src="http://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="http://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
-<script src="http://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
-<!-- Order Details Modal -->
+<!-- Modal for Order Details -->
 <div class="modal fade" id="orderDetailsModal" tabindex="-1" role="dialog" aria-labelledby="orderDetailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="orderDetailsModalLabel">Order Details</h5>
-                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body">
-                <p><strong>Order ID:</strong> <span id="modalOrderId"></span></p>
-                <p><strong>Date:</strong> <span id="modalOrderDate"></span></p>
-                <p><strong>Status:</strong> <span id="modalOrderStatus"></span></p>
-                <p><strong>Total:</strong> ₹<span id="modalOrderTotal"></span></p>
-                <p><strong>Items:</strong></p>
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th>Quantity</th>
-                                <th>Rent From</th>
-                                <th>Rent To</th>
-                                <th>Rental Days</th>
-                                <th>Price</th>
-                            </tr>
-                        </thead>
-                        <tbody id="modalOrderItems">
-                        </tbody>
-                    </table>
-                </div>
+            <div class="modal-body" id="orderDetailsContent">
+                <!-- Order details will be inserted here -->
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -674,63 +630,96 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const viewOrderButtons = document.querySelectorAll('.view-order-details');
+    const orderDetailsContent = document.getElementById('orderDetailsContent');
+    const orderDetailsModal = document.getElementById('orderDetailsModal');
+
+    if (!orderDetailsContent || !orderDetailsModal) {
+        console.error('Required modal elements not found');
+        return;
+    }
+
+    // Initialize the modal
+    $(orderDetailsModal).modal({
+        show: false,
+        backdrop: 'static',
+        keyboard: false
+    });
 
     viewOrderButtons.forEach(button => {
-        button.addEventListener('click', function(event) {
-            event.preventDefault();
+        button.addEventListener('click', function() {
             const orderId = this.getAttribute('data-order-id');
-            fetch(`/get-order-details?order_id=${orderId}`)
+            fetch(`/order/${orderId}`)
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Received data:', data); // Log the received data for debugging
+                    console.log('Received data:', data);
                     if (data.success && data.order) {
                         const order = data.order;
-                        document.getElementById('modalOrderId').textContent = order.order_id || 'N/A';
-                        document.getElementById('modalOrderDate').textContent = order.created_at ? new Date(order.created_at).toLocaleString() : 'N/A';
-                        document.getElementById('modalOrderStatus').textContent = order.status || 'N/A';
-                        document.getElementById('modalOrderTotal').textContent = formatPrice(order.order_total);
-
-                        const itemsTableBody = document.getElementById('modalOrderItems');
-                        itemsTableBody.innerHTML = '';
-                        if (Array.isArray(order.items) && order.items.length > 0) {
-                            order.items.forEach(item => {
-                                const row = document.createElement('tr');
-                                row.innerHTML = `
-                                    <td>
-                                        <img src="${item.image_url || ''}" alt="${item.product_name || 'Product'}" width="50" height="50">
-                                        ${item.product_name || 'N/A'}
-                                    </td>
-                                    <td>${item.quantity || 'N/A'}</td>
-                                    <td>${item.rent_from || 'N/A'}</td>
-                                    <td>${item.rent_to || 'N/A'}</td>
-                                    <td>${item.rental_days || 'N/A'}</td>
-                                    <td>${formatPrice(item.total_price)}</td>
-                                `;
-                                itemsTableBody.appendChild(row);
-                            });
-                        } else {
-                            itemsTableBody.innerHTML = '<tr><td colspan="6">No items found</td></tr>';
+                        console.log('Order details:', order);
+                        try {
+                            let modalContent = `
+                                <p><strong>Order ID:</strong> ${order.order_id || 'N/A'}</p>
+                                <p><strong>Order Date:</strong> ${order.created_at || 'N/A'}</p>
+                                <p><strong>Status:</strong> ${order.status || 'N/A'}</p>
+                                <p><strong>Shipping Address:</strong> ${order.shipping_address || 'N/A'}</p>
+                                <p><strong>Total:</strong> ₹${(order.order_total || 0).toFixed(2)}</p>
+                                <h6>Items:</h6>
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Product</th>
+                                            <th>Quantity</th>
+                                            <th>Rent From</th>
+                                            <th>Rent To</th>
+                                            <th>Days</th>
+                                            <th>Price</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                            `;
+                            if (Array.isArray(order.items)) {
+                                order.items.forEach(item => {
+                                    modalContent += `
+                                        <tr>
+                                            <td>${item.product_name || 'N/A'}</td>
+                                            <td>${item.quantity || 'N/A'}</td>
+                                            <td>${item.rent_from || 'N/A'}</td>
+                                            <td>${item.rent_to || 'N/A'}</td>
+                                            <td>${item.rental_days || 'N/A'}</td>
+                                            <td>₹${(item.item_total || 0).toFixed(2)}</td>
+                                        </tr>
+                                    `;
+                                });
+                            } else {
+                                console.error('order.items is not an array:', order.items);
+                            }
+                            modalContent += `
+                                    </tbody>
+                                </table>
+                            `;
+                            orderDetailsContent.innerHTML = modalContent;
+                            $(orderDetailsModal).modal('show');
+                        } catch (error) {
+                            console.error('Error populating modal:', error);
                         }
-
-                        $('#orderDetailsModal').modal('show');
                     } else {
-                        alert('Error fetching order details: ' + (data.message || 'Unknown error'));
+                        console.error('Failed to fetch order details:', data);
+                        alert('Failed to fetch order details');
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('An error occurred while fetching the order details.');
+                    alert('An error occurred while fetching order details');
                 });
         });
     });
 
-    function formatPrice(price) {
-        if (typeof price === 'number' && !isNaN(price)) {
-            return '₹' + price.toFixed(2);
-        } else {
-            return 'N/A';
-        }
-    }
+    // Handle modal close button
+    const closeButtons = orderDetailsModal.querySelectorAll('[data-dismiss="modal"]');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            $(orderDetailsModal).modal('hide');
+        });
+    });
 });
 </script>
 

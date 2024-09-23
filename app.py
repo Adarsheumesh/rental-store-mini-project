@@ -34,6 +34,31 @@ os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # Initialize Flask application
 app = Flask(__name__)
+
+from mlprice import get_all_product_suggestions, get_products
+
+@app.route('/analysis')
+def analysis():
+    try:
+        suggestions = get_all_product_suggestions()
+        app.logger.info(f"Generated {len(suggestions)} suggestions")
+
+        for suggestion in suggestions:
+            product_name = suggestion.get('product_name', 'Unknown')
+            product_id = suggestion.get('product_id', 'Unknown')
+            demand = suggestion.get('demand', 'Unknown')
+            app.logger.info(f"Product: {product_name}, ID: {product_id}, Demand: {demand}")
+        
+        return render_template('analysis.html', suggestions=suggestions)
+    except Exception as e:
+        app.logger.error(f"Error in analysis route: {str(e)}", exc_info=True)
+        return render_template('error.html', error="An error occurred while generating product suggestions."), 500
+
+@app.route('/get_products')
+def get_products_route():
+    products = get_products()
+    return jsonify({"products": products})
+
 app.secret_key = 'turbolegion6282'
 
 # Firebase configuration
@@ -180,35 +205,44 @@ def login():
             return render_template('login.html')
 
         if not is_valid_password(password):
-            flash('Invalid password.', 'danger')
+            flash('Invalid password format.', 'danger')
             return render_template('login.html')
 
         try:
             user = auth.sign_in_with_email_and_password(email, password)
-            user_id = user['localId']
-
-            if not auth.get_account_info(user['idToken'])['users'][0]['emailVerified']:
-                flash('Email not verified. Please check your email for the verification link.', 'danger')
-                return render_template('login.html')
-
-            session['user_id'] = user_id  # Store user_id in session
-            user_data = db.child("users").child(user_id).get().val()
-
-            if user_data:
-                session['email'] = email
-                session['user_info'] = user_data
-
-                # Redirect based on user type
-                if user_data.get('user_type') == 'vendor':
-                    return redirect(url_for('vendor_dashboard'))
-                else:
-                    return redirect(url_for('index'))
-            else:
-                flash('User data not found.', 'danger')
-
         except Exception as e:
-            error = f"Unsuccessful login: {str(e)}"
-            flash(error, 'danger')
+            error_message = str(e)
+            if "INVALID_PASSWORD" in error_message:
+                flash('Incorrect password. Please try again.', 'danger')
+            elif "EMAIL_NOT_FOUND" in error_message:
+                flash('Email not found. Please check your email or register.', 'danger')
+            else:
+                flash(f'Login error: {error_message}', 'danger')
+            return render_template('login.html')
+
+        user_id = user['localId']
+
+        if not auth.get_account_info(user['idToken'])['users'][0]['emailVerified']:
+            flash('Email not verified. Please check your email for the verification link.', 'danger')
+            return render_template('login.html')
+
+        session['user_id'] = user_id  # Store user_id in session
+        user_data = db.child("users").child(user_id).get().val()
+
+        if user_data:
+            session['email'] = email
+            session['user_info'] = user_data
+
+            # Redirect based on user type
+            if user_data.get('user_type') == 'Admin':
+                return redirect(url_for('admin_dashboard'))
+            elif user_data.get('user_type') == 'vendor':
+                return redirect(url_for('vendor_dashboard'))
+            else:
+                return redirect(url_for('index'))
+        else:
+            flash('User data not found.', 'danger')
+            return render_template('login.html')
 
     return render_template('login.html')
 
@@ -298,6 +332,29 @@ def google_callback():
         flash('User email not available or not verified by Google.', 'danger')
         return redirect(url_for('login'))
 
+@app.route('/admin_dashboard')
+def admin_dashboard():
+    if 'user_id' not in session or 'email' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    email = session['email']
+
+    try:
+        user_info = db.child("users").child(user_id).get().val()
+        if not user_info or user_info.get('user_type') != 'Admin':
+            raise ValueError("Unauthorized access")
+
+        # Here you can add any admin-specific data you want to pass to the template
+        # For example, you might want to get some statistics or user lists
+
+        return render_template('Admin/index.html', user_info=user_info, email=email)
+    except Exception as e:
+        app.logger.error(f"Error in admin_dashboard: {str(e)}")
+        flash('An error occurred while loading the page. Please try again.', 'danger')
+        return redirect(url_for('index'))
+
 @app.route('/index')
 def index():
     if 'email' in session and 'user_info' in session:
@@ -336,12 +393,46 @@ def index():
 
 @app.route('/vendor_dashboard')
 def vendor_dashboard():
-    if 'email' in session and 'user_info' in session:
-        email = session['email']
-        user_info = session['user_info']
-        return render_template('andshop/index.html', email=email, user_info=user_info)
-    else:
+    if 'user_id' not in session or 'email' not in session:
+        flash('Please log in to access this page.', 'warning')
         return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    email = session['email']
+
+    try:
+        user_info = db.child("users").child(user_id).get().val()
+        if not user_info:
+            raise ValueError("User information not found")
+
+        # Fetch recent orders for the vendor
+        all_orders = db.child("orders").get().val()
+        recent_orders = []
+        if all_orders:
+            for order_id, order in all_orders.items():
+                for item in order.get('items', []):
+                    if item.get('store_name') == user_info.get('store_name'):
+                        product_id = item.get('product_id')
+                        product_details = get_product_details(product_id)
+                        recent_orders.append({
+                            'order_id': order_id,
+                            'product_image': product_details.get('product_image', ''),
+                            'product_name': product_details.get('product_name', 'Unknown Product'),
+                            'quantity': item.get('quantity', 0),
+                            'order_date': order.get('created_at', 'N/A'),
+                            'order_cost': f"₹{float(item.get('item_total', 0)):,.2f}",
+                            'status': order.get('status', 'Unknown')
+                        })
+                        if len(recent_orders) >= 5:  # Limit to 5 recent orders
+                            break
+                if len(recent_orders) >= 5:
+                    break
+
+        return render_template('andshop/index.html', user_info=user_info, email=email, recent_orders=recent_orders)
+    except Exception as e:
+        app.logger.error(f"Error in vendor_dashboard: {str(e)}")
+        flash('An error occurred while loading the page. Please try again.', 'danger')
+        return redirect(url_for('index'))
 
 @app.route('/account')
 def account():
@@ -361,6 +452,10 @@ def account():
                 order_data = order.val()
                 order_data['order_id'] = order.key()
 
+                # Add payment ID and shipping address to order data
+                order_data['payment_id'] = order_data.get('payment_intent_id', 'N/A')
+                order_data['shipping_address'] = order_data.get('shipping_address', 'N/A')
+
                 # Fetch product details for each item in the order
                 items = order_data.get('items', [])
                 for item in items:
@@ -375,8 +470,1068 @@ def account():
 
                 orders.append(order_data)
         
-        # Sort orders by date (assuming there's a 'date' field)
-        orders.sort(key=lambda x: x.get('date', ''), reverse=True)
+        # Sort orders by date (assuming there's a 'created_at' field)
+        orders.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+
+    except Exception as e:
+        print(f"Error fetching orders: {str(e)}")
+        flash('An error occurred while fetching your orders.', 'danger')
+        orders = []
+
+    return render_template('account.html', user_info=user_info, orders=orders)
+
+def get_product_details(product_id):
+    try:
+        product = db.child("products").child(product_id).get().val()
+        if product:
+            return {
+                'product_name': product.get('product_name', 'Unknown Product'),
+                'product_image': product.get('product_image', '')
+            }
+        else:
+            print(f"Product not found for ID: {product_id}")
+            return {'product_name': 'Unknown Product', 'product_image': ''}
+    except Exception as e:
+        print(f"Error fetching product details for ID {product_id}: {str(e)}")
+        return {'product_name': 'Unknown Product', 'product_image': ''}
+
+@app.route('/get-order-details')
+def get_order_details():
+    order_id = request.args.get('order_id')
+    user_id = session.get('user_id')
+    
+    try:
+        order = db.child("orders").child(order_id).get().val()
+        if order and order.get('user_id') == user_id:
+            # Fetch product details for each item in the order
+            for item in order.get('items', []):
+                product_id = item.get('product_id')
+                if product_id:
+                    product = get_product_details(product_id)
+                    item['product_name'] = product.get('product_name', 'Unknown Product')
+                    item['image_url'] = product.get('product_image', '')
+                    # The total_price and other details should already be in the item data
+            
+            return jsonify({
+                'success': True,
+                'order': order
+                })
+    except Exception as e:
+        app.logger.error(f"Error fetching order details: {str(e)}")
+        return jsonify({'success': False, 'message': 'An error occurred while fetching order details'}), 500
+from sqlite3 import Date
+from weakref import ref
+from flask import Flask, jsonify, render_template, request, redirect, url_for, session, flash, logging, send_file, abort
+from networkx import is_path
+import pyrebase
+import re
+import json
+from oauthlib.oauth2 import WebApplicationClient
+import requests
+import os
+import firebase_admin
+from firebase_admin import credentials, db
+from dotenv import load_dotenv  # type: ignore
+from datetime import datetime  # Import datetime
+from werkzeug.utils import secure_filename
+import traceback
+import logging
+import stripe
+import uuid
+import random
+import string
+from decimal import Decimal
+import pdfkit  # You'll need to install this: pip install pdfkit
+import io
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+
+logging.basicConfig(level=logging.DEBUG)
+
+load_dotenv()
+
+# Allow insecure transport for development
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
+# Initialize Flask application
+app = Flask(__name__)
+
+from mlprice import get_all_product_suggestions, get_products
+
+@app.route('/analysis')
+def analysis():
+    suggestions = get_all_product_suggestions()
+    return render_template('analysis.html', suggestions=suggestions)
+
+@app.route('/get_products')
+def get_products_route():
+    products = get_products()
+    return jsonify({"products": products})
+
+app.secret_key = 'turbolegion6282'
+
+# Firebase configuration
+config = {
+    "apiKey": "AIzaSyB42nHmPcpj7BmOPPdO93lXqzA3PjjXZOc",
+    "authDomain": "project-dbebd.firebaseapp.com",
+    "projectId": "project-dbebd",
+    "storageBucket": "project-dbebd.appspot.com",
+    "messagingSenderId": "374516311348",
+    "appId": "1:374516311348:web:d916facf6720a4e275f161",
+    "databaseURL": "https://project-dbebd-default-rtdb.asia-southeast1.firebasedatabase.app/"
+}
+
+firebase = pyrebase.initialize_app(config)
+auth = firebase.auth()
+db = firebase.database()
+
+# OAuth 2 client setup
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
+GOOGLE_DISCOVERY_URL = os.environ.get("GOOGLE_DISCOVERY_URL")
+client = WebApplicationClient(GOOGLE_CLIENT_ID)
+
+def get_google_provider_cfg():
+    return requests.get(GOOGLE_DISCOVERY_URL).json()
+
+def is_valid_email(email):
+    regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(regex, email)
+
+def is_valid_password(password):
+    regex = r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$'
+    return re.match(regex, password)
+
+def is_valid_phone(phone):
+    regex = r'^\+?1?\d{9,15}$'
+    return re.match(regex, phone)
+
+def is_valid_name(name):
+    regex = r'^[A-Za-z\s]+$'
+    
+    return re.match(regex, name)
+
+def is_valid_district(district):
+    regex = r'^[A-Za-z\s]+$'
+    return re.match(regex, district)
+
+@app.route('/')
+def home():
+    if 'email' in session and 'user_info' in session:
+        email = session['email']
+        user_info = session['user_info']
+        return render_template('index.html', email=email, user_info=user_info)
+    return render_template('index.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if 'email' in session and 'user_info' in session:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        email = request.form.get('email').lower()
+        password = request.form.get('password')
+        name = request.form.get('name')
+        phone = request.form.get('phone')
+        district = request.form.get('district')
+        user_type = request.form.get('user_type')  # Get user type from form
+        status = "active"    # Default status
+        registration_date = datetime.now().date().strftime("%Y-%m-%d")  # Get current date
+
+        if not is_valid_email(email):
+            flash('Invalid email address.', 'danger')
+            return render_template('register.html')
+
+        if not is_valid_password(password):
+            flash('Password must be at least 8 characters long and include one uppercase letter, one lowercase letter, one number, and one special character.', 'danger')
+            return render_template('register.html')
+
+        if not is_valid_phone(phone):
+            flash('Invalid phone number.', 'danger')
+            return render_template('register.html')
+
+        if not is_valid_name(name):
+            flash('Name cannot contain numbers or special characters.', 'danger')
+            return render_template('register.html')
+
+        if not is_valid_district(district):
+            flash('District cannot contain numbers or special characters.', 'danger')
+            return render_template('register.html')
+
+        try:
+            # Create user in Firebase Auth
+            user = auth.create_user_with_email_and_password(email, password)
+            user_id = user['localId']
+            auth.send_email_verification(user['idToken'])
+
+            # Store user data in Firebase Realtime Database
+            db.child("users").child(user_id).set({
+                "name": name,
+                "phone": phone,
+                "district": district,
+                "email": email,
+                "user_type": user_type,  # Save user type
+                "status": status,  # Default status
+                "registration_date": registration_date  # Save registration date (only date)
+            })
+
+            flash('Registration successful! Please verify your email before logging in.', 'success')
+            return redirect(url_for('login'))
+
+        except Exception as e:
+            error = f"Unsuccessful registration: {str(e)}"
+            flash(error, 'danger')
+            return render_template('register.html')
+
+    return render_template('register.html')
+
+
+@app.route('/resend-verification', methods=['GET', 'POST'])
+def resend_verification():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        try:
+            user = auth.sign_in_with_email_and_password(email, password)
+            auth.send_email_verification(user['idToken'])
+            flash('Verification email sent.', 'success')
+        except Exception as e:
+            flash(f'Failed to send verification email: {str(e)}', 'danger')
+
+    return render_template('resend_verification.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if 'email' in session and 'user_info' in session:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        email = request.form.get('email').lower()
+        password = request.form.get('password')
+
+        if not is_valid_email(email):
+            flash('Invalid email address.', 'danger')
+            return render_template('login.html')
+
+        if not is_valid_password(password):
+            flash('Invalid password format.', 'danger')
+            return render_template('login.html')
+
+        try:
+            user = auth.sign_in_with_email_and_password(email, password)
+        except Exception as e:
+            error_message = str(e)
+            if "INVALID_PASSWORD" in error_message:
+                flash('Incorrect password. Please try again.', 'danger')
+            elif "EMAIL_NOT_FOUND" in error_message:
+                flash('Email not found. Please check your email or register.', 'danger')
+            else:
+                flash(f'Login error: {error_message}', 'danger')
+            return render_template('login.html')
+
+        user_id = user['localId']
+
+        if not auth.get_account_info(user['idToken'])['users'][0]['emailVerified']:
+            flash('Email not verified. Please check your email for the verification link.', 'danger')
+            return render_template('login.html')
+
+        session['user_id'] = user_id  # Store user_id in session
+        user_data = db.child("users").child(user_id).get().val()
+
+        if user_data:
+            session['email'] = email
+            session['user_info'] = user_data
+
+            # Redirect based on user type
+            if user_data.get('user_type') == 'Admin':
+                return redirect(url_for('admin_dashboard'))
+            elif user_data.get('user_type') == 'vendor':
+                return redirect(url_for('vendor_dashboard'))
+            else:
+                return redirect(url_for('index'))
+        else:
+            flash('User data not found.', 'danger')
+            return render_template('login.html')
+
+    return render_template('login.html')
+
+@app.route('/login/google')
+def google_login():
+    google_provider_cfg = get_google_provider_cfg()
+    authorization_endpoint = google_provider_cfg["authorization_endpoint"]
+
+    request_uri = client.prepare_request_uri(
+        authorization_endpoint,
+        redirect_uri=request.base_url + "/callback",
+        scope=["openid", "email", "profile"],
+        prompt="select_account"  # Force account selection
+    )
+    return redirect(request_uri)
+
+@app.route('/login/google/callback')
+def google_callback():
+    code = request.args.get("code")
+    google_provider_cfg = get_google_provider_cfg()
+    token_endpoint = google_provider_cfg["token_endpoint"]
+
+    # Exchange authorization code for access token
+    token_url, headers, body = client.prepare_token_request(
+        token_endpoint,
+        authorization_response=request.url,
+        redirect_url=request.base_url,
+        code=code
+    )
+    token_response = requests.post(
+        token_url,
+        headers=headers,
+        data=body,
+        auth=(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET),
+    )
+    token_json = token_response.json()
+
+    client.parse_request_body_response(json.dumps(token_json))
+    userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
+    uri, headers, body = client.add_token(userinfo_endpoint)
+    userinfo_response = requests.get(uri, headers=headers, data=body)
+
+    userinfo = userinfo_response.json()
+
+    if userinfo.get("email_verified"):
+        users_email = userinfo["email"]
+        users_name = userinfo["name"]
+        picture = userinfo["picture"]
+
+        session['email'] = users_email
+        session['name'] = users_name
+        session['picture'] = picture
+
+        # Check if user already exists in Firebase
+        try:
+            user = auth.sign_in_with_email_and_password(users_email, users_email)
+            user_id = user['localId']
+        except:
+            # If the user does not exist, create a new one
+            try:
+                user = auth.create_user_with_email_and_password(users_email, users_email)
+                user_id = user['localId']
+                # Save user info in Firebase
+                db.child("users").child(user_id).set({
+                    "name": users_name,
+                    "phone": "",  # Default values if not provided
+                    "district": "",
+                    "email": users_email,
+                    "user_type": "customer"  # Default user type
+                })
+            except Exception as e:
+                flash(f"Error creating user: {str(e)}", 'danger')
+                return redirect(url_for('login'))
+
+        # Fetch user data from the database and update the session
+        user_data = db.child("users").child(user_id).get().val()
+
+        if user_data:
+            session['user_id'] = user_id
+            session['user_info'] = user_data
+            flash('Logged in successfully with Google.', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('User data not found after login.', 'danger')
+            return redirect(url_for('login'))
+    else:
+        flash('User email not available or not verified by Google.', 'danger')
+        return redirect(url_for('login'))
+@app.route('/admin_dashboard')
+def admin_dashboard():
+    if 'user_id' not in session or 'email' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    email = session['email']
+
+    try:
+        user_info = db.child("users").child(user_id).get().val()
+        if not user_info or user_info.get('user_type') != 'Admin':
+            raise ValueError("Unauthorized access")
+
+        # Here you can add any admin-specific data you want to pass to the template
+        # For example, you might want to get some statistics or user lists
+
+        return render_template('Admin/index.html', user_info=user_info, email=email)
+    except Exception as e:
+        app.logger.error(f"Error in admin_dashboard: {str(e)}")
+        flash('An error occurred while loading the page. Please try again.', 'danger')
+        return redirect(url_for('index'))
+@app.route('/index')
+def index():
+    if 'email' in session and 'user_info' in session:
+        email = session['email']
+        user_info = session['user_info']
+    else:
+        email = None
+        user_info = None
+
+    # Fetch data from the 'products' table
+    try:
+        products = db.child("products").get().val()  # Fetch all products from the 'products' table
+    except Exception as e:
+        products = None
+        flash(f"Failed to retrieve products: {str(e)}", 'danger')
+
+    # Fetch best seller products
+    try:
+        # You might want to implement a logic to determine best sellers
+        # For now, let's assume the first 5 products are best sellers
+        best_seller_products = []
+        if products:
+            for product_id, product in list(products.items())[:5]:
+                product['id'] = product_id
+                best_seller_products.append(product)
+    except Exception as e:
+        best_seller_products = None
+        flash(f"Failed to retrieve best seller products: {str(e)}", 'danger')
+
+    return render_template('index.html', 
+                           email=email, 
+                           user_info=user_info, 
+                           products=products, 
+                           best_seller_products=best_seller_products)
+
+
+@app.route('/vendor_dashboard')
+def vendor_dashboard():
+    if 'user_id' not in session or 'email' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    email = session['email']
+
+    try:
+        user_info = db.child("users").child(user_id).get().val()
+        if not user_info:
+            raise ValueError("User information not found")
+
+        # Fetch recent orders for the vendor
+        all_orders = db.child("orders").get().val()
+        recent_orders = []
+        if all_orders:
+            for order_id, order in all_orders.items():
+                for item in order.get('items', []):
+                    if item.get('store_name') == user_info.get('store_name'):
+                        product_id = item.get('product_id')
+                        product_details = get_product_details(product_id)
+                        recent_orders.append({
+                            'order_id': order_id,
+                            'product_image': product_details.get('product_image', ''),
+                            'product_name': product_details.get('product_name', 'Unknown Product'),
+                            'quantity': item.get('quantity', 0),
+                            'order_date': order.get('created_at', 'N/A'),
+                            'order_cost': f"₹{float(item.get('item_total', 0)):,.2f}",
+                            'status': order.get('status', 'Unknown')
+                        })
+                        if len(recent_orders) >= 5:  # Limit to 5 recent orders
+                            break
+                if len(recent_orders) >= 5:
+                    break
+
+        return render_template('andshop/index.html', user_info=user_info, email=email, recent_orders=recent_orders)
+    except Exception as e:
+        app.logger.error(f"Error in vendor_dashboard: {str(e)}")
+        flash('An error occurred while loading the page. Please try again.', 'danger')
+        return redirect(url_for('index'))
+
+@app.route('/account')
+def account():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    user_info = session.get('user_info')
+
+    try:
+        # Fetch orders for the current user
+        orders_data = db.child("orders").order_by_child("user_id").equal_to(user_id).get()
+        
+        orders = []
+        if orders_data.each():
+            for order in orders_data.each():
+                order_data = order.val()
+                order_data['order_id'] = order.key()
+
+                # Add payment ID and shipping address to order data
+                order_data['payment_id'] = order_data.get('payment_intent_id', 'N/A')
+                order_data['shipping_address'] = order_data.get('shipping_address', 'N/A')
+
+                # Fetch product details for each item in the order
+                items = order_data.get('items', [])
+                for item in items:
+                    product_id = item.get('product_id')
+                    if product_id:
+                        product_details = get_product_details(product_id)
+                        item['product_name'] = product_details.get('product_name', 'Unknown Product')
+                        item['image_url'] = product_details.get('product_image', '')
+                    else:
+                        item['product_name'] = 'Unknown Product'
+                        item['image_url'] = ''
+
+                orders.append(order_data)
+        
+        # Sort orders by date (assuming there's a 'created_at' field)
+        orders.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+
+    except Exception as e:
+        print(f"Error fetching orders: {str(e)}")
+        flash('An error occurred while fetching your orders.', 'danger')
+        orders = []
+
+    return render_template('account.html', user_info=user_info, orders=orders)
+
+def get_product_details(product_id):
+    try:
+        product = db.child("products").child(product_id).get().val()
+        if product:
+            return {
+                'product_name': product.get('product_name', 'Unknown Product'),
+                'product_image': product.get('product_image', '')
+            }
+        else:
+            print(f"Product not found for ID: {product_id}")
+            return {'product_name': 'Unknown Product', 'product_image': ''}
+    except Exception as e:
+        print(f"Error fetching product details for ID {product_id}: {str(e)}")
+        return {'product_name': 'Unknown Product', 'product_image': ''}
+
+@app.route('/get-order-details')
+def get_order_details():
+    order_id = request.args.get('order_id')
+    user_id = session.get('user_id')
+    
+    try:
+        order = db.child("orders").child(order_id).get().val()
+        if order and order.get('user_id') == user_id:
+            # Fetch product details for each item in the order
+            for item in order.get('items', []):
+                product_id = item.get('product_id')
+                if product_id:
+                    product = get_product_details(product_id)
+                    item['product_name'] = product.get('product_name', 'Unknown Product')
+                    item['image_url'] = product.get('product_image', '')
+                    # The total_price and other details should already be in the item data
+            
+            return jsonify({
+                'success': True,
+                'order': order
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Order not found or unauthorized'
+            }), 404
+    except Exception as e:
+        print(f"Error fetching order details: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'Error fetching order details'
+        }), 500
+
+def get_product_details(product_id):
+    try:
+        product = db.child("products").child(product_id).get().val()
+        if product:
+            return {
+                'product_name': product.get('product_name', 'Unknown Product'),
+                'product_image': product.get('product_image', '')
+            }
+        else:
+            return {'product_name': 'Unknown Product', 'product_image': ''}
+    except Exception as e:
+        print(f"Error fetching product details: {str(e)}")
+        return {'product_name': 'Unknown Product', 'product_image': ''}
+
+@app.route('/account-details')
+def account_details():
+    return render_template('account_details.html')
+
+@app.route('/shop')
+def shop():
+    return render_template('shop.html')
+@app.route('/reset_password', methods=['GET', 'POST'])
+def reset_password():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        try:
+            auth.send_password_reset_email(email)
+            flash('Password reset email sent. Please check your inbox.', 'success')
+        except Exception as e:
+            flash(f'Error sending password reset email: {str(e)}', 'danger')
+    return render_template('reset_password.html')
+from sqlite3 import Date
+from weakref import ref
+from flask import Flask, jsonify, render_template, request, redirect, url_for, session, flash, logging, send_file, abort
+from networkx import is_path
+import pyrebase
+import re
+import json
+from oauthlib.oauth2 import WebApplicationClient
+import requests
+import os
+import firebase_admin
+from firebase_admin import credentials, db
+from dotenv import load_dotenv  # type: ignore
+from datetime import datetime  # Import datetime
+from werkzeug.utils import secure_filename
+import traceback
+import logging
+import stripe
+import uuid
+import random
+import string
+from decimal import Decimal
+import pdfkit  # You'll need to install this: pip install pdfkit
+import io
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+
+logging.basicConfig(level=logging.DEBUG)
+
+load_dotenv()
+
+# Allow insecure transport for development
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
+# Initialize Flask application
+app = Flask(__name__)
+
+from mlprice import get_all_product_suggestions
+
+@app.route('/analysis')
+def analysis():
+    try:
+        suggestions = get_all_product_suggestions()
+        app.logger.info(f"Generated {len(suggestions)} suggestions")
+
+        for suggestion in suggestions:
+            product_name = suggestion.get('product_name', 'Unknown')
+            product_id = suggestion.get('product_id', 'Unknown')
+            demand = suggestion.get('demand', 'Unknown')
+            app.logger.info(f"Product: {product_name}, ID: {product_id}, Demand: {demand}")
+        
+        return render_template('analysis.html', suggestions=suggestions)
+    except Exception as e:
+        app.logger.error(f"Error in analysis route: {str(e)}", exc_info=True)
+        return render_template('error.html', error="An error occurred while generating product suggestions."), 500
+app.secret_key = 'turbolegion6282'
+
+# Firebase configuration
+config = {
+    "apiKey": "AIzaSyB42nHmPcpj7BmOPPdO93lXqzA3PjjXZOc",
+    "authDomain": "project-dbebd.firebaseapp.com",
+    "projectId": "project-dbebd",
+    "storageBucket": "project-dbebd.appspot.com",
+    "messagingSenderId": "374516311348",
+    "appId": "1:374516311348:web:d916facf6720a4e275f161",
+    "databaseURL": "https://project-dbebd-default-rtdb.asia-southeast1.firebasedatabase.app/"
+}
+
+firebase = pyrebase.initialize_app(config)
+auth = firebase.auth()
+db = firebase.database()
+
+# OAuth 2 client setup
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
+GOOGLE_DISCOVERY_URL = os.environ.get("GOOGLE_DISCOVERY_URL")
+client = WebApplicationClient(GOOGLE_CLIENT_ID)
+
+def get_google_provider_cfg():
+    return requests.get(GOOGLE_DISCOVERY_URL).json()
+
+def is_valid_email(email):
+    regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(regex, email)
+
+def is_valid_password(password):
+    regex = r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$'
+    return re.match(regex, password)
+
+def is_valid_phone(phone):
+    regex = r'^\+?1?\d{9,15}$'
+    return re.match(regex, phone)
+
+def is_valid_name(name):
+    regex = r'^[A-Za-z\s]+$'
+    
+    return re.match(regex, name)
+
+def is_valid_district(district):
+    regex = r'^[A-Za-z\s]+$'
+    return re.match(regex, district)
+
+@app.route('/')
+def home():
+    if 'email' in session and 'user_info' in session:
+        email = session['email']
+        user_info = session['user_info']
+        return render_template('index.html', email=email, user_info=user_info)
+    return render_template('index.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if 'email' in session and 'user_info' in session:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        email = request.form.get('email').lower()
+        password = request.form.get('password')
+        name = request.form.get('name')
+        phone = request.form.get('phone')
+        district = request.form.get('district')
+        user_type = request.form.get('user_type')  # Get user type from form
+        status = "active"    # Default status
+        registration_date = datetime.now().date().strftime("%Y-%m-%d")  # Get current date
+
+        if not is_valid_email(email):
+            flash('Invalid email address.', 'danger')
+            return render_template('register.html')
+
+        if not is_valid_password(password):
+            flash('Password must be at least 8 characters long and include one uppercase letter, one lowercase letter, one number, and one special character.', 'danger')
+            return render_template('register.html')
+
+        if not is_valid_phone(phone):
+            flash('Invalid phone number.', 'danger')
+            return render_template('register.html')
+
+        if not is_valid_name(name):
+            flash('Name cannot contain numbers or special characters.', 'danger')
+            return render_template('register.html')
+
+        if not is_valid_district(district):
+            flash('District cannot contain numbers or special characters.', 'danger')
+            return render_template('register.html')
+
+        try:
+            # Create user in Firebase Auth
+            user = auth.create_user_with_email_and_password(email, password)
+            user_id = user['localId']
+            auth.send_email_verification(user['idToken'])
+
+            # Store user data in Firebase Realtime Database
+            db.child("users").child(user_id).set({
+                "name": name,
+                "phone": phone,
+                "district": district,
+                "email": email,
+                "user_type": user_type,  # Save user type
+                "status": status,  # Default status
+                "registration_date": registration_date  # Save registration date (only date)
+            })
+
+            flash('Registration successful! Please verify your email before logging in.', 'success')
+            return redirect(url_for('login'))
+
+        except Exception as e:
+            error = f"Unsuccessful registration: {str(e)}"
+            flash(error, 'danger')
+            return render_template('register.html')
+
+    return render_template('register.html')
+
+
+@app.route('/resend-verification', methods=['GET', 'POST'])
+def resend_verification():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        try:
+            user = auth.sign_in_with_email_and_password(email, password)
+            auth.send_email_verification(user['idToken'])
+            flash('Verification email sent.', 'success')
+        except Exception as e:
+            flash(f'Failed to send verification email: {str(e)}', 'danger')
+
+    return render_template('resend_verification.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if 'email' in session and 'user_info' in session:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        email = request.form.get('email').lower()
+        password = request.form.get('password')
+
+        if not is_valid_email(email):
+            flash('Invalid email address.', 'danger')
+            return render_template('login.html')
+
+        if not is_valid_password(password):
+            flash('Invalid password format.', 'danger')
+            return render_template('login.html')
+
+        try:
+            user = auth.sign_in_with_email_and_password(email, password)
+        except Exception as e:
+            error_message = str(e)
+            if "INVALID_PASSWORD" in error_message:
+                flash('Incorrect password. Please try again.', 'danger')
+            elif "EMAIL_NOT_FOUND" in error_message:
+                flash('Email not found. Please check your email or register.', 'danger')
+            else:
+                flash(f'Login error: {error_message}', 'danger')
+            return render_template('login.html')
+
+        user_id = user['localId']
+
+        if not auth.get_account_info(user['idToken'])['users'][0]['emailVerified']:
+            flash('Email not verified. Please check your email for the verification link.', 'danger')
+            return render_template('login.html')
+
+        session['user_id'] = user_id  # Store user_id in session
+        user_data = db.child("users").child(user_id).get().val()
+
+        if user_data:
+            session['email'] = email
+            session['user_info'] = user_data
+
+            # Redirect based on user type
+            if user_data.get('user_type') == 'Admin':
+                return redirect(url_for('admin_dashboard'))
+            elif user_data.get('user_type') == 'vendor':
+                return redirect(url_for('vendor_dashboard'))
+            else:
+                return redirect(url_for('index'))
+        else:
+            flash('User data not found.', 'danger')
+            return render_template('login.html')
+
+    return render_template('login.html')
+
+@app.route('/login/google')
+def google_login():
+    google_provider_cfg = get_google_provider_cfg()
+    authorization_endpoint = google_provider_cfg["authorization_endpoint"]
+
+    request_uri = client.prepare_request_uri(
+        authorization_endpoint,
+        redirect_uri=request.base_url + "/callback",
+        scope=["openid", "email", "profile"],
+        prompt="select_account"  # Force account selection
+    )
+    return redirect(request_uri)
+
+@app.route('/login/google/callback')
+def google_callback():
+    code = request.args.get("code")
+    google_provider_cfg = get_google_provider_cfg()
+    token_endpoint = google_provider_cfg["token_endpoint"]
+
+    # Exchange authorization code for access token
+    token_url, headers, body = client.prepare_token_request(
+        token_endpoint,
+        authorization_response=request.url,
+        redirect_url=request.base_url,
+        code=code
+    )
+    token_response = requests.post(
+        token_url,
+        headers=headers,
+        data=body,
+        auth=(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET),
+    )
+    token_json = token_response.json()
+
+    client.parse_request_body_response(json.dumps(token_json))
+    userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
+    uri, headers, body = client.add_token(userinfo_endpoint)
+    userinfo_response = requests.get(uri, headers=headers, data=body)
+
+    userinfo = userinfo_response.json()
+
+    if userinfo.get("email_verified"):
+        users_email = userinfo["email"]
+        users_name = userinfo["name"]
+        picture = userinfo["picture"]
+
+        session['email'] = users_email
+        session['name'] = users_name
+        session['picture'] = picture
+
+        # Check if user already exists in Firebase
+        try:
+            user = auth.sign_in_with_email_and_password(users_email, users_email)
+            user_id = user['localId']
+        except:
+            # If the user does not exist, create a new one
+            try:
+                user = auth.create_user_with_email_and_password(users_email, users_email)
+                user_id = user['localId']
+                # Save user info in Firebase
+                db.child("users").child(user_id).set({
+                    "name": users_name,
+                    "phone": "",  # Default values if not provided
+                    "district": "",
+                    "email": users_email,
+                    "user_type": "customer"  # Default user type
+                })
+            except Exception as e:
+                flash(f"Error creating user: {str(e)}", 'danger')
+                return redirect(url_for('login'))
+
+        # Fetch user data from the database and update the session
+        user_data = db.child("users").child(user_id).get().val()
+
+        if user_data:
+            session['user_id'] = user_id
+            session['user_info'] = user_data
+            flash('Logged in successfully with Google.', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('User data not found after login.', 'danger')
+            return redirect(url_for('login'))
+    else:
+        flash('User email not available or not verified by Google.', 'danger')
+        return redirect(url_for('login'))
+@app.route('/admin_dashboard')
+def admin_dashboard():
+    if 'user_id' not in session or 'email' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    email = session['email']
+
+    try:
+        user_info = db.child("users").child(user_id).get().val()
+        if not user_info or user_info.get('user_type') != 'Admin':
+            raise ValueError("Unauthorized access")
+
+        # Here you can add any admin-specific data you want to pass to the template
+        # For example, you might want to get some statistics or user lists
+
+        return render_template('Admin/index.html', user_info=user_info, email=email)
+    except Exception as e:
+        app.logger.error(f"Error in admin_dashboard: {str(e)}")
+        flash('An error occurred while loading the page. Please try again.', 'danger')
+        return redirect(url_for('index'))
+@app.route('/index')
+def index():
+    if 'email' in session and 'user_info' in session:
+        email = session['email']
+        user_info = session['user_info']
+    else:
+        email = None
+        user_info = None
+
+    # Fetch data from the 'products' table
+    try:
+        products = db.child("products").get().val()  # Fetch all products from the 'products' table
+    except Exception as e:
+        products = None
+        flash(f"Failed to retrieve products: {str(e)}", 'danger')
+
+    # Fetch best seller products
+    try:
+        # You might want to implement a logic to determine best sellers
+        # For now, let's assume the first 5 products are best sellers
+        best_seller_products = []
+        if products:
+            for product_id, product in list(products.items())[:5]:
+                product['id'] = product_id
+                best_seller_products.append(product)
+    except Exception as e:
+        best_seller_products = None
+        flash(f"Failed to retrieve best seller products: {str(e)}", 'danger')
+
+    return render_template('index.html', 
+                           email=email, 
+                           user_info=user_info, 
+                           products=products, 
+                           best_seller_products=best_seller_products)
+
+
+@app.route('/vendor_dashboard')
+def vendor_dashboard():
+    if 'user_id' not in session or 'email' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    email = session['email']
+
+    try:
+        user_info = db.child("users").child(user_id).get().val()
+        if not user_info:
+            raise ValueError("User information not found")
+
+        # Fetch recent orders for the vendor
+        all_orders = db.child("orders").get().val()
+        recent_orders = []
+        if all_orders:
+            for order_id, order in all_orders.items():
+                for item in order.get('items', []):
+                    if item.get('store_name') == user_info.get('store_name'):
+                        product_id = item.get('product_id')
+                        product_details = get_product_details(product_id)
+                        recent_orders.append({
+                            'order_id': order_id,
+                            'product_image': product_details.get('product_image', ''),
+                            'product_name': product_details.get('product_name', 'Unknown Product'),
+                            'quantity': item.get('quantity', 0),
+                            'order_date': order.get('created_at', 'N/A'),
+                            'order_cost': f"₹{float(item.get('item_total', 0)):,.2f}",
+                            'status': order.get('status', 'Unknown')
+                        })
+                        if len(recent_orders) >= 5:  # Limit to 5 recent orders
+                            break
+                if len(recent_orders) >= 5:
+                    break
+
+        return render_template('andshop/index.html', user_info=user_info, email=email, recent_orders=recent_orders)
+    except Exception as e:
+        app.logger.error(f"Error in vendor_dashboard: {str(e)}")
+        flash('An error occurred while loading the page. Please try again.', 'danger')
+        return redirect(url_for('index'))
+
+@app.route('/account')
+def account():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    user_info = session.get('user_info')
+
+    try:
+        # Fetch orders for the current user
+        orders_data = db.child("orders").order_by_child("user_id").equal_to(user_id).get()
+        
+        orders = []
+        if orders_data.each():
+            for order in orders_data.each():
+                order_data = order.val()
+                order_data['order_id'] = order.key()
+
+                # Add payment ID and shipping address to order data
+                order_data['payment_id'] = order_data.get('payment_intent_id', 'N/A')
+                order_data['shipping_address'] = order_data.get('shipping_address', 'N/A')
+
+                # Fetch product details for each item in the order
+                items = order_data.get('items', [])
+                for item in items:
+                    product_id = item.get('product_id')
+                    if product_id:
+                        product_details = get_product_details(product_id)
+                        item['product_name'] = product_details.get('product_name', 'Unknown Product')
+                        item['image_url'] = product_details.get('product_image', '')
+                    else:
+                        item['product_name'] = 'Unknown Product'
+                        item['image_url'] = ''
+
+                orders.append(order_data)
+        
+        # Sort orders by date (assuming there's a 'created_at' field)
+        orders.sort(key=lambda x: x.get('created_at', ''), reverse=True)
 
     except Exception as e:
         print(f"Error fetching orders: {str(e)}")
@@ -580,7 +1735,23 @@ def update_account():
 # Vendor-start
 @app.route('/product-add')
 def producadd():
-    return render_template('/andshop/product-add.html')
+    if 'user_id' not in session or 'email' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    email = session['email']
+
+    try:
+        user_info = db.child("users").child(user_id).get().val()
+        if not user_info:
+            raise ValueError("User information not found")
+
+        return render_template('/andshop/product-add.html', user=user_info, email=email)
+    except Exception as e:
+        app.logger.error(f"Error in producadd: {str(e)}")
+        flash('An error occurred while loading the page. Please try again.', 'danger')
+        return redirect(url_for('index'))
 @app.route('/user-list')
 def user_list():
     # Check if the user is logged in
@@ -621,24 +1792,30 @@ def user_profile():
 
 @app.route('/add-product', methods=['GET', 'POST'])
 def add_product():
-    if 'email' not in session or 'user_info' not in session:
+    if 'email' not in session or 'user_id' not in session:
+        flash('Please log in to add a product.', 'warning')
         return redirect(url_for('login'))
 
+    user_id = session['user_id']
     categories_list = []
+
     try:
         # Fetch categories from Firebase
         categories_data = db.child("categories").get().val()
-        print("Raw categories data:", categories_data)  # Debug print
         if categories_data:
             for key, value in categories_data.items():
                 categories_list.append({
                     "id": key,
                     "category_name": value.get('category_name', 'N/A')
                 })
-        print("Categories fetched:", categories_list)  # Debug print
+
+        # Fetch user information to get the store name
+        user_info = db.child("users").child(user_id).get().val()
+        store_name = user_info.get('store_name', 'Default Store')  # Use a default if not found
+
     except Exception as e:
-        flash(f"Failed to fetch categories: {str(e)}", 'danger')
-        return redirect(url_for('index'))  # Redirect to a safe page
+        flash(f"Failed to fetch data: {str(e)}", 'danger')
+        return redirect(url_for('index'))
 
     if request.method == 'POST':
         product_name = request.form.get('product_name')
@@ -659,15 +1836,18 @@ def add_product():
             product_image_url = save_product_image(product_image)
 
         try:
-            # Insert product into the database
-            db.child("products").push({
+            # Insert product into the database with store name
+            new_product = {
                 "product_name": product_name,
                 "product_type": product_type,
                 "main_category": main_category,
                 "product_quantity": product_quantity,
                 "product_price": product_price,
-                "product_image": product_image_url
-            })
+                "product_image": product_image_url,
+                "store_name": store_name,  # Add the store name here
+                "vendor_id": user_id  # Optionally add the vendor's user ID
+            }
+            db.child("products").push(new_product)
 
             flash('Product added successfully!', 'success')
             return redirect(url_for('product_list'))
@@ -708,13 +1888,37 @@ def product_detail(product_id):
             flash('Product not found.', 'warning')
             return redirect(url_for('product_list'))
 
+        # Fetch upsell products (e.g., 5 random products)
+        upsell_products = get_upsell_products(5, exclude_id=product_id)
+
     except Exception as e:
         # If there's an error fetching product details, flash an error message
         flash(f"Failed to fetch product details: {str(e)}", 'danger')
         return redirect(url_for('product_list'))
 
-    # Render the product detail template with the fetched product details
-    return render_template('product.html', product_details=product_details)
+    # Render the product detail template with the fetched product details and upsell products
+    return render_template('product.html', product_details=product_details, upsell_products=upsell_products)
+
+def get_upsell_products(limit=5, exclude_id=None):
+    try:
+        all_products = db.child("products").get().val()
+        if all_products:
+            # Convert to list and shuffle
+            products_list = list(all_products.items())
+            random.shuffle(products_list)
+            
+            # Filter out the current product and limit the number of products
+            upsell_products = [
+                {**product, 'id': key} 
+                for key, product in products_list 
+                if key != exclude_id
+            ][:limit]
+            
+            return upsell_products
+        return []
+    except Exception as e:
+        app.logger.error(f"Error fetching upsell products: {str(e)}")
+        return []
 @app.route('/products')
 def product_list():
     try:
@@ -802,7 +2006,7 @@ def delete_product(product_id):
 
 @app.route('/add-category')
 def add_category_page():
-    return render_template('/andshop/add-category.html')  
+    return render_template('/A/add-category.html')  
 @app.route('/add-category', methods=['POST'])
 def add_category():
     if request.method == 'POST':
@@ -818,7 +2022,8 @@ def add_category():
             # Insert category into Firebase Realtime Database
             db.child("categories").push({
                 "category_name": category_name,
-                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Optional: add a timestamp
+                "status": "active",  # Set default status as active
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
 
             flash('Category added successfully!', 'success')
@@ -833,6 +2038,7 @@ def categories():
         # Fetch categories from Firebase
         categories_data = db.child("categories").get().val()
         print("Raw categories data:", categories_data)  # Debug print
+        
         # Convert data into a list of dictionaries for easier processing
         categories_list = []
         if categories_data:
@@ -840,19 +2046,20 @@ def categories():
                 categories_list.append({
                     "id": key,
                     "category_name": value.get('category_name', 'N/A'),
+                    "status": value.get('status', 'inactive'),  # Ensure status is included
                     "created_at": value.get('created_at', 'N/A')
                 })
         
         print("Processed categories list:", categories_list)  # Debug print
 
         # Pass the categories list to the template
-        return render_template('/andshop/main-category.html', categories=categories_list)
+        return render_template('Admin/main-category.html', categories=categories_list)
         
     except Exception as e:
         error_message = f"Error fetching categories: {str(e)}"
         print(error_message)  # Print to console for debugging
         flash(error_message, 'danger')
-        return render_template('/andshop/main-category.html', categories=[])
+        return render_template('Admin/main-category.html', categories=[])
 
 @app.route('/main-category')
 def main_category():
@@ -893,7 +2100,77 @@ def get_cart_count(user_id):
     except Exception as e:
         print(f"Error getting cart count: {str(e)}")
         return 0
+from decimal import Decimal
 
+import logging
+from decimal import Decimal, InvalidOperation
+
+from flask import url_for
+
+@app.route('/new-order')
+def new_order():
+    if 'user_id' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    
+    try:
+        user_info = db.child("users").child(user_id).get().val()
+        if not user_info:
+            raise ValueError("User information not found")
+
+        user_store_name = user_info.get('store_name')
+        if not user_store_name:
+            raise ValueError("User's store name not found")
+
+        all_orders = db.child("orders").get().val()
+        
+        processed_orders = []
+        if all_orders:
+            for order_id, order in all_orders.items():
+                for item in order.get('items', []):
+                    if item.get('store_name') == user_store_name:
+                        product_id = item.get('product_id')
+                        product_details = get_product_details(product_id)
+                        
+                        price = item.get('item_total', 0)
+                        
+                        try:
+                            price_decimal = Decimal(str(price)).quantize(Decimal('0.01'))
+                            formatted_price = f"₹{price_decimal:,.2f}"
+                        except (InvalidOperation, TypeError):
+                            logging.error(f"Error formatting price for order {order_id}, product {product_id}. Price value: {price}")
+                            formatted_price = "Price Error"
+                        
+                        product_image = product_details.get('product_image', '')
+                        if product_image.startswith('/static/'):
+                            product_image = product_image[7:]  # Remove '/static/' from the beginning
+                        
+                        processed_orders.append({
+                            'order_id': order_id,
+                            'product_image': url_for('static', filename=product_image) if product_image else '',
+                            'product_name': product_details.get('product_name', 'Unknown'),
+                            'category': product_details.get('main_category', 'Unknown'),
+                            'price': formatted_price,
+                            'rent_from': item.get('rent_from', 'N/A'),
+                            'rent_to': item.get('rent_to', 'N/A'),
+                            'payment_status': order.get('status', 'Unknown'),
+                            'shipping_address': order.get('shipping_address', 'N/A'),
+                            'quantity': item.get('quantity', 0),
+                            'customer_id': order.get('user_id', 'Unknown'),
+                            'order_date': order.get('created_at', 'N/A'),
+                            'order_cost': formatted_price  # This is the same as 'price' for a single item
+                        })
+
+        logging.info(f"Processed orders: {processed_orders}")
+
+        return render_template('andshop/new-order.html', user_info=user_info, orders=processed_orders)
+    except Exception as e:
+        logging.error(f"Error in new_order: {str(e)}")
+        logging.error(traceback.format_exc())
+        flash('An error occurred while loading the page. Please try again.', 'danger')
+        return redirect(url_for('index'))
 @app.route('/add-to-cart', methods=['POST'])
 def add_to_cart():
     if 'user_id' not in session:
@@ -1268,19 +2545,32 @@ def create_payment():
         payment_success, payment_intent_id = process_payment(order_total)
 
         if payment_success:
-            # Update order status
+            app.logger.info(f"Payment successful for order {order_id}. Updating order status.")
+            # Update order status to 'paid'
             update_order_status(order_id, 'paid', payment_intent_id)
             
-            # Clear the cart
+            # Clear the user's cart
             clear_cart(user_id)
-
-            return jsonify({'success': True, 'redirect_url': url_for('payment_success', order_id=order_id)})
+            
+            return jsonify({
+                'success': True,
+                'message': 'Payment successful',
+                'redirect_url': url_for('payment_success', order_id=order_id)
+            })
         else:
-            return jsonify({'success': False, 'error': 'Payment processing failed'})
+            app.logger.warning(f"Payment failed for order {order_id}")
+            return jsonify({
+                'success': False,
+                'message': 'Payment failed'
+            }), 400
 
     except Exception as e:
         app.logger.error(f"Error in create_payment: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
+        app.logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'message': 'An error occurred during payment processing'
+        }), 500
 
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -1531,6 +2821,7 @@ def create_order_in_database(user_id, order_items, order_total, use_different_sh
 
 def update_order_status(order_id, status, payment_intent_id=None):
     try:
+        app.logger.info(f"Updating order status for order ID: {order_id} to {status}")
         # Fetch all orders
         all_orders = db.child("orders").get().val()
         
@@ -1546,16 +2837,32 @@ def update_order_status(order_id, status, payment_intent_id=None):
                     
                     db.child("orders").child(key).update(update_data)
                     app.logger.info(f"Order status updated for order ID: {order_id}")
+                    
+                    # If the status is changed to 'paid', update product quantities
+                    if status == 'paid':
+                        app.logger.info(f"Order {order_id} is paid. Updating product quantities.")
+                        update_product_quantities(order.get('items', []))
+                    else:
+                        app.logger.info(f"Order {order_id} status is {status}. Not updating product quantities.")
+                    
                     return
         
         app.logger.warning(f"Order not found for updating status: {order_id}")
     except Exception as e:
         app.logger.error(f"Error updating order status: {str(e)}")
+        app.logger.error(traceback.format_exc())
         raise
 
 def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
     try:
         order_id = str(uuid.uuid4())  # Generate a unique order ID
+        
+        # Fetch store names for each item
+        for item in order_items:
+            product_id = item.get('product_id')
+            product_details = get_product_details(product_id)
+            item['store_name'] = product_details.get('store_name', 'Unknown Store')
+
         order_data = {
             'order_id': order_id,
             'user_id': user_id,
@@ -1573,6 +2880,21 @@ def create_order_in_database(user_id, order_items, order_total, use_different_sh
     except Exception as e:
         app.logger.error(f"Error creating order in database: {str(e)}")
         raise
+
+def get_product_details(product_id):
+    try:
+        product = db.child("products").child(product_id).get().val()
+        if product:
+            return {
+                'product_name': product.get('product_name', 'Unknown Product'),
+                'product_image': product.get('product_image', ''),
+                'store_name': product.get('store_name', 'Unknown Store')
+            }
+        else:
+            return {'product_name': 'Unknown Product', 'product_image': '', 'store_name': 'Unknown Store'}
+    except Exception as e:
+        app.logger.error(f"Error fetching product details for ID {product_id}: {str(e)}")
+        return {'product_name': 'Unknown Product', 'product_image': '', 'store_name': 'Unknown Store'}
 
 def clear_cart(user_id):
     try:
@@ -1758,10 +3080,10 @@ def download_order_pdf(order_id):
     elements.append(Spacer(1, 0.25*inch))
 
     # Company Info
-    elements.append(Paragraph("Your Company Name", styles['Heading2']))
-    elements.append(Paragraph("123 Business Street, City, Country", styles['Normal']))
-    elements.append(Paragraph("Phone: +1 234 567 890", styles['Normal']))
-    elements.append(Paragraph("Email: info@yourcompany.com", styles['Normal']))
+    elements.append(Paragraph("Janthrik", styles['Heading2']))
+    elements.append(Paragraph("123 Business Street, Xyz, India", styles['Normal']))
+    elements.append(Paragraph("Phone: +91 1800 567 890", styles['Normal']))
+    elements.append(Paragraph("Email: janthrik@gmail.com", styles['Normal']))
     elements.append(Spacer(1, 0.25*inch))
 
     # Customer and Order Info
@@ -1845,7 +3167,6 @@ def order_details(order_id):
     user_id = session['user_id']
 
     try:
-        # Fetch the specific order
         order = db.child("orders").child(order_id).get().val()
 
         if not order:
@@ -1854,16 +3175,16 @@ def order_details(order_id):
         if str(order.get('user_id')) != str(user_id):
             return jsonify({'success': False, 'message': 'You do not have permission to view this order'}), 403
 
-        # Ensure all necessary fields are present
         order_data = {
             'order_id': order_id,
             'created_at': order.get('created_at', 'N/A'),
             'status': order.get('status', 'N/A'),
             'order_total': float(order.get('order_total', 0)),
+            'payment_id': order.get('payment_intent_id', 'N/A'),
+            'shipping_address': order.get('shipping_address', 'N/A'),
             'items': []
         }
 
-        # Fetch product details for each item in the order
         items = order.get('items', [])
         for item in items:
             product_id = item.get('product_id')
@@ -1887,18 +3208,113 @@ def order_details(order_id):
 def get_product_details(product_id):
     try:
         product = db.child("products").child(product_id).get().val()
-        print(f"Fetched product details for ID {product_id}: {product}")
         if product:
             return {
                 'product_name': product.get('product_name', 'Unknown Product'),
                 'product_image': product.get('product_image', '')
             }
         else:
-            print(f"Product not found for ID: {product_id}")
             return {'product_name': 'Unknown Product', 'product_image': ''}
     except Exception as e:
         print(f"Error fetching product details for ID {product_id}: {str(e)}")
         return {'product_name': 'Unknown Product', 'product_image': ''}
+
+def get_product_details(product_id):
+    try:
+        product = db.child("products").child(product_id).get().val()
+        logging.info(f"Raw product data for ID {product_id}: {product}")
+        if product:
+            return {
+                'product_name': product.get('product_name', 'Unknown Product'),
+                'product_image': product.get('product_image', ''),
+                'store_name': product.get('store_name', 'Unknown Store'),
+                'main_category': product.get('main_category', 'Unknown Category'),
+                'item_total': product.get('item_total', 0)  # Changed from 'product_price' to 'item_total'
+            }
+        else:
+            logging.warning(f"Product not found for ID: {product_id}")
+            return {'product_name': 'Unknown Product', 'product_image': '', 'store_name': 'Unknown Store', 'main_category': 'Unknown Category', 'item_total': 0}
+    except Exception as e:
+        logging.error(f"Error fetching product details for ID {product_id}: {str(e)}")
+        logging.error(traceback.format_exc())
+        return {'product_name': 'Unknown Product', 'product_image': '', 'store_name': 'Unknown Store', 'main_category': 'Unknown Category', 'item_total': 0}
+@app.route('/vendor-list')
+def vendor_list():
+    if 'user_id' not in session or 'email' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    email = session['email']
+
+    try:
+        user_info = db.child("users").child(user_id).get().val()
+        if not user_info or user_info.get('user_type') != 'Admin':
+            raise ValueError("Unauthorized access")
+
+        # Fetch all users from the database
+        all_users = db.child("users").get().val()
+
+        # Filter vendors
+        vendors = {uid: user for uid, user in all_users.items() if user.get('user_type') == 'vendor'}
+
+        return render_template('Admin/vendor-list.html', user_info=user_info, email=email, vendors=vendors)
+    except Exception as e:
+        app.logger.error(f"Error in vendor_list: {str(e)}")
+        flash('An error occurred while loading the page. Please try again.', 'danger')
+        return redirect(url_for('admin_dashboard'))
+@app.route('/vendor-accept')
+def vendor_accept():
+    if 'user_id' not in session or 'email' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    email = session['email']
+
+    try:
+        user_info = db.child("users").child(user_id).get().val()
+        if not user_info or user_info.get('user_type') != 'Admin':
+            raise ValueError("Unauthorized access")
+
+        # Fetch all users from the database
+        all_users = db.child("users").get().val()
+
+        # Filter pending vendors
+        pending_vendors = {uid: user for uid, user in all_users.items() if user.get('user_type') == 'vendor' and user.get('status') == 'pending'}
+
+        return render_template('Admin/vendor-accept.html', user_info=user_info, email=email, pending_vendors=pending_vendors)
+    except Exception as e:
+        app.logger.error(f"Error in vendor_accept: {str(e)}")
+        flash('An error occurred while loading the page. Please try again.', 'danger')
+        return redirect(url_for('admin_dashboard'))
+def update_product_quantities(order_items):
+    try:
+        app.logger.info(f"Updating quantities for order items: {order_items}")
+        for item in order_items:
+            product_id = item.get('product_id')
+            ordered_quantity = int(item.get('quantity', 0))  # Ensure this is an integer
+            
+            app.logger.info(f"Processing product ID: {product_id}, Ordered quantity: {ordered_quantity}")
+            
+            # Fetch current product data
+            product = db.child("products").child(product_id).get().val()
+            if product:
+                current_quantity = int(product.get('product_quantity', 0))  # Convert to integer
+                new_quantity = max(0, current_quantity - ordered_quantity)  # Ensure quantity doesn't go below 0
+                
+                app.logger.info(f"Product {product_id}: Current quantity: {current_quantity}, New quantity: {new_quantity}")
+                
+                # Update the product quantity
+                db.child("products").child(product_id).update({'product_quantity': str(new_quantity)})  # Store as string
+                
+                app.logger.info(f"Updated quantity for product {product_id}. New quantity: {new_quantity}")
+            else:
+                app.logger.warning(f"Product not found for ID: {product_id}")
+    except Exception as e:
+        app.logger.error(f"Error updating product quantities: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        raise
 
 if __name__ == '__main__':
     app.run(debug=True)

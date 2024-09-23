@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Analysis</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <style>
+        body { 
+            padding-top: 56px; /* Adjusted for fixed navbar */
+            background-color: #f8f9fa;
+        }
+        .container { 
+            max-width: 1200px; 
+        }
+        .card { 
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        .card-header { 
+            font-weight: bold;
+            background-color: #007bff;
+            color: white;
+            border-radius: 10px 10px 0 0;
+        }
+        .increase-price { 
+            background-color: #fff3cd; 
+        }
+        .demand-high { color: #28a745; }
+        .demand-medium { color: #ffc107; }
+        .demand-low { color: #dc3545; }
+        .suggestion-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .navbar-brand {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">Rental Store</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/vendor_dashboard"><i class="fas fa-home"></i> Home</a>
+                    </li>
+                    <li class="nav-item active">
+                        <a class="nav-link" href="/analysis">Analysis <span class="sr-only">(current)</span></a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h2 class="mb-4 text-center">Product Analysis</h2>
+
+        <!-- Debug output -->
+        <div class="alert alert-info">
+            Number of suggestions: {{ suggestions|length }}
+        </div>
+
+        {% if suggestions %}
+        <div class="mt-5">
+            <h3 class="mb-4 text-center">Analysis Results for All Products</h3>
+            <div class="row">
+                {% for suggestion in suggestions %}
+                    <div class="col-md-4 mb-4">
+                        <div class="card {% if suggestion['suggested_price'] > suggestion['current_price'] %}increase-price{% endif %}">
+                            <div class="card-header text-center">
+                                {{ suggestion['product_name'] }}
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="suggestion-icon">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <p class="card-text">
+                                    <strong>Product ID:</strong> {{ suggestion['product_id'] or 'N/A' }}<br>
+                                    <strong>Demand (30 days):</strong> {{ "%.2f"|format(suggestion['demand']) }}
+                                    <span class="font-weight-bold ml-2 demand-{{ suggestion['demand_category'].lower() }}">
+                                        ({{ suggestion['demand_category'] }})
+                                    </span><br>
+                                    <strong>Current Price:</strong> ${{ "%.2f"|format(suggestion['current_price']) }}<br>
+                                    <strong>Suggested Price:</strong> ${{ "%.2f"|format(suggestion['suggested_price']) }}<br>
+                                    {% if suggestion['suggested_price'] > suggestion['current_price'] %}
+                                        <strong class="text-warning"><i class="fas fa-arrow-up"></i> Price increase recommended</strong>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info" role="alert">
+            No product analysis available at the moment.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Bootstrap JS and its dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
