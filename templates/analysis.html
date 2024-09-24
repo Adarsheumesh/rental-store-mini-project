@@ -47,6 +47,15 @@
             font-weight: bold;
         }
     </style>
+    <script type="text/javascript">
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                // If the page is loaded from the cache, reload it
+                window.location.reload();
+            }
+        });
+    </script>
+    
 </head>
 <body>
     <!-- Navigation Bar -->
@@ -102,8 +111,8 @@
                                     <span class="font-weight-bold ml-2 demand-{{ suggestion['demand_category'].lower() }}">
                                         ({{ suggestion['demand_category'] }})
                                     </span><br>
-                                    <strong>Current Price:</strong> ${{ "%.2f"|format(suggestion['current_price']) }}<br>
-                                    <strong>Suggested Price:</strong> ${{ "%.2f"|format(suggestion['suggested_price']) }}<br>
+                                    <strong>Current Price:</strong> ₹{{ "%.2f"|format(suggestion['current_price']) }}<br>
+                                    <strong>Suggested Price:</strong> ₹{{ "%.2f"|format(suggestion['suggested_price']) }}<br>
                                     {% if suggestion['suggested_price'] > suggestion['current_price'] %}
                                         <strong class="text-warning"><i class="fas fa-arrow-up"></i> Price increase recommended</strong>
                                     {% endif %}

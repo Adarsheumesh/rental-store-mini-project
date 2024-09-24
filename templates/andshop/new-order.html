@@ -30,6 +30,16 @@
 
 	<!-- FAVICON -->
 	<link href="{{ url_for('static', filename='assets/img/favicon.png') }}" rel="shortcut icon" />
+
+	<script type="text/javascript">
+		window.addEventListener('pageshow', function(event) {
+			if (event.persisted) {
+				// If the page is loaded from the cache, reload it
+				window.location.reload();
+			}
+		});
+	</script>
+	
 </head>
 
 <body class="ec-header-fixed ec-sidebar-fixed ec-sidebar-dark ec-header-light" id="body">
@@ -47,7 +57,6 @@
 						<span class="ec-brand-name text-truncate">ANDSHOP</span>
 					</a>
 				</div>
-
 				<!-- begin sidebar scrollbar -->
 				<div class="ec-navigation" data-simplebar>
 					<!-- sidebar menu -->
@@ -78,29 +87,6 @@
 							</div>
 							<hr>
 						</li>
-
-						<!-- Category -->
-						<li class="has-sub">
-							<a class="sidenav-item-link" href="javascript:void(0)">
-								<i class="mdi mdi-shape"></i>
-								<span class="nav-text">Categories</span> <b class="caret"></b>
-							</a>
-							<div class="collapse">
-								<ul class="sub-menu" id="categorys" data-parent="#sidebar-menu">
-									<li class="">
-										<a class="sidenav-item-link" href="/main-category">
-											<span class="nav-text">All Category</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="/add-category">
-											<span class="nav-text">Add Category</span>
-										</a>
-									</li>
-								</ul>
-							</div>
-						</li>
-
 						<!-- Products -->
 						<li class="has-sub">
 							<a class="sidenav-item-link" href="javascript:void(0)">
@@ -137,79 +123,20 @@
 											<span class="nav-text">Order list</span>
 										</a>
 									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="order-detail.html">
-											<span class="nav-text">Order Detail</span>
-										</a>
-									</li>
-									
 								</ul>
 							</div>
 						</li>
-
-						<!-- Invoice -->
-						<li class="has-sub">
-							<a class="sidenav-item-link" href="javascript:void(0)">
-								<i class="mdi mdi-receipt"></i>
-								<span class="nav-text">Invoice</span> <b class="caret"></b>
-							</a>
-							<div class="collapse">
-								<ul class="sub-menu" id="authentication" data-parent="#sidebar-menu">
-									<li class="">
-										<a href="invoice.php">
-											<span class="nav-text">Invoice list</span>
-										</a>
-									</li>
-									<li class="">
-										<a href="invoice-details.php">
-											<span class="nav-text">Invoice details</span>
-										</a>
-									</li>
-								</ul>
-							</div>
-						</li>
-
-						<!-- Reviews -->
-						<li>
-							<a class="sidenav-item-link" href="review-list.php">
-								<i class="mdi mdi-star-circle-outline"></i>
-								<span class="nav-text">Reviews</span>
-							</a>
-						</li>
-						<!-- Transactions -->
-						<li class="has-sub">
-							<a class="sidenav-item-link" href="javascript:void(0)">
-								<i class="mdi mdi-finance"></i>
-								<span class="nav-text">Transactions</span> <b class="caret"></b>
-							</a>
-							<div class="collapse">
-								<ul class="sub-menu" id="authentication" data-parent="#sidebar-menu">
-									<li class="">
-										<a href="all-transactions.php">
-											<span class="nav-text">All transactions</span>
-										</a>
-									</li>
-									<li class="">
-										<a href="transaction-details.php">
-											<span class="nav-text">Transaction details</span>
-										</a>
-									</li>
-								</ul>
-							</div>
-						</li>
-
 						<!-- Error page -->
 						<li>
-							<a class="sidenav-item-link" href="404.php">
-								<i class="mdi mdi-alert-circle-outline"></i>
-								<span class="nav-text">Error page</span>
+							<a class="sidenav-item-link" href="/analysis">
+								<i class="mdi mdi-finance"></i>
+								<span class="nav-text">Product Analysis page</span>
 							</a>
 						</li>
 					</ul>
 				</div>
 			</div>
 		</div>
-
 		<!-- PAGE WRAPPER -->
 		<div class="ec-page-wrapper">
 
@@ -430,7 +357,7 @@
 					<div class="breadcrumb-wrapper">
 						<div>
 							<h1>All Orders</h1>
-							<p class="breadcrumbs"><span><a href="index.php">Home</a></span>
+							<p class="breadcrumbs"><span><a href="/vendor_dashboard">Home</a></span>
 								<span><i class="mdi mdi-chevron-right"></i></span>All Orders
 							</p>
 						</div>

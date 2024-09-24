@@ -389,11 +389,23 @@ def index():
                            user_info=user_info, 
                            products=products, 
                            best_seller_products=best_seller_products)
+from functools import wraps
+from flask import make_response
 
+def nocache(view):
+    @wraps(view)
+    def no_cache(*args, **kwargs):
+        response = make_response(view(*args, **kwargs))
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '-1'
+        return response
+    return no_cache
 
 @app.route('/vendor_dashboard')
+@nocache
 def vendor_dashboard():
-    if 'user_id' not in session or 'email' not in session:
+    if 'user_info' not in session or 'email' not in session:
         flash('Please log in to access this page.', 'warning')
         return redirect(url_for('login'))
 
@@ -1107,7 +1119,20 @@ from mlprice import get_all_product_suggestions
 
 @app.route('/analysis')
 def analysis():
+    # Check if user is logged in
+    if 'user_id' not in session or 'email' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    email = session['email']
+
     try:
+        # Fetch user information
+        user_info = db.child("users").child(user_id).get().val()
+        if not user_info:
+            raise ValueError("User information not found")
+
         suggestions = get_all_product_suggestions()
         app.logger.info(f"Generated {len(suggestions)} suggestions")
 
@@ -1117,10 +1142,16 @@ def analysis():
             demand = suggestion.get('demand', 'Unknown')
             app.logger.info(f"Product: {product_name}, ID: {product_id}, Demand: {demand}")
         
-        return render_template('analysis.html', suggestions=suggestions)
+        return render_template('analysis.html', 
+                               suggestions=suggestions, 
+                               user_info=user_info, 
+                               email=email)
     except Exception as e:
         app.logger.error(f"Error in analysis route: {str(e)}", exc_info=True)
-        return render_template('error.html', error="An error occurred while generating product suggestions."), 500
+        return render_template('error.html', 
+                               error="An error occurred while generating product suggestions.",
+                               user_info=user_info if 'user_info' in locals() else None, 
+                               email=email), 500
 app.secret_key = 'turbolegion6282'
 
 # Firebase configuration
@@ -1465,13 +1496,22 @@ def vendor_dashboard():
         if not user_info:
             raise ValueError("User information not found")
 
+        # Fetch all users and count customers
+        all_users = db.child("users").get().val()
+        customer_count = sum(1 for user in all_users.values() if user.get('user_type') == 'customer')
+
         # Fetch recent orders for the vendor
         all_orders = db.child("orders").get().val()
         recent_orders = []
+        store_name = user_info.get('store_name', '')
+        total_orders = 34
+        total_revenue = 0
         if all_orders:
             for order_id, order in all_orders.items():
+                if order.get('store_name') == store_name:
+                    total_orders += 1
                 for item in order.get('items', []):
-                    if item.get('store_name') == user_info.get('store_name'):
+                    if item.get('store_name') == store_name:
                         product_id = item.get('product_id')
                         product_details = get_product_details(product_id)
                         recent_orders.append({
@@ -1483,12 +1523,19 @@ def vendor_dashboard():
                             'order_cost': f"₹{float(item.get('item_total', 0)):,.2f}",
                             'status': order.get('status', 'Unknown')
                         })
+                        total_revenue += float(item.get('item_total', 0))
                         if len(recent_orders) >= 5:  # Limit to 5 recent orders
                             break
                 if len(recent_orders) >= 5:
                     break
 
-        return render_template('andshop/index.html', user_info=user_info, email=email, recent_orders=recent_orders)
+        formatted_revenue = "₹{:,.2f}".format(total_revenue)
+
+        print(f"Debug: customer_count = {customer_count}")  # Debug line
+        print(f"Debug: total_orders = {total_orders}")  # Debug line
+        print(f"Debug: total_revenue = {total_revenue}")  # Debug line
+
+        return render_template('andshop/index.html', user_info=user_info, email=email, recent_orders=recent_orders, customer_count=customer_count, total_orders=total_orders, total_revenue=formatted_revenue)
     except Exception as e:
         app.logger.error(f"Error in vendor_dashboard: {str(e)}")
         flash('An error occurred while loading the page. Please try again.', 'danger')
@@ -1633,12 +1680,12 @@ def logout():
     session.pop('user_info', None)
     session.pop('user_id', None)
     session.pop('google_token', None)
-
+    session.clear()
     # Flash message
     flash('You have been logged out.', 'info')
     
     # Redirect to the index page
-    response = redirect(url_for('index'))
+    response = redirect(url_for('login'))
 
     # Prevent caching to ensure the user can't go back to the previous page
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
@@ -1754,40 +1801,66 @@ def producadd():
         return redirect(url_for('index'))
 @app.route('/user-list')
 def user_list():
-    # Check if the user is logged in
-    if 'user_info' in session:
-        try:
-            # Fetch all users from the Firebase database
-            users = db.child("users").get().val()
-            
-            # Filter users where user_type is 'customer'
-            if users:
-                customers = {user_id: user for user_id, user in users.items() if user.get('user_type') == 'customer'}
-                
-                if customers:
-                    return render_template('/andshop/user-list.html', users=customers)
-                else:
-                    flash('No customers found.', 'warning')
-                    return render_template('/andshop/user-list.html', users={})
-            else:
-                flash('No users found.', 'warning')
-                return render_template('/andshop/user-list.html', users={})
-        except Exception as e:
-            flash(f"Error fetching user list: {str(e)}", 'danger')
-            return redirect(url_for('vendor_dashboard'))
-    else:
+    if 'user_info' not in session:
         flash('You need to log in first.', 'danger')
         return redirect(url_for('login'))
+
+    user_info = session['user_info']
+    try:
+        # Fetch all users from the Firebase database
+        users = db.child("users").get().val()
+        
+        # Filter users where user_type is 'customer'
+        if users:
+            customers = {user_id: user for user_id, user in users.items() if user.get('user_type') == 'customer'}
+            
+            if customers:
+                return render_template('andshop/user-list.html', users=customers, user=user_info)
+            else:
+                flash('No customers found.', 'warning')
+                return render_template('andshop/user-list.html', users={}, user=user_info)
+        else:
+            flash('No users found.', 'warning')
+            return render_template('andshop/user-list.html', users={}, user=user_info)
+    except Exception as e:
+        flash(f"Error fetching user list: {str(e)}", 'danger')
+        return redirect(url_for('vendor_dashboard'))
 
 
 @app.route('/user-profile')
 def user_profile():
-    if 'user_info' in session:
-        user_info = session['user_info']
-        return render_template('/andshop/user-profile.html', user=user_info)
-    else:
-        flash('You need to log in to view your profile.', 'warning')
+    if 'email' not in session or 'user_info' not in session:
+        flash('Please log in to view your profile.', 'warning')
         return redirect(url_for('login'))
+
+    email = session['email']
+    user_info = session['user_info']
+    store_name = user_info.get('store_name', '')
+
+    # Fetch all orders
+    all_orders = db.child("orders").get().val()
+
+    total_revenue = 0
+    total_orders = 0
+    if all_orders:
+        for order in all_orders.values():
+            order_items = order.get('order_items', [])
+            store_order = False
+            for item in order_items:
+                if item.get('store_name', '').lower() == store_name.lower():
+                    total_revenue += float(item.get('price', 0))
+                    store_order = True
+            if store_order:
+                total_orders += 1
+
+    # Format the total revenue to two decimal places
+    formatted_revenue = "${:,.2f}".format(total_revenue)
+
+    return render_template('andshop/user-profile.html', 
+                           email=email, 
+                           user=user_info, 
+                           total_revenue=formatted_revenue,
+                           total_orders=total_orders)
     
 
 @app.route('/add-product', methods=['GET', 'POST'])
@@ -1921,6 +1994,11 @@ def get_upsell_products(limit=5, exclude_id=None):
         return []
 @app.route('/products')
 def product_list():
+    if 'user_info' not in session:
+        flash('You need to log in first.', 'danger')
+        return redirect(url_for('login'))
+
+    user_info = session['user_info']
     try:
         # Fetch all products from the Firebase database
         products = db.child("products").get()
@@ -1933,11 +2011,17 @@ def product_list():
         flash(f"Failed to fetch product list: {str(e)}", 'danger')
         return redirect(url_for('index'))  # Redirect to home or an appropriate page
 
-    # Render the product list template with the fetched product data
-    return render_template('/andshop/product-list.html', products=product_list)
+    # Render the product list template with the fetched product data and user info
+    return render_template('/andshop/product-list.html', products=product_list, user=user_info)
             # edit product_page 
 @app.route('/edit-product/<product_id>', methods=['GET', 'POST'])
 def update_product(product_id):
+    # Check if user is logged in
+    if 'user_info' not in session:
+        flash('Please log in to edit products.', 'warning')
+        return redirect(url_for('login'))
+
+    user_info = session['user_info']
     print(f"Accessing edit-product route for product_id: {product_id}")
     try:
         # Retrieve the existing product data
@@ -1954,7 +2038,6 @@ def update_product(product_id):
             product_name = request.form.get('product_name', product['product_name'])
             product_quantity = request.form.get('product_quantity', product['product_quantity'])
             main_category = request.form.get('main_category', product['main_category'])
-            product_type = request.form.get('product_type', product['product_type'])
             product_price = request.form.get('product_price', product['product_price'])
 
             # Prepare data for update
@@ -1962,7 +2045,6 @@ def update_product(product_id):
                 "product_name": product_name,
                 "product_quantity": product_quantity,
                 "main_category": main_category,
-                "product_type": product_type,
                 "product_price": product_price
             }
 
@@ -1985,7 +2067,7 @@ def update_product(product_id):
             return redirect(url_for('product_list'))
 
         # Render the edit product page if the request method is GET
-        return render_template('andshop/edit_product.html', product=product, product_id=product_id)
+        return render_template('andshop/edit_product.html', product=product, product_id=product_id, user_info=user_info)
 
     except Exception as e:
         print(f"Exception caught: {str(e)}")

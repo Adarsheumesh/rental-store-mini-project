@@ -129,7 +129,7 @@
                                                 <input type="date" class="rent-to" value="{{ item.rent_to }}" data-cart-item-id="{{ item.cart_item_id }}" min="">
                                             </td>
                                             <td class="product-remove">
-                                                <button onclick="removeFromCart('{{ item.cart_item_id }}')">
+                                                <button class="remove-from-cart" data-cart-item-id="{{ item.cart_item_id }}">
                                                     <i class="fa fa-times" aria-hidden="true"></i>
                                                 </button>
                                             </td>
@@ -168,7 +168,7 @@
                                         </tbody>
                                     </table>
                                     <div class="wc-proceed-to-checkout">
-                                        <a href="/checkout">Proceed to Checkout</a>
+                                        <a href="{{ url_for('checkout') }}" id="checkoutButton" class="btn">Proceed to Checkout</a>
                                     </div>
                                 </div>
                             </div>
@@ -455,10 +455,11 @@
                                         console.log('Item removed successfully');
                                         $('tr[data-cart-item-id="' + cartItemId + '"]').remove();
                                         updateCartTotal();
-                                        showPopup(response.message);  // Use custom pop-up
+                                        updateCheckoutButton();  // Update button state after removing item
+                                        showPopup(response.message);
                                     } else {
                                         console.error('Failed to remove item:', response.message);
-                                        showPopup('Failed to remove item: ' + response.message);  // Use custom pop-up
+                                        showPopup('Failed to remove item: ' + response.message);
                                     }
                                 },
                                 error: function(jqXHR, textStatus, errorThrown) {
@@ -471,7 +472,7 @@
                                     } catch (e) {
                                         errorMessage += 'Please try again.';
                                     }
-                                    showPopup(errorMessage);  // Use custom pop-up
+                                    showPopup(errorMessage);
                                 }
                             });
                         }
@@ -560,5 +561,72 @@
     <div id="custom-popup" class="custom-popup" style="display: none;">
         <p id="popup-message"></p>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkoutButton = document.getElementById('checkoutButton');
+        const cartItems = {{ cart_items|tojson }};
+
+        function updateCheckoutButton() {
+            const cartItems = document.querySelectorAll('tr[data-cart-item-id]');
+            if (cartItems.length === 0) {
+                checkoutButton.classList.add('disabled');
+                checkoutButton.setAttribute('aria-disabled', 'true');
+                checkoutButton.onclick = function(event) {
+                    event.preventDefault();
+                };
+            } else {
+                checkoutButton.classList.remove('disabled');
+                checkoutButton.removeAttribute('aria-disabled');
+                checkoutButton.onclick = null;
+            }
+        }
+
+        // Initial check
+        updateCheckoutButton();
+
+        // Function to remove item from cart
+        function removeFromCart(cartItemId) {
+            console.log('Attempting to remove item:', cartItemId);
+            $.ajax({
+                url: '/remove-from-cart/' + cartItemId,
+                method: 'POST',
+                success: function(response) {
+                    console.log('Server response:', response);
+                    if (response.success) {
+                        console.log('Item removed successfully');
+                        $('tr[data-cart-item-id="' + cartItemId + '"]').remove();
+                        updateCartTotal();
+                        updateCheckoutButton();  // Update button state after removing item
+                        showPopup(response.message);
+                    } else {
+                        console.error('Failed to remove item:', response.message);
+                        showPopup('Failed to remove item: ' + response.message);
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error('Error removing item:', textStatus, errorThrown);
+                    console.error('Response text:', jqXHR.responseText);
+                    let errorMessage = 'Error removing item. ';
+                    try {
+                        let errorResponse = JSON.parse(jqXHR.responseText);
+                        errorMessage += errorResponse.message || '';
+                    } catch (e) {
+                        errorMessage += 'Please try again.';
+                    }
+                    showPopup(errorMessage);
+                }
+            });
+        }
+
+        // Attach event listeners to remove buttons
+        document.querySelectorAll('.remove-from-cart').forEach(button => {
+            button.addEventListener('click', function() {
+                const cartItemId = this.getAttribute('data-cart-item-id');
+                removeFromCart(cartItemId);
+            });
+        });
+    });
+    </script>
 </body>
 </html>

@@ -27,6 +27,16 @@
 	<!-- FAVICON -->
 	<link rel="icon" href="{{ url_for('static', filename='images/favicon.png') }}" type="image/png">
 
+	<script type="text/javascript">
+		window.addEventListener('pageshow', function(event) {
+			if (event.persisted) {
+				// If the page is loaded from the cache, reload it
+				window.location.reload();
+			}
+		});
+	</script>
+	
+
 </head>
 
 <body class="ec-header-fixed ec-sidebar-fixed ec-sidebar-dark ec-header-light" id="body">
@@ -44,20 +54,18 @@
 						<span class="ec-brand-name text-truncate">ANDSHOP</span>
 					</a>
 				</div>
-
 				<!-- begin sidebar scrollbar -->
 				<div class="ec-navigation" data-simplebar>
 					<!-- sidebar menu -->
 					<ul class="nav sidebar-inner" id="sidebar-menu">
 						<!-- Dashboard -->
-						<li class="">
+						<li class="active">
 							<a class="sidenav-item-link" href="/vendor_dashboard">
 								<i class="mdi mdi-view-dashboard-outline"></i>
 								<span class="nav-text">Dashboard</span>
 							</a>
 							<hr>
 						</li>
-
 						<!-- Users -->
 						<li class="has-sub">
 							<a class="sidenav-item-link" href="javascript:void(0)">
@@ -66,10 +74,9 @@
 							</a>
 							<div class="collapse">
 								<ul class="sub-menu" id="users" data-parent="#sidebar-menu">
-									
 
 									<li class="">
-										<a class="sidenav-item-link" href="/user-list">
+										<a class="sidenav-item-link" href='/user-list'>
 											<span class="nav-text">User List</span>
 										</a>
 									</li>
@@ -77,31 +84,8 @@
 							</div>
 							<hr>
 						</li>
-
-						<!-- Category -->
-						<li class="has-sub">
-							<a class="sidenav-item-link" href="javascript:void(0)">
-								<i class="mdi mdi-shape"></i>
-								<span class="nav-text">Categories</span> <b class="caret"></b>
-							</a>
-							<div class="collapse">
-								<ul class="sub-menu" id="categorys" data-parent="#sidebar-menu">
-									<li class="">
-										<a class="sidenav-item-link" href="/main-category">
-											<span class="nav-text">All Category</span>
-										</a>
-									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="/add-category">
-											<span class="nav-text">Add Category</span>
-										</a>
-									</li>
-								</ul>
-							</div>
-						</li>
-
 						<!-- Products -->
-						<li class="has-sub active">
+						<li class="has-sub">
 							<a class="sidenav-item-link" href="javascript:void(0)">
 								<!-- <i class="mdi mdi-palette-advanced"></i> -->
 								<i class="mdi mdi-package-variant-closed"></i>
@@ -109,10 +93,10 @@
 							</a>
 							<div class="collapse">
 								<ul class="sub-menu" id="products" data-parent="#sidebar-menu">
-									<li class="active">
+									<li class="">
 										<a class="sidenav-item-link" href="/product-add">
 											<span class="nav-text">Add Product</span>
-										</a>
+										</a>										
 									</li>
 									<li class="">
 										<a class="sidenav-item-link" href="/products">
@@ -132,77 +116,18 @@
 							<div class="collapse">
 								<ul class="sub-menu" id="orders" data-parent="#sidebar-menu">
 									<li class="">
-										<a class="sidenav-item-link" href="new-order.php">
+										<a class="sidenav-item-link" href="/new-order">
 											<span class="nav-text">Order list</span>
 										</a>
 									</li>
-									<li class="">
-										<a class="sidenav-item-link" href="order-detail.php">
-											<span class="nav-text">Order Detail</span>
-										</a>
-									</li>
-									
 								</ul>
 							</div>
 						</li>
-
-						<!-- Invoice -->
-						<li class="has-sub">
-							<a class="sidenav-item-link" href="javascript:void(0)">
-								<i class="mdi mdi-receipt"></i>
-								<span class="nav-text">Invoice</span> <b class="caret"></b>
-							</a>
-							<div class="collapse">
-								<ul class="sub-menu" id="authentication" data-parent="#sidebar-menu">
-									<li class="">
-										<a href="invoice.php">
-											<span class="nav-text">Invoice list</span>
-										</a>
-									</li>
-									<li class="">
-										<a href="invoice-details.php">
-											<span class="nav-text">Invoice details</span>
-										</a>
-									</li>
-								</ul>
-							</div>
-						</li>
-
-						<!-- Reviews -->
-						<li>
-							<a class="sidenav-item-link" href="review-list.php">
-								<i class="mdi mdi-star-circle-outline"></i>
-								<span class="nav-text">Reviews</span>
-							</a>
-						</li>
-
-						<!-- Transactions -->
-						<li class="has-sub">
-							<a class="sidenav-item-link" href="javascript:void(0)">
-								<i class="mdi mdi-finance"></i>
-								<span class="nav-text">Transactions</span> <b class="caret"></b>
-							</a>
-							<div class="collapse">
-								<ul class="sub-menu" id="authentication" data-parent="#sidebar-menu">
-									<li class="">
-										<a href="all-transactions.php">
-											<span class="nav-text">All transactions</span>
-										</a>
-									</li>
-									<li class="">
-										<a href="transaction-details.php">
-											<span class="nav-text">Transaction details</span>
-										</a>
-									</li>
-								</ul>
-							</div>
-						</li>
-
 						<!-- Error page -->
-						<li class="">
-							<a class="sidenav-item-link" href="404.php">
-								<i class="mdi mdi-alert-circle-outline"></i>
-								<span class="nav-text">Error page</span>
+						<li>
+							<a class="sidenav-item-link" href="/analysis">
+								<i class="mdi mdi-finance"></i>
+								<span class="nav-text">Product Analysis page</span>
 							</a>
 						</li>
 					</ul>
@@ -448,20 +373,13 @@
 									<div class="row ec-vendor-uploads">
 										<div class="col-lg-8">
 											<div class="ec-vendor-upload-detail">
-												<form method="POST" action="/add-product" class="row g-3" enctype="multipart/form-data">
+												<form method="POST" action="/add-product" class="row g-3" enctype="multipart/form-data" id="productForm">
 													<div class="col-md-6">
 														<label for="productName" class="form-label">Product Name</label>
-														<input type="text" class="form-control" name="product_name" placeholder="Cutting Tool" id="productName">
+														<input type="text" class="form-control" name="product_name" placeholder="Cutting Tool" id="productName" required pattern="^[a-zA-Z\s]+$">
+														<small class="text-muted">Only letters and spaces are allowed.</small>
 													</div>
-													<div class="col-md-6">
-														<label class="form-label">Product Type</label>
-														<select name="product_type" class="form-select">
-															<option value="Cutting Tool">Cutting Tool</option>
-															<option value="Drilling and Fastening Tools">Drilling and Fastening Tools</option>
-															<option value="Air Tools">Air Tools</option>
-															<option value="Welding and Soldering Tools">Welding and Soldering Tools</option>
-														</select>
-													</div>
+
 													<div>
 														<label for="main_category">Main Category:</label>
 														<select id="main_category" name="main_category" required>
@@ -475,11 +393,11 @@
 													</div>
 													<div class="col-md-6">
 														<label for="productQuantity" class="form-label">Product Quantity</label>
-														<input type="text" class="form-control" name="product_quantity" placeholder="Product quantity" id="productQuantity">
+														<input type="number" class="form-control" name="product_quantity" placeholder="Product quantity" id="productQuantity" required min="0">
 													</div>
 													<div class="col-md-6">
 														<label for="productPrice" class="form-label">Product Price</label>
-														<input type="text" class="form-control" name="product_price" placeholder="Product price" id="productPrice">
+														<input type="number" class="form-control" name="product_price" placeholder="Product price" id="productPrice" required min="0" step="0.01">
 													</div>
 													<div class="col-md-12">
 														<div class="product_add_cancel_button">
@@ -570,6 +488,55 @@
 	<script src="{{ url_for('static', filename='assets/plugins/options-sidebar/optionswitcher.js') }}"></script>
 	<!-- custom js -->
 	<script src="{{ url_for('static', filename='assets/js/custom.js') }}"></script>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			const form = document.getElementById('productForm');
+			const productName = document.getElementById('productName');
+			const productQuantity = document.getElementById('productQuantity');
+			const productPrice = document.getElementById('productPrice');
+
+			form.addEventListener('submit', function(event) {
+				let isValid = true;
+
+				// Validate product name
+				if (!/^[a-zA-Z\s]+$/.test(productName.value)) {
+					alert('Product name should only contain letters and spaces.');
+					isValid = false;
+				}
+
+				// Validate quantity
+				if (isNaN(productQuantity.value) || productQuantity.value < 0) {
+					alert('Product quantity should be a positive number.');
+					isValid = false;
+				}
+
+				// Validate price
+				if (isNaN(productPrice.value) || productPrice.value < 0) {
+					alert('Product price should be a positive number.');
+					isValid = false;
+				}
+
+				if (!isValid) {
+					event.preventDefault();
+				}
+			});
+
+			// Real-time validation for product name
+			productName.addEventListener('input', function() {
+				this.value = this.value.replace(/[^a-zA-Z\s]/g, '');
+			});
+
+			// Real-time validation for quantity and price
+			[productQuantity, productPrice].forEach(function(input) {
+				input.addEventListener('input', function() {
+					this.value = this.value.replace(/[^\d.]/g, '');
+					if (this.value.split('.').length > 2) 
+						this.value = this.value.replace(/\.+$/, "");
+				});
+			});
+		});
+	</script>
 </body>
 
 
