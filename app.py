@@ -4657,12 +4657,5 @@ def cancel_order():
     except Exception as e:
         app.logger.error(f"Error cancelling order: {str(e)}")
         return jsonify({'success': False, 'message': 'An error occurred while cancelling the order'}), 500
-    
-@app.route('/health')
-def health_check():
-    return "OK", 200   
-     
-     
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(debug=True)
