@@ -1,26 +1,15 @@
 {
     "version": 2,
     "builds": [
-        {
-            "src": "wsgi.py",
-            "use": "@vercel/python",
-            "config": {
-                "maxLambdaSize": "50mb",
-                "runtime": "python3.9",
-                "buildCommand": "pip install --upgrade pip && pip install -r requirements.txt"
-            }
-        }
+      {
+        "src": "app.py",
+        "use": "@vercel/python"
+      }
     ],
     "routes": [
-        {
-            "src": "/(.*)",
-            "dest": "wsgi.py"
-        }
-    ],
-    "functions": {
-        "wsgi.py": {
-            "memory": 1024,
-            "maxDuration": 10
-        }
-    }
-}
+      {
+        "src": "/(.*)",
+        "dest": "app.py"
+      }
+    ]
+  }
