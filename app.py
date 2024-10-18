@@ -4659,5 +4659,4 @@ def cancel_order():
         return jsonify({'success': False, 'message': 'An error occurred while cancelling the order'}), 500
     
     
-if __name__ == '__main__':
-    app.run(debug=True)
+
