@@ -44,6 +44,78 @@
  <!-- modernizr js -->
  <script src="{{ url_for('static', filename='js/vendor/modernizr-2.8.3.min.js') }}"></script>
  
+    <style>
+        .user-account-dropdown {
+            position: relative;
+        }
+
+        .user-account-dropdown .user-toggle {
+            color: #2874f0;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 16px;
+            padding: 8px 12px;
+            background-color: #fff;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .user-account-dropdown .user-toggle:hover {
+            background-color: #f0f0f0;
+        }
+
+        .user-account-dropdown .user-toggle i {
+            margin-right: 5px;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            display: none;
+            z-index: 1000;
+            min-width: 200px;
+            padding: 5px 0;
+        }
+
+        .user-account-dropdown:hover .ht-dropdown.user-menu {
+            display: block;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu li {
+            list-style: none;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu a {
+            display: block;
+            padding: 10px 20px;
+            color: #333;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu a:hover {
+            background-color: #f5f5f5;
+            color: #2874f0;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu .divider {
+            height: 1px;
+            background-color: #e0e0e0;
+            margin: 5px 0;
+        }
+    </style>
 </head>
 
 <body>
@@ -64,98 +136,39 @@
                         <!--  logo Start-->
                         <div class="col-auto">
                             <div class="logo">
-                                <img src="{{ url_for('static', filename='img/logo/logo.png') }}" alt="logo-image">
-                            </div>
+                                <a href="/index"><img src="{{ url_for('static', filename='img/logo/logo.png') }}"></a>
+                            </div>                          
                         </div>
                        <!--  logo End -->
 
                         <!--  Desktop Memu Start -->
-                       
+                        
                         <!--  Desktop Memu End -->
                         
                         <!--  Cartt Box  Start -->
                         <div class="col-auto">
                             <div class="cart-box text-end">
                                 <ul>
-                                    <li><a href="compare.html"><i class="fa fa-cog"></i></a>
-                                        <ul class="ht-dropdown">
-                                            {% if 'email' in session %}
-                                            <li><a href="/account">Account</a></li> 
-                                            {% else %}
-                                            <li><a href="/login">Login</a></li>
-                                            <li><a href="/register">Register</a></li>
-                                            {% endif %}                                            
+                                    <li class="user-account-dropdown">
+                                        <a href="#" class="user-toggle">
+                                            <i class="fa fa-user-circle"></i> Hello, {{ user_info.name }} <i class="fa fa-angle-down"></i>
+                                        </a>
+                                        <ul class="ht-dropdown user-menu">
+                                            <li><a href="/account"><i class="fa fa-user"></i> My Account</a></li>
+                                            <li><a href="/wishlist"><i class="fa fa-heart"></i> Wishlist</a></li>
+                                            <li class="divider"></li>
+                                            <li><a href="/logout"><i class="fa fa-sign-out"></i> Logout</a></li>
                                         </ul>
                                     </li>                                    
                                     <li><a href="/wishlist"><i class="fa fa-heart-o"></i></a></li>
-                                    <li><a href="/cart"><i class="fa fa-shopping-basket"></i><span class="cart-counter">2</span></a>
-                                        
+                                    <li>
+                                        <a href="/cart"><i class="fa fa-shopping-basket"></i><span class="cart-counter">{{ cart_count }}</span></a>
                                     </li>
                                 </ul>
                             </div>
                         </div>
                         <!--  Cartt Box  End-->
-                        <!-- Mobile Menu Start -->
-                        <div class="col-sm-12 d-lg-none">
-                            <div class="mobile-menu">
-                                <nav>
-                                    <ul>
-                                        <li><a href="index.html">home</a>
-                                            <!-- Home Version Dropdown Start -->
-                                            <ul>
-                                                <li><a href="index.html">Home Version One</a></li>
-                                                <li><a href="index-2.html">Home Version Two</a></li>
-                                                <li><a href="index-3.html">Home Box Layout</a></li>
-                                            </ul>
-                                            <!-- Home Version Dropdown End -->
-                                        </li>
-                                        <li><a href="shop.html">shop</a>
-                                            <!-- Mobile Menu Dropdown Start -->
-                                            <ul>
-                                                <li><a href="product.html">Shop</a>
-                                                    <ul>
-                                                        <li><a href="shop.html">Product Category Name</a>
-                                                            <!-- Start Three Step -->
-                                                            <ul>
-                                                                <li><a href="shop.html">Product Category Name</a></li>
-                                                                <li><a href="shop.html">Product Category Name</a></li>
-                                                                <li><a href="shop.html">Product Category Name</a></li>
-                                                            </ul>
-                                                        </li>
-                                                        <li><a href="shop.html">Product Category Name</a></li>
-                                                        <li><a href="shop.html">Product Category Name</a></li>
-                                                    </ul>
-                                                </li>
-                                                <li><a href="product.html">product details Page</a></li>
-                                                <li><a href="compare.html">Compare Page</a></li>
-                                                <li><a href="cart.html">Cart Page</a></li>
-                                                <li><a href="checkout.html">Checkout Page</a></li>
-                                                <li><a href="wishlist.html">Wishlist Page</a></li>
-                                            </ul>
-                                            <!-- Mobile Menu Dropdown End -->
-                                        </li>
-                                        <li><a href="blog.html">Blog</a>
-                                            <!-- Mobile Menu Dropdown Start -->
-                                            <ul>
-                                                <li><a href="blog-details.html">Blog Details Page</a></li>
-                                            </ul>
-                                            <!-- Mobile Menu Dropdown End -->
-                                        </li>
-                                        <li><a href="#">pages</a>
-                                            <!-- Mobile Menu Dropdown Start -->
-                                            <ul>
-                                                <li><a href="login.html">login Page</a></li>
-                                                <li><a href="register.html">Register Page</a></li>
-                                                <li><a href="404.html">404 Page</a></li>
-                                            </ul>
-                                            <!-- Mobile Menu Dropdown End -->
-                                        </li>
-                                        <li><a href="about.html">about us</a></li>
-                                        <li><a href="contact.html">contact us</a></li>
-                                    </ul>
-                                </nav>
-                            </div>
-                        </div>
+                       
                         <!-- Mobile Menu  End -->                        
                     </div>
                     <!-- Row End -->
@@ -182,27 +195,7 @@
         <div class="my-account white-bg pb-60">
             <div class="container">
                 <div class="account-dashboard">
-                   <div class="dashboard-upper-info">
-                       <div class="row no-gutters align-items-center">
-                           <div class="col-lg-3 col-md-6">
-                               <div class="d-single-info">
-                                <p class="user-name">Hello <span>{{ user_info.name }}</span></p>         
-                                <p>(not <span>{{user_info.email }}</span>? <a href="/logout">Log Out</a>)</p>
-                               </div>
-                           </div>
-                           <div class="col-lg-3 col-md-6">
-                               
-                           </div>
-                           <div class="col-lg-3 col-md-6">
-                               
-                           </div>
-                           <div class="col-lg-3 col-md-6">
-                               <div class="d-single-info text-center">
-                                   <a class="view-cart" href="/cart"><i class="fa fa-cart-plus" aria-hidden="true"></i>view cart</a>
-                               </div>
-                           </div>
-                       </div>
-                   </div>
+                   
                    <div class="row">
                     <div class="col-lg-2">
                         <!-- Nav tabs -->
@@ -251,49 +244,94 @@
                             </div>
                             <div id="orders" class="tab-pane fade">
                                 <h3>Orders</h3>
-                                <div class="table-responsive">
-                                    <table class="table">
-                                        <tbody>
-                                            {% for order in orders %}
+                                <div class="order-history-container">
+                                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                        <table class="table">
+                                            <tbody>
+                                                {% for order in orders %}
+                                                    <tr>
+                                                        <td colspan="5">
+                                                            <strong>Order ID: {{ order.get('order_id', 'N/A') }}</strong><br>
+                                                            Total Price: ₹{{ "%.2f"|format(order.get('order_total', 0)) }}<br>
+                                                            Order Date: {{ order.get('created_at', 'N/A') }}
+                                                        </td>
+                                                    </tr>
+                                                    {% for item in order.get('items', []) %}
+                                                    <tr>
+                                                        <td>
+                                                            <img src="{{ item.get('image_url', url_for('static', filename='img/default-product.jpg')) }}" 
+                                                                 alt="{{ item.get('product_name', 'Product') }}" width="50" height="50">
+                                                        </td>
+                                                        <td>
+                                                            <strong>{{ item.get('product_name', 'Unknown Product') }}</strong><br>
+                                                            {% if item.get('color') %}Color: {{ item.get('color') }}{% endif %}
+                                                            {% if item.get('size') %}Size: {{ item.get('size') }}{% endif %}
+                                                        </td>
+                                                        <td>₹{{ "%.2f"|format(item.get('item_total', 0)) }}</td>
+                                                        <td>
+                                                            {% if order.get('status') == 'cancelled' %}
+                                                                <span class="badge bg-danger">Cancelled</span><br>
+                                                                <small>Cancelled on: {{ order.get('cancelled_at', 'N/A').split('T')[0] if order.get('cancelled_at') else 'N/A' }}</small>
+                                                            {% elif order.get('returns', {}).get('status') == 'returned' %}
+                                                                <span class="badge bg-success">Returned</span><br>
+                                                                <small>Returned on: {{ order.get('returns', {}).get('completed_at', 'N/A').split('T')[0] if order.get('returns', {}).get('completed_at') else 'N/A' }}</small>
+                                                            {% elif order.get('returns', {}).get('status') == 'return_initiated' %}
+                                                                <span class="badge bg-warning text-dark">Return Initiated</span><br>
+                                                                <small>Initiated on: {{ order.get('returns', {}).get('initiated_at', 'N/A').split('T')[0] if order.get('returns', {}).get('initiated_at') else 'N/A' }}</small>
+                                                            {% else %}
+                                                                {% set earliest_rent_from = order.get('items', [])|map(attribute='rent_from')|reject('none')|first %}
+                                                                <span class="badge bg-primary">Active</span><br>
+                                                                <small>Rental Start: {{ earliest_rent_from.split('T')[0] if earliest_rent_from else 'N/A' }}</small>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                    <tr>
+                                                        <td colspan="5">
+                                                            <div class="d-flex flex-column align-items-start">
+                                                                <div class="btn-group-vertical w-100 mb-2" role="group">
+                                                                    <button class="btn btn-outline-primary btn-sm view-order-details" data-order-id="{{ order.get('order_id', '') }}">
+                                                                        <i class="fa fa-eye"></i> View Details
+                                                                    </button>
+                                                                    <a href="{{ url_for('download_order_pdf', order_id=order.get('order_id', '')) }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+                                                                        <i class="fa fa-download"></i> Download Invoice
+                                                                    </a>
+                                                                </div>
+                                                                
+                                                                {% if order.get('status') != 'cancelled' and order.get('returns', {}).get('status') != 'returned' %}
+                                                                    <div class="btn-group w-100" role="group">
+                                                                        <button class="btn btn-outline-warning btn-sm return-item" 
+                                                                            id="return-button-{{ order.get('order_id', '') }}"
+                                                                            data-order-id="{{ order.get('order_id', '') }}"
+                                                                            data-product-id="{{ order.get('items', [])[0].get('product_id', '') }}"
+                                                                            data-return-status="{{ order.get('returns', {}).get('status', 'not_initiated') }}"
+                                                                            {% if order.get('returns', {}).get('status') in ['return_initiated', 'returned'] %}disabled{% endif %}
+                                                                            style="border-color: #ffc107; color: #ffc107; background-color: transparent;">
+                                                                            <i class="fa fa-undo"></i> Return
+                                                                        </button>
+                                                                        
+                                                                        <button class="btn btn-sm cancel-order btn-outline-danger"
+                                                                            id="cancel-button-{{ order.get('order_id', '') }}"
+                                                                            data-order-id="{{ order.get('order_id', '') }}"
+                                                                            data-order-time="{{ order.get('created_at', '') }}">
+                                                                            <i class="fa fa-times"></i> Cancel Order
+                                                                        </button>
+                                                                    </div>
+                                                                {% endif %}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td colspan="5"><hr></td>
+                                                    </tr>
+                                                {% else %}
                                                 <tr>
-                                                    <td colspan="5">
-                                                        <strong>Order ID: {{ order.get('order_id', 'N/A') }}</strong><br>
-                                                        Total Price: ₹{{ "%.2f"|format(order.get('order_total', 0)) }}<br>
-                                                        Order Date: {{ order.get('created_at', 'N/A') }}
-                                                    </td>
-                                                </tr>
-                                                {% for item in order.get('items', []) %}
-                                                <tr>
-                                                    <td>
-                                                        <img src="{{ item.get('image_url', url_for('static', filename='img/default-product.jpg')) }}" 
-                                                             alt="{{ item.get('product_name', 'Product') }}" width="50" height="50">
-                                                    </td>
-                                                    <td>
-                                                        <strong>{{ item.get('product_name', 'Unknown Product') }}</strong><br>
-                                                        {% if item.get('color') %}Color: {{ item.get('color') }}{% endif %}
-                                                        {% if item.get('size') %}Size: {{ item.get('size') }}{% endif %}
-                                                    </td>
-                                                    <td>₹{{ "%.2f"|format(item.get('item_total', 0)) }}</td>
-                                                    <td>
-                                                        <span class="text-success">● Delivered Soon {{ order.get('delivery_date') }}</span><br>
-                                                        Your item will be delivered in 7 Days
-                                                    </td>
-                                                    <td>
-                                                        <button class="btn btn-link view-order-details" data-order-id="{{ order.get('order_id', '') }}">View Order Details</button>
-                                                        <a href="{{ url_for('download_order_pdf', order_id=order.get('order_id', '')) }}" class="btn btn-primary btn-sm" target="_blank">Download Invoice</a>
-                                                    </td>
+                                                    <td colspan="5">No orders found.</td>
                                                 </tr>
                                                 {% endfor %}
-                                                <tr>
-                                                    <td colspan="5"><hr></td>
-                                                </tr>
-                                            {% else %}
-                                            <tr>
-                                                <td colspan="5">No orders found.</td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -557,7 +595,7 @@
             <div class="footer-bottom off-white-bg2">
                 <div class="container">
                     <div class="footer-bottom-content">
-                        <p class="copy-right-text">&copy; 2023 <strong> Jantrik </strong> Made with <i class="fa fa-heart text-danger"></i> by <a href="https://hasthemes.com/" target="_blank"><strong>HasThemes</strong></a></p>
+                        
                         <div class="footer-social-content">
                             <ul class="social-content-list">
                                 <li><a href="#"><i class="fa fa-twitter"></i></a></li>
@@ -627,99 +665,248 @@
     </div>
 </div>
 
+<!-- Add this just before the closing </body> tag -->
+<!-- Modal for Return Process -->
+<div class="modal fade" id="returnModal" tabindex="-1" role="dialog" aria-labelledby="returnModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="returnModalLabel">Return Product</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="returnModalBody">
+                <!-- Content will be dynamically inserted here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="confirmReturn">Confirm Return</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="position-fixed bottom-0 right-0 p-3" style="z-index: 5; right: 0; bottom: 0;">
+  <div id="liveToast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true" data-delay="5000">
+    <div class="toast-header">
+      <strong class="mr-auto" id="toastTitle">Notification</strong>
+      <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+    <div class="toast-body" id="toastMessage">
+    </div>
+  </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const viewOrderButtons = document.querySelectorAll('.view-order-details');
-    const orderDetailsContent = document.getElementById('orderDetailsContent');
-    const orderDetailsModal = document.getElementById('orderDetailsModal');
+    const returnButtons = document.querySelectorAll('.return-item');
+    const returnModal = document.getElementById('returnModal');
+    const returnModalBody = document.getElementById('returnModalBody');
+    const confirmReturnButton = document.getElementById('confirmReturn');
 
-    if (!orderDetailsContent || !orderDetailsModal) {
-        console.error('Required modal elements not found');
-        return;
+    function createToastContainer() {
+        const toastContainer = document.createElement('div');
+        toastContainer.className = 'position-fixed bottom-0 right-0 p-3';
+        toastContainer.style.zIndex = '5';
+        toastContainer.style.right = '0';
+        toastContainer.style.bottom = '0';
+        toastContainer.innerHTML = `
+            <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="5000">
+                <div class="toast-header">
+                    <strong class="mr-auto" id="toastTitle">Notification</strong>
+                    <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="toast-body" id="toastMessage"></div>
+            </div>
+        `;
+        document.body.appendChild(toastContainer);
     }
 
-    // Initialize the modal
-    $(orderDetailsModal).modal({
-        show: false,
-        backdrop: 'static',
-        keyboard: false
-    });
+    function showToast(title, message, isError = false) {
+        let toast = document.getElementById('liveToast');
+        if (!toast) {
+            createToastContainer();
+            toast = document.getElementById('liveToast');
+        }
+        const toastTitle = document.getElementById('toastTitle');
+        const toastMessage = document.getElementById('toastMessage');
+        
+        if (toastTitle) toastTitle.textContent = title;
+        if (toastMessage) toastMessage.textContent = message;
+        
+        toast.classList.toggle('bg-danger', isError);
+        toast.classList.toggle('text-white', isError);
+        
+        // Initialize the toast with options
+        $(toast).toast({
+            delay: 5000, // 5 seconds
+            autohide: true
+        });
+        
+        // Show the toast
+        $(toast).toast('show');
+    }
 
-    viewOrderButtons.forEach(button => {
+    function calculateRemainingDays(rentToDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const rentTo = new Date(rentToDate);
+        rentTo.setHours(0, 0, 0, 0);
+        const timeDiff = rentTo.getTime() - today.getTime();
+        return Math.ceil(timeDiff / (1000 * 3600 * 24));
+    }
+
+    returnButtons.forEach(button => {
         button.addEventListener('click', function() {
             const orderId = this.getAttribute('data-order-id');
+            
+            console.log('Return button clicked:', orderId);
+
             fetch(`/order/${orderId}`)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    console.log('Received data:', data);
-                    if (data.success && data.order) {
+                    console.log('Fetched data:', data);
+                    if (data.success && data.order && data.order.items && data.order.items.length > 0) {
                         const order = data.order;
-                        console.log('Order details:', order);
-                        try {
-                            let modalContent = `
-                                <p><strong>Order ID:</strong> ${order.order_id || 'N/A'}</p>
-                                <p><strong>Order Date:</strong> ${order.created_at || 'N/A'}</p>
-                                <p><strong>Status:</strong> ${order.status || 'N/A'}</p>
-                                <p><strong>Shipping Address:</strong> ${order.shipping_address || 'N/A'}</p>
-                                <p><strong>Total:</strong> ₹${(order.order_total || 0).toFixed(2)}</p>
-                                <h6>Items:</h6>
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>Product</th>
-                                            <th>Quantity</th>
-                                            <th>Rent From</th>
-                                            <th>Rent To</th>
-                                            <th>Days</th>
-                                            <th>Price</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+                        const item = order.items[0];
+                        console.log('Item found:', item);
+                        
+                        if (item && item.rent_to) {
+                            const rentToDate = new Date(item.rent_to);
+                            const returnDate = new Date(rentToDate);
+                            const pickupDate = new Date(rentToDate);
+                            pickupDate.setDate(pickupDate.getDate() + 1);
+
+                            const remainingDays = calculateRemainingDays(rentToDate);
+                            const daysText = remainingDays > 0 ? `${remainingDays} days remaining` : 'Return overdue';
+
+                            returnModalBody.innerHTML = `
+                                <p><strong>Product:</strong> ${item.product_name}</p>
+                                <p><strong>Return Date:</strong> ${returnDate.toLocaleDateString()}</p>
+                                <p><strong>Pickup Date:</strong> ${pickupDate.toLocaleDateString()}</p>
+                                <p><strong>Countdown:</strong> <span class="text-${remainingDays > 0 ? 'success' : 'danger'}">${daysText}</span></p>
+                                <p>Please ensure the product is ready for pickup on the specified date.</p>
                             `;
-                            if (Array.isArray(order.items)) {
-                                order.items.forEach(item => {
-                                    modalContent += `
-                                        <tr>
-                                            <td>${item.product_name || 'N/A'}</td>
-                                            <td>${item.quantity || 'N/A'}</td>
-                                            <td>${item.rent_from || 'N/A'}</td>
-                                            <td>${item.rent_to || 'N/A'}</td>
-                                            <td>${item.rental_days || 'N/A'}</td>
-                                            <td>₹${(item.item_total || 0).toFixed(2)}</td>
-                                        </tr>
-                                    `;
-                                });
-                            } else {
-                                console.error('order.items is not an array:', order.items);
-                            }
-                            modalContent += `
-                                    </tbody>
-                                </table>
-                            `;
-                            orderDetailsContent.innerHTML = modalContent;
-                            $(orderDetailsModal).modal('show');
-                        } catch (error) {
-                            console.error('Error populating modal:', error);
+
+                            confirmReturnButton.style.display = 'block';
+                            $(returnModal).modal('show');
+                        } else {
+                            showToast('Error', 'Unable to process return due to missing rental information. Please contact support.', true);
                         }
                     } else {
-                        console.error('Failed to fetch order details:', data);
-                        alert('Failed to fetch order details');
+                        showToast('Error', 'Could not find order details. Please contact support.', true);
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('An error occurred while fetching order details');
+                    showToast('Error', 'An error occurred while processing your request. Please try again later.', true);
                 });
         });
     });
 
-    // Handle modal close button
-    const closeButtons = orderDetailsModal.querySelectorAll('[data-dismiss="modal"]');
-    closeButtons.forEach(button => {
+    confirmReturnButton.addEventListener('click', function() {
+        // Here you would implement the logic to process the return
+        // For now, we'll just close the modal and show a success message
+        $(returnModal).modal('hide');
+        showToast('Success', 'Return process initiated. You will be contacted for pickup.');
+    });
+
+    // Close modal when clicking on close button or outside the modal
+    returnModal.addEventListener('click', function(event) {
+        if (event.target === returnModal || event.target.classList.contains('close')) {
+            $(returnModal).modal('hide');
+        }
+    });
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cancelButtons = document.querySelectorAll('.cancel-order');
+
+    cancelButtons.forEach(button => {
+        const orderId = button.getAttribute('data-order-id');
+        const orderTime = new Date(button.getAttribute('data-order-time'));
+        const cancelWindowMs = 10 * 60 * 1000; // 10 minutes in milliseconds
+        
+        // Hide the corresponding return button
+        const returnButton = document.getElementById(`return-button-${orderId}`);
+        if (returnButton) {
+            returnButton.style.display = 'none';
+        }
+
+        updateCancelButton(button, orderTime, cancelWindowMs, returnButton);
+
         button.addEventListener('click', function() {
-            $(orderDetailsModal).modal('hide');
+            if (!this.disabled) {
+                if (confirm('Are you sure you want to cancel this order?')) {
+                    cancelOrder(orderId, this, returnButton);
+                }
+            }
         });
     });
+
+    function updateCancelButton(button, orderTime, cancelWindowMs, returnButton) {
+        const now = new Date();
+        const timeSinceOrder = now - orderTime;
+        const timeLeftMs = cancelWindowMs - timeSinceOrder;
+
+        if (timeLeftMs <= 0) {
+            button.style.display = 'none';
+            if (returnButton) {
+                returnButton.style.display = 'inline-block'; // Show return button when cancel window closes
+            }
+            return;
+        }
+
+        const minutes = Math.floor(timeLeftMs / 60000);
+        const seconds = Math.floor((timeLeftMs % 60000) / 1000);
+
+        button.textContent = `Cancel Order (${minutes}:${seconds.toString().padStart(2, '0')})`;
+
+        setTimeout(() => updateCancelButton(button, orderTime, cancelWindowMs, returnButton), 1000);
+    }
+
+    function cancelOrder(orderId, button, returnButton) {
+        fetch('/cancel-order', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ order_id: orderId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Order cancelled successfully');
+                button.textContent = 'Cancelled';
+                button.classList.remove('btn-danger');
+                button.classList.add('btn-secondary');
+                button.disabled = true;
+
+                // Keep the return button hidden after cancellation
+                if (returnButton) {
+                    returnButton.style.display = 'none';
+                }
+            } else {
+                alert('Failed to cancel order: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while cancelling the order');
+        });
+    }
 });
 </script>
 

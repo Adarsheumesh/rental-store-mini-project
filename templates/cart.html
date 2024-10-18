@@ -261,6 +261,9 @@
                                         console.log('Success response:', response);
                                         if (response.success) {
                                             showPopup('Rent dates updated successfully');
+                                            const $row = $(`tr[data-cart-item-id="${cartItemId}"]`);
+                                            const itemKey = $row.data('product-id');
+                                            updatePrice(itemKey);  // Update price after successful date change
                                         } else {
                                             showPopup('Failed to update rent dates: ' + response.message);
                                         }
@@ -292,7 +295,7 @@
                                 var rentTo = $row.find('.rent-to').val();
                                 var today = new Date().toISOString().split('T')[0];
                                 
-                                console.log('Date changed:', cartItemId, rentFrom, rentTo);
+                                console.log(`Date changed for item ${cartItemId}: From ${rentFrom} To ${rentTo}`);
                                 
                                 if (cartItemId && rentFrom && rentTo) {
                                     if (rentFrom < today || rentTo < today) {
@@ -332,7 +335,7 @@
                             const end = new Date(endDate);
                             const diffTime = Math.abs(end - start);
                             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                            return diffDays + 1; // Include both start and end days
+                            return Math.max(diffDays + 1, 1); // Include both start and end days, minimum 1 day
                         }
                     
                         // Update the price for a specific item
@@ -344,6 +347,16 @@
                             const rentTo = $row.find('.rent-to').val();
                             const rentalDays = calculateRentalDays(rentFrom, rentTo);
                             const totalPrice = quantity * pricePerUnit * rentalDays;
+
+                            console.log(`Updating price for item ${itemKey}:`);
+                            console.log(`- Quantity: ${quantity}`);
+                            console.log(`- Price per unit: ${pricePerUnit}`);
+                            console.log(`- Rent from: ${rentFrom}`);
+                            console.log(`- Rent to: ${rentTo}`);
+                            console.log(`- Rental days: ${rentalDays}`);
+                            console.log(`- Calculated total price: ${totalPrice}`);
+
+                            $row.attr('data-total-price', totalPrice.toFixed(2));
                             $row.find('.product-subtotal span').text('₹' + totalPrice.toFixed(2));
                             updateCartTotal();
                             updateQuantityInBackend(itemKey, quantity);
@@ -352,10 +365,14 @@
                         // Update the total price of the cart
                         function updateCartTotal() {
                             let total = 0;
+                            console.log('Updating cart total:');
                             $('tr[data-product-id]').each(function() {
-                                const itemTotal = parseFloat($(this).find('.product-subtotal span').text().replace('₹', ''));
+                                const itemTotal = parseFloat($(this).attr('data-total-price') || 0);
+                                const itemId = $(this).data('product-id');
+                                console.log(`- Item ${itemId}: ${itemTotal}`);
                                 total += itemTotal;
                             });
+                            console.log(`Final cart total: ${total}`);
                             $('#cart_total').text('₹' + total.toFixed(2));
                         }
                     
@@ -396,8 +413,12 @@
                     
                         // Event listeners for date changes
                         $('.rent-from, .rent-to').on('change', function() {
-                            const itemKey = $(this).closest('tr').data('product-id');
-                            updatePrice(itemKey);
+                            const $row = $(this).closest('tr');
+                            const cartItemId = $row.data('cart-item-id');
+                            const rentFrom = $row.find('.rent-from').val();
+                            const rentTo = $row.find('.rent-to').val();
+                            console.log(`Date changed for item ${cartItemId}: From ${rentFrom} To ${rentTo}`);
+                            validateAndUpdate($row);
                         });
                     
                         // Send updated quantity information to the backend
@@ -452,10 +473,10 @@
                                 success: function(response) {
                                     console.log('Server response:', response);
                                     if (response.success) {
-                                        console.log('Item removed successfully');
+                                        console.log('Item removed successfully from server');
                                         $('tr[data-cart-item-id="' + cartItemId + '"]').remove();
                                         updateCartTotal();
-                                        updateCheckoutButton();  // Update button state after removing item
+                                        updateCheckoutButton();
                                         showPopup(response.message);
                                     } else {
                                         console.error('Failed to remove item:', response.message);
@@ -529,7 +550,7 @@
                             dateInputs.forEach(function(input) {
                                 if (!input.value) {
                                     allDatesSelected = false;
-                                    input.style.border = '1px solid red';
+                                    input.style.border = '2px solid red';
                                 } else {
                                     input.style.border = '';
                                 }
@@ -541,6 +562,12 @@
                                 showPopup('Please select both "Rent From" and "Rent To" dates for all items before proceeding to checkout.');
                             }
                         }
+                    
+                        // Attach the proceedToCheckout function to the checkout button
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const checkoutButton = document.getElementById('checkoutButton');
+                            checkoutButton.addEventListener('click', proceedToCheckout);
+                        });
                     </script>
                     
     <!-- Additional Scripts -->
@@ -594,10 +621,10 @@
                 success: function(response) {
                     console.log('Server response:', response);
                     if (response.success) {
-                        console.log('Item removed successfully');
+                        console.log('Item removed successfully from server');
                         $('tr[data-cart-item-id="' + cartItemId + '"]').remove();
                         updateCartTotal();
-                        updateCheckoutButton();  // Update button state after removing item
+                        updateCheckoutButton();
                         showPopup(response.message);
                     } else {
                         console.error('Failed to remove item:', response.message);

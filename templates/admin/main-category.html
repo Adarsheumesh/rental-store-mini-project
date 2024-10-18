@@ -33,7 +33,14 @@
 
 <!-- Favicon -->
 <link href="{{ url_for('static', filename='assets/img/favicon.png') }}" rel="shortcut icon" />
-
+<script type="text/javascript">
+	window.addEventListener('pageshow', function(event) {
+		if (event.persisted) {
+			// If the page is loaded from the cache, reload it
+			window.location.reload();
+		}
+	});
+</script>
 </head>
 
 <body class="ec-header-fixed ec-sidebar-fixed ec-sidebar-dark ec-header-light" id="body">
@@ -384,8 +391,8 @@
 																	<span class="sr-only">Info</span>
 																</button>
 																<div class="dropdown-menu">
-																	<form action="{{ url_for('toggle_category_status', id=category.id) }}" method="POST">
-																		<button type="submit" class="dropdown-item">
+																	<form class="toggle-status-form" data-category-id="{{ category.id }}">
+																		<button type="submit" class="dropdown-item toggle-status-btn">
 																			{% if category.status == 'active' %}
 																				Deactivate
 																			{% else %}
@@ -456,6 +463,42 @@
 
 <!-- Custom JavaScript -->
 <script src="{{ url_for('static', filename='assets/js/custom.js') }}"></script>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('.toggle-status-form').on('submit', function(e) {
+        e.preventDefault();
+        var form = $(this);
+        var categoryId = form.data('category-id');
+        var button = form.find('.toggle-status-btn');
+
+        $.ajax({
+            url: '/toggle-category-status/' + categoryId,
+            method: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    // Update button text
+                    button.text(button.text() === 'Activate' ? 'Deactivate' : 'Activate');
+                    
+                    // Update status badge
+                    var statusBadge = form.closest('tr').find('.badge');
+                    if (statusBadge.hasClass('badge-success')) {
+                        statusBadge.removeClass('badge-success').addClass('badge-danger').text('Inactive');
+                    } else {
+                        statusBadge.removeClass('badge-danger').addClass('badge-success').text('Active');
+                    }
+                } else {
+                    console.error('Error: ' + response.message);
+                }
+            },
+            error: function() {
+                console.error('An error occurred while updating the category status.');
+            }
+        });
+    });
+});
+</script>
 
 </body>
 

@@ -26,7 +26,14 @@
 
 	<!-- FAVICON -->
 	<link href="{{ url_for('static', filename='assets/img/favicon.png') }}" rel="shortcut icon" />
-
+	<script type="text/javascript">
+		window.addEventListener('pageshow', function(event) {
+			if (event.persisted) {
+				// If the page is loaded from the cache, reload it
+				window.location.reload();
+			}
+		});
+	</script>
 </head>
 
 <body class="ec-header-fixed ec-sidebar-fixed ec-sidebar-light ec-header-light" id="body">

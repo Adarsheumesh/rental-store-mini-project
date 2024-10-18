@@ -42,7 +42,7 @@
  
    <!-- modernizr js -->
    <script src="{{ url_for('static', filename='js/vendor/modernizr-2.8.3.min.js') }}"></script>
-
+   <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
    <style>
     .custom-popup {
         display: none;
@@ -116,6 +116,77 @@
     .connection-status button:hover {
         background-color: #0056b3;
     }
+
+    .user-account-dropdown {
+        position: relative;
+    }
+
+    .user-account-dropdown .user-toggle {
+        color: #2874f0;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 16px;
+        padding: 8px 12px;
+        background-color: #fff;
+        border-radius: 2px;
+        display: flex;
+        align-items: center;
+        transition: all 0.3s ease;
+    }
+
+    .user-account-dropdown .user-toggle:hover {
+        background-color: #f0f0f0;
+    }
+
+    .user-account-dropdown .user-toggle i {
+        margin-right: 5px;
+    }
+
+    .user-account-dropdown .ht-dropdown.user-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background-color: #fff;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-radius: 4px;
+        display: none;
+        z-index: 1000;
+        min-width: 200px;
+        padding: 5px 0;
+    }
+
+    .user-account-dropdown:hover .ht-dropdown.user-menu {
+        display: block;
+    }
+
+    .user-account-dropdown .ht-dropdown.user-menu li {
+        list-style: none;
+    }
+
+    .user-account-dropdown .ht-dropdown.user-menu a {
+        display: block;
+        padding: 10px 20px;
+        color: #333;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .user-account-dropdown .ht-dropdown.user-menu a:hover {
+        background-color: #f5f5f5;
+        color: #2874f0;
+    }
+
+    .user-account-dropdown .ht-dropdown.user-menu i {
+        margin-right: 10px;
+        width: 20px;
+        text-align: center;
+    }
+
+    .user-account-dropdown .ht-dropdown.user-menu .divider {
+        height: 1px;
+        background-color: #e0e0e0;
+        margin: 5px 0;
+    }
 </style>
 </head>
 
@@ -153,15 +224,28 @@
                         <div class="col-auto">
                             <div class="cart-box text-end">
                                 <ul>
-                                    <li><a href=><i class="fa fa-cog"></i></a>
-                                        <ul class="ht-dropdown">
-                                            {% if 'email' in session %}
-                                            <li><a href="/account">Account</a></li> 
-                                            {% else %}
-                                            <li><a href="/register">Register</a></li>
-                                            <li><a href="/login">Login</a></li>
-                                            {% endif %}                                       
-                                        </ul>
+
+                                    <!-- Your existing dropdown code -->
+                                    <li class="user-account-dropdown">
+                                        {% if user_name %}
+                                            <a href="#" class="user-toggle">
+                                                <i class="fa fa-user-circle"></i> Hello, {{ user_name }} <i class="fa fa-angle-down"></i>
+                                            </a>
+                                            <ul class="ht-dropdown user-menu">
+                                                <li><a href="/account"><i class="fa fa-user"></i> My Account</a></li>
+                                                <li><a href="/wishlist"><i class="fa fa-heart"></i> Wishlist</a></li>
+                                                <li class="divider"></li>
+                                                <li><a href="/logout"><i class="fa fa-sign-out"></i> Logout</a></li>
+                                            </ul>
+                                        {% else %}
+                                            <a href="/login" class="user-toggle">
+                                                <i class="fa fa-user"></i> Login / Register <i class="fa fa-angle-down"></i>
+                                            </a>
+                                            <ul class="ht-dropdown user-menu">
+                                                <li><a href="/login"><i class="fa fa-sign-in"></i> Login</a></li>
+                                                <li><a href="/register"><i class="fa fa-user-plus"></i> Register</a></li>
+                                            </ul>
+                                        {% endif %}
                                     </li>                                    
                                     <li><a href="/wishlist"><i class="fa fa-heart-o"></i></a></li>
                                     <li><a href="/cart"><i class="fa fa-shopping-basket"></i><span class="cart-counter">{{ cart_count }}</span></a>
@@ -171,67 +255,7 @@
                             </div>
                         </div>
                         <!--  Cartt Box  End-->
-                        <!-- Mobile Menu Start -->
-                        <div class="col-sm-12 d-lg-none">
-                            <div class="mobile-menu">
-                                <nav>
-                                    <ul>
-                                        <li><a href="/index">home</a>
-                                            <!-- Home Version Dropdown Start -->
-                                            <ul>
-                                                <li><a href="/index">Home Version One</a></li>
-                                                <li><a href="index-2.html">Home Version Two</a></li>
-                                                <li><a href="index-3.html">Home Box Layout</a></li>
-                                            </ul>
-                                            <!-- Home Version Dropdown End -->
-                                        </li>
-                                        <li><a href="shop.html">shop</a>
-                                            <!-- Mobile Menu Dropdown Start -->
-                                            <ul>
-                                                <li><a href="product.html">Shop</a>
-                                                    <ul>
-                                                        <li><a href="shop.html">Product Category Name</a>
-                                                            <!-- Start Three Step -->
-                                                            <ul>
-                                                                <li><a href="shop.html">Product Category Name</a></li>
-                                                                <li><a href="shop.html">Product Category Name</a></li>
-                                                                <li><a href="shop.html">Product Category Name</a></li>
-                                                            </ul>
-                                                        </li>
-                                                        <li><a href="shop.html">Product Category Name</a></li>
-                                                        <li><a href="shop.html">Product Category Name</a></li>
-                                                    </ul>
-                                                </li>
-                                                <li><a href="product.html">product details Page</a></li>
-                                                <li><a href="compare.html">Compare Page</a></li>
-                                                <li><a href="cart.html">Cart Page</a></li>
-                                                <li><a href="checkout.html">Checkout Page</a></li>
-                                                <li><a href="wishlist.html">Wishlist Page</a></li>
-                                            </ul>
-                                            <!-- Mobile Menu Dropdown End -->
-                                        </li>
-                                        <li><a href="blog.html">Blog</a>
-                                            <!-- Mobile Menu Dropdown Start -->
-                                            <ul>
-                                                <li><a href="blog-details.html">Blog Details Page</a></li>
-                                            </ul>
-                                            <!-- Mobile Menu Dropdown End -->
-                                        </li>
-                                        <li><a href="#">pages</a>
-                                            <!-- Mobile Menu Dropdown Start -->
-                                            <ul>
-                                                <li><a href="login.html">login Page</a></li>
-                                                <li><a href="register.html">Register Page</a></li>
-                                                <li><a href="404.html">404 Page</a></li>
-                                            </ul>
-                                            <!-- Mobile Menu Dropdown End -->
-                                        </li>
-                                        <li><a href="about.html">about us</a></li>
-                                        <li><a href="contact.html">contact us</a></li>
-                                    </ul>
-                                </nav>
-                            </div>
-                        </div>
+                       
                         <!-- Mobile Menu  End -->                        
                     </div>
                     <!-- Row End -->
@@ -309,7 +333,7 @@
                         <div class="single-product">
                             <!-- Product Image Start -->
                             <div class="pro-img">
-                                <a href="{{ url_for('product_detail', product_id=product_id) }}">{{ product['product_name'] }}"
+                                <a href="{{ url_for('product_detail', product_id=product_id) }}">
                                     <img class="primary-img" src="{{ product['product_image'] }}" alt="{{ product['product_name'] }}" />
                                 </a>
                             </div>
@@ -321,7 +345,7 @@
                                             <i class="fa fa-star"></i>
                                             {% endfor %}
                                 </div>                                
-                                <h4><a href="{{ url_for('product_detail', product_id=product_id) }}">{{ product['product_name'] }} </a></h4>
+                                <h4><a href="{{ url_for('product_detail', product_id=product_id) }}">{{ product['product_name']}}</a></h4>
                                 <p>
                                     <span class="price">₹{{ product['product_price'] | default("Price not available") }}</span>
                                     <del class="prev-price"></del>
@@ -545,7 +569,7 @@
                                         <span><i class="fa fa-envelope-o"></i>Mail Us: demo@example.com</span>
                                         <span><i class="fa fa-phone"></i>Phone: 0123456789</span>
                                     </div>
-                                    <div class="payment-mth"><a href="#"><img class="img" src="img/footer/1.png" alt="payment-image"></a></div>
+                                    <div class="payment-mth"><a href="#"><img class="img" src="{{ url_for('static', filename='img/footer/1.png') }}" alt="payment-image"></a></div> 
                                 </div>
                             </div>
                         </div>
@@ -573,7 +597,7 @@
                                 <h3 class="footer-title">My Account</h3>
                                 <div class="footer-content">
                                     <ul class="footer-list">
-                                        <li><a href="account.html">My account</a></li>
+                                        <li><a href="/account">My account</a></li>
                                         <li><a href="#">Checkout</a></li>
                                         <li><a href="#">Login</a></li>
                                         <li><a href="#">address</a></li>

@@ -42,6 +42,65 @@
     
       <!-- modernizr js -->
       <script src="{{ url_for('static', filename='js/vendor/modernizr-2.8.3.min.js') }}"></script>
+      <style>
+          .user-account-dropdown {
+              position: relative;
+          }
+
+          .user-account-dropdown .user-toggle {
+              color: #2874f0;
+              text-decoration: none;
+              font-weight: 500;
+              font-size: 16px;
+              padding: 8px 12px;
+              background-color: #fff;
+              border-radius: 2px;
+              display: flex;
+              align-items: center;
+              transition: all 0.3s ease;
+          }
+
+          .user-account-dropdown .user-toggle:hover {
+              background-color: #f0f0f0;
+          }
+
+          .user-account-dropdown .user-toggle i {
+              margin-right: 5px;
+          }
+
+          .user-account-dropdown .ht-dropdown.user-menu {
+              position: absolute;
+              top: 100%;
+              right: 0;
+              background-color: #fff;
+              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+              border-radius: 4px;
+              display: none;
+              z-index: 1000;
+              min-width: 200px;
+              padding: 5px 0;
+          }
+
+          .user-account-dropdown:hover .ht-dropdown.user-menu {
+              display: block;
+          }
+
+          .user-account-dropdown .ht-dropdown.user-menu li {
+              list-style: none;
+          }
+
+          .user-account-dropdown .ht-dropdown.user-menu a {
+              display: block;
+              padding: 10px 20px;
+              color: #333;
+              text-decoration: none;
+              transition: all 0.2s ease;
+          }
+
+          .user-account-dropdown .ht-dropdown.user-menu a:hover {
+              background-color: #f5f5f5;
+          }
+      </style>
 </head>
 
 <body>
@@ -52,6 +111,7 @@
     <div class="wrapper">
         <!-- Header Area Start -->
         <header>
+            <!-- Header Top Start -->
             
             <!-- Header Top End -->
             <!-- Header Bottom Start -->
@@ -61,52 +121,51 @@
                         <!--  logo Start-->
                         <div class="col-auto">
                             <div class="logo">
-                                <a href="index.html"><img src="img/logo/logo.png" alt="logo-image"></a>
-                            </div>
+                                <a href="/index"><img src="{{ url_for('static', filename='img/logo/logo.png') }}"></a>
+                            </div>                          
                         </div>
                        <!--  logo End -->
 
-                       
+                        <!--  Desktop Memu Start -->
+                        
                         <!--  Desktop Memu End -->
                         
                         <!--  Cartt Box  Start -->
                         <div class="col-auto">
                             <div class="cart-box text-end">
                                 <ul>
-                                    <li><a href="compare.html"><i class="fa fa-cog"></i></a>
-                                        <ul class="ht-dropdown">
-                                            {% if 'email' in session %}
-                                            <li><a href="/account">Account</a></li> 
-                                            {% else %}
-                                            <li><a href="/register">Register</a></li>
-                                            <li><a href="/login">Login</a></li>
-                                            {% endif %}                                       
-                                        </ul>
+
+                                    <!-- Your existing dropdown code -->
+                                    <li class="user-account-dropdown">
+                                        {% if user_name %}
+                                            <a href="#" class="user-toggle">
+                                                <i class="fa fa-user-circle"></i> Hello, {{ user_info.get('name', 'User') }} <i class="fa fa-angle-down"></i>
+                                            </a>
+                                            <ul class="ht-dropdown user-menu">
+                                                <li><a href="/account"><i class="fa fa-user"></i> My Account</a></li>
+                                                <li><a href="/wishlist"><i class="fa fa-heart"></i> Wishlist</a></li>
+                                                <li class="divider"></li>
+                                                <li><a href="/logout"><i class="fa fa-sign-out"></i> Logout</a></li>
+                                            </ul>
+                                        {% else %}
+                                            <a href="/login" class="user-toggle">
+                                                <i class="fa fa-user"></i> Login / Register <i class="fa fa-angle-down"></i>
+                                            </a>
+                                            <ul class="ht-dropdown user-menu">
+                                                <li><a href="/login"><i class="fa fa-sign-in"></i> Login</a></li>
+                                                <li><a href="/register"><i class="fa fa-user-plus"></i> Register</a></li>
+                                            </ul>
+                                        {% endif %}
                                     </li>                                    
                                     <li><a href="/wishlist"><i class="fa fa-heart-o"></i></a></li>
-                                    <li><a href="/cart"><i class="fa fa-shopping-basket"></i><span class="cart-counter" id="cart-counter">{{ cart_count }}</span></a>
+                                    <li><a href="/cart"><i class="fa fa-shopping-basket"></i><span class="cart-counter">{{ cart_count }}</span></a>
                                         
                                     </li>
                                 </ul>
                             </div>
                         </div>
                         <!--  Cartt Box  End-->
-                        <!-- Mobile Menu Start -->
-                        <div class="col-sm-12 d-lg-none">
-                            <div class="mobile-menu">
-                                <nav>
-                                    <ul>
-                                        <li><a href="index.html">home</a>
-                                            <!-- Home Version Dropdown Start -->
-                                            <ul>
-                                                <li><a href="index.html">Home Version One</a></li>
-                                                <li><a href="index-2.html">Home Version Two</a></li>
-                                                <li><a href="index-3.html">Home Box Layout</a></li>
-                                            </ul>
-                                            <!-- Home Version Dropdown End -->
-                                        </li>
-                                        <li><a href="shop.html">shop</a>
-                                           
+                       
                         <!-- Mobile Menu  End -->                        
                     </div>
                     <!-- Row End -->
@@ -122,7 +181,7 @@
                 <div class="breadcrumb">
                     <ul>
                         <li><a href="/index">Home</a></li>
-                        <li class="active"><a href="wishlist.html">Wishlist</a></li>
+                        <li class="active"><a href="/wishlist">Wishlist</a></li>
                     </ul>
                 </div>
             </div>

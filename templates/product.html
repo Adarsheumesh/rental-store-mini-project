@@ -40,9 +40,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <!-- responsive css -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
-  
     <!-- modernizr js -->
     <script src="{{ url_for('static', filename='js/vendor/modernizr-2.8.3.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
     <style>
         .custom-popup {
             display: none;
@@ -72,62 +72,275 @@
             90% { opacity: 1; }
             100% { opacity: 0; }
         }
+
+        .out-of-stock {
+            color: red;
+            font-weight: bold;
+        }
+
+        .limited-stock {
+            color: orange;
+            font-weight: bold;
+        }
+
+        .in-stock {
+            color: green;
+            font-weight: bold;
+        }
+
+        .sku {
+            margin-left: 5px;
+            font-size: 0.9em;
+        }
+
+        .add-cart.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .popup-error {
+            color: red;
+            font-weight: bold;
+        }
+
+        .star-rating {
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .star-rating .fa-star {
+            color: #ffd700;
+        }
+        .star-rating .far.fa-star {
+            color: #ccc;
+        }
     </style>
+    <style>
+        .star-rating {
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .star-rating .fa-star {
+            color: #ffd700;
+        }
+        .star-rating .fa-star-o {
+            color: #ccc;
+        }
+    </style>
+    <style>
+        .product-reviews {
+            margin-top: 40px;
+        }
+        .review-item {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        .reviewer-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .reviewer-name {
+            font-weight: bold;
+        }
+        .review-date {
+            color: #777;
+        }
+        .star-rating {
+            color: #ffd700;
+            margin-bottom: 10px;
+        }
+        .review-text {
+            line-height: 1.6;
+        }
+    </style>
+    <style>
+        .user-account-dropdown {
+            position: relative;
+        }
+
+        .user-account-dropdown .user-toggle {
+            color: #2874f0;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 16px;
+            padding: 8px 12px;
+            background-color: #fff;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .user-account-dropdown .user-toggle:hover {
+            background-color: #f0f0f0;
+        }
+
+        .user-account-dropdown .user-toggle i {
+            margin-right: 5px;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            display: none;
+            z-index: 1000;
+            min-width: 200px;
+            padding: 5px 0;
+        }
+
+        .user-account-dropdown:hover .ht-dropdown.user-menu {
+            display: block;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu li {
+            list-style: none;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu a {
+            display: block;
+            padding: 10px 20px;
+            color: #333;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu a:hover {
+            background-color: #f5f5f5;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function() {
             $('.add-cart').on('click', function(e) {
                 e.preventDefault();
-                var productId = $(this).data('product-id');
+                var $button = $(this);
+                var productId = $button.data('product-id');
                 var quantity = parseInt($('#quantity').val()) || 1;
 
                 $.ajax({
                     url: "{{ url_for('add_to_cart') }}",
                     type: 'POST',
-                    contentType: 'application/json',  // Set the content type to JSON
-                    data: JSON.stringify({  // Stringify the data
+                    contentType: 'application/json',
+                    data: JSON.stringify({
                         product_id: productId,
                         quantity: quantity
                     }),
                     dataType: 'json',
                     success: function(response) {
-                        showPopup(response.message);
-                        if (response.success && response.cart_count !== undefined) {
-                            $('#cart-counter').text(response.cart_count);
+                        if (response.success) {
+                            showPopup(response.message);
+                            if (response.cart_count !== undefined) {
+                                $('#cart-counter').text(response.cart_count);
+                            }
+                        } else {
+                            showPopup(response.message, true);
                         }
                     },
                     error: function(xhr, status, error) {
                         console.error('Error:', xhr.responseText);
-                        showPopup('An error occurred. Please try again.');
+                        showPopup('An error occurred. Please try again.', true);
                     }
                 });
             });
 
             $('.add-to-wishlist').on('click', function(e) {
                 e.preventDefault();
-                var productId = $(this).data('product-id');
+                var $button = $(this);
+                var productId = $button.data('product-id');
 
                 $.ajax({
                     url: "{{ url_for('add_to_wishlist') }}",
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify({ product_id: productId }),
+                    dataType: 'json',
                     success: function(response) {
-                        showPopup(response.message);
+                        if (response.success) {
+                            showPopup(response.message, false);
+                            // You might want to update some UI element to show the item is in the wishlist
+                            $button.text('In Wishlist').addClass('in-wishlist');
+                        } else {
+                            showPopup(response.message, false);
+                        }
                     },
                     error: function(xhr, status, error) {
-                        showPopup('An error occurred. Please try again.');
-                        console.error(xhr.responseText);
+                        console.error('Error:', xhr.responseText);
+                        showPopup('An error occurred. Please try again.', false);
                     }
                 });
             });
 
-            function showPopup(message) {
-                console.log('Showing popup with message:', message);
+            // Form submission
+            $('#review-form').on('submit', function(e) {
+                e.preventDefault();
+                var rating = $('#rating-value').val();
+                var reviewTextarea = $('#review-text');
+                var review = reviewTextarea.val().trim();
+                var productId = '{{ product_details["id"] }}';  // Make sure this is correct
+
+                console.log('Form submitted. Values:', { rating, review, productId });
+
+                if (rating === "0") {
+                    showPopup("Please select a rating", true);
+                    return;
+                }
+
+                if (review.length === 0) {
+                    showPopup("Please write a review", true);
+                    return;
+                }
+
+                var formData = {
+                    rating: rating,
+                    review: review,
+                    product_id: productId
+                };
+
+                console.log('Sending AJAX request with data:', formData);
+
+                $.ajax({
+                    url: '{{ url_for("submit_review") }}',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        console.log('AJAX Success. Response:', response);
+                        if (response.success) {
+                            showPopup('Review submitted successfully!');
+                            $('#review-form')[0].reset();
+                            $('.star-rating i').removeClass('fa-star').addClass('fa-star-o');
+                            $('#rating-value').val("0");
+                            reloadReviews();  // Make sure this function is defined
+                        } else {
+                            showPopup('Error: ' + response.message, true);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX Error:', { status, error, responseText: xhr.responseText });
+                        showPopup('An error occurred. Please try again.', true);
+                    }
+                });
+            });
+
+            // Modify the showPopup function to log the message
+            function showPopup(message, isError = false) {
+                console.log('showPopup called with message:', message, 'isError:', isError);
                 var popup = document.getElementById('custom-popup');
                 var popupMessage = document.getElementById('popup-message');
                 
                 if (popup && popupMessage) {
                     popupMessage.textContent = message;
+                    if (isError) {
+                        popupMessage.classList.add('popup-error');
+                    } else {
+                        popupMessage.classList.remove('popup-error');
+                    }
                     popup.style.display = 'block';
                     
                     // Remove the popup after 3 seconds
@@ -139,7 +352,79 @@
                     alert(message);
                 }
             }
+
+            // Star rating interaction
+            $('.star-rating i').on('click', function() {
+                var rating = $(this).data('rating');
+                $('#rating-value').val(rating);
+                $('.star-rating i').removeClass('fa-star').addClass('fa-star-o');
+                $('.star-rating i:lt(' + rating + ')').removeClass('fa-star-o').addClass('fa-star');
+            });
         });
+
+        // Add this function to reload reviews
+function reloadReviews() {
+    $.ajax({
+        url: '/get-reviews/' + '{{ product_details["id"] }}',
+        type: 'GET',
+        success: function(response) {
+            if (response.success) {
+                $('#product-reviews').html(response.html);
+            } else {
+                console.error('Failed to reload reviews:', response.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error reloading reviews:', error);
+        }
+    });
+}
+
+// In your form submission success handler, add this line:
+if (response.success) {
+    showPopup('Review submitted successfully!');
+    $('#review-form')[0].reset();
+    $('.star-rating i').removeClass('fa-star').addClass('fa-star-o');
+    $('#rating-value').val("0");
+    reloadReviews();  // Reload the reviews
+}
+
+function updateCartCount(newCount) {
+    const cartCounters = document.querySelectorAll('.cart-counter');
+    cartCounters.forEach(counter => {
+        counter.textContent = newCount;
+        counter.dataset.cartCount = newCount;
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const addToCartForm = document.querySelector('form[action="{{ url_for("add_to_cart", product_id=product_details.id) }}"]');
+    if (addToCartForm) {
+        addToCartForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateCartCount(data.cart_count);
+                    // You can also show a success message here
+                    alert('Product added to cart successfully!');
+                } else {
+                    alert('Failed to add product to cart.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while adding the product to cart.');
+            });
+        });
+    }
+});
     </script>
 </head>
 
@@ -151,9 +436,6 @@
     <div class="wrapper">
         <!-- Header Area Start -->
         <header>
-            <!-- Header Top Start -->
-            
-            <!-- Header Top End -->
             <!-- Header Bottom Start -->
             <div class="header-bottom header-sticky">
                 <div class="container">
@@ -161,40 +443,48 @@
                         <!--  logo Start-->
                         <div class="col-auto">
                             <div class="logo">
-                                <a href="{{ url_for('index') }}">
-                                    <img src="{{ url_for('static', filename='img/logo/logo.png') }}" alt="logo-image">
-                                </a>
-                            </div>
+                                <a href="/index"><img src="{{ url_for('static', filename='img/logo/logo.png') }}"></a>
+                            </div>                          
                         </div>
-                       <!--  logo End -->
+                        <!--  logo End -->
 
-                        <!--  Desktop Memu Start -->
-                        
-                        <!--  Desktop Memu End -->
-                        
                         <!--  Cartt Box  Start -->
                         <div class="col-auto">
                             <div class="cart-box text-end">
                                 <ul>
-                                    <li><a href="/compare"><i class="fa fa-cog"></i></a>
-                                        <ul class="ht-dropdown">
-                                            {% if 'email' in session %}
-                                            <li><a href="/account">Account</a></li> 
-                                            {% else %}
-                                            <li><a href="/login">Login</a></li>
-                                            <li><a href="/register">Register</a></li>
-                                            {% endif %}                                                                                  
-                                        </ul>
+                                    <!-- User Account Dropdown -->
+                                    <li class="user-account-dropdown">
+                                        {% if user_info %}
+                                            <a href="#" class="user-toggle">
+                                                <i class="fa fa-user-circle"></i> Hello, {{ user_info.get('name', 'User') }} <i class="fa fa-angle-down"></i>
+                                            </a>
+                                            <ul class="ht-dropdown user-menu">
+                                                <li><a href="{{ url_for('account') }}"><i class="fa fa-user"></i> My Account</a></li>
+                                                <li><a href="{{ url_for('wishlist') }}"><i class="fa fa-heart"></i> Wishlist</a></li>
+                                                <li class="divider"></li>
+                                                <li><a href="{{ url_for('logout') }}"><i class="fa fa-sign-out"></i> Logout</a></li>
+                                            </ul>
+                                        {% else %}
+                                            <a href="{{ url_for('login') }}" class="user-toggle">
+                                                <i class="fa fa-user"></i> Login / Register <i class="fa fa-angle-down"></i>
+                                            </a>
+                                            <ul class="ht-dropdown user-menu">
+                                                <li><a href="{{ url_for('login') }}"><i class="fa fa-sign-in"></i> Login</a></li>
+                                                <li><a href="{{ url_for('register') }}"><i class="fa fa-user-plus"></i> Register</a></li>
+                                            </ul>
+                                        {% endif %}
                                     </li>                                    
-                                    
-                                    <li><a href="/cart"><i class="fa fa-shopping-basket"></i><span class="cart-counter">2</span></a>
-                                        
+                                    <li><a href="/wishlist"><i class="fa fa-heart-o"></i></a></li>
+                                    <li>
+                                        <a href="/cart">
+                                            <i class="fa fa-shopping-basket"></i>
+                                            <span class="cart-counter">{{ cart_count }}</span>
+                                        </a>
                                     </li>
                                 </ul>
                             </div>
                         </div>
                         <!--  Cartt Box  End-->
-                        
                     </div>
                     <!-- Row End -->
                 </div>
@@ -260,11 +550,29 @@
                                 <p><span class="price">₹{{ product_details['product_price'] }}</span><del class="prev-price"></del></p>
                             </div>
                             <div class="pro-ref mb-15">
-                                <p><span class="in-stock">IN STOCK</span><span class="sku">{{ product_details['product_quantity'] }}</span></p>
+                                <p>
+                                    {% if product_details['product_quantity']|int == 0 %}
+                                        <span class="out-of-stock">OUT OF STOCK</span>
+                                    {% elif product_details['product_quantity']|int < 10 %}
+                                        <span class="limited-stock">LIMITED STOCK</span>
+                                        <span class="sku">({{ product_details['product_quantity'] }} left)</span>
+                                    {% else %}
+                                        <span class="in-stock">IN STOCK</span>
+                                        <span class="sku">({{ product_details['product_quantity'] }} available)</span>
+                                    {% endif %}
+                                </p>
                             </div>
                             <div class="box-quantity">
                                 <input class="number" id="quantity" type="number" name="quantity" min="1" max="{{ product_details['product_quantity'] }}" value="1">
-                                <button type="button" class="add-cart" data-product-id="{{ product_details['id'] }}">Add to cart</button>
+                                {% if product_details['product_quantity']|int > 0 %}
+                                    <button type="button" class="add-cart" data-product-id="{{ product_details['id'] }}">
+                                        Add to cart
+                                    </button>
+                                {% else %}
+                                    <button type="button" class="add-cart notify-me" data-product-id="{{ product_details['id'] }}">
+                                        Notify Me
+                                    </button>
+                                {% endif %}
                             </div>
                             <div class="product-link">
                                 <ul class="list-inline">
@@ -289,7 +597,7 @@
                     <div class="col-sm-12">
                         <ul class="main-thumb-desc nav">
                             <li><a class="active" data-bs-toggle="tab" href="#dtail">Details</a></li>
-                            <li><a data-bs-toggle="tab" href="#review">Reviews 1</a></li>
+                            <li><a data-bs-toggle="tab" href="#review">Review{% if product_reviews|length != 1 %}s{% endif %} ({{ product_reviews|length }})</a></li>
                         </ul>
                         <!-- Product Thumbnail Tab Content Start -->
                         <div class="tab-content thumb-content border-default">
@@ -302,106 +610,78 @@
                                 </ul>
                             </div>
                             <div id="review" class="tab-pane">
-                                <!-- Reviews Start -->
-                                <div class="review">
-                                    <div class="group-title">
-                                        <h2>customer review</h2>
+                                <!-- Existing Reviews Display -->
+                                <div class="review-list border-default universal-padding mt-30">
+                                    <h2 class="review-title mb-30">Customer Reviews</h2>
+                                    <div id="product-reviews">
+                                        {% if product_reviews %}
+                                            {% for review in product_reviews %}
+                                                <div class="single-review mb-30">
+                                                    <div class="review-header">
+                                                        <div class="review-author">
+                                                            <strong>{{ review.user_name }}</strong>
+                                                        </div>
+                                                        <div class="review-rating">
+                                                            {% for _ in range(review.rating|int) %}
+                                                                <i class="fa fa-star"></i>
+                                                            {% endfor %}
+                                                            {% for _ in range(5 - review.rating|int) %}
+                                                                <i class="fa fa-star-o"></i>
+                                                            {% endfor %}
+                                                        </div>
+                                                        <div class="review-date">
+                                                            {{ review.date }}
+                                                        </div>
+                                                    </div>
+                                                    <div class="review-content">
+                                                        <p>{{ review.review }}</p>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <p>No reviews yet. Be the first to review this product!</p>
+                                        {% endif %}
                                     </div>
-                                    <h4 class="review-mini-title">Jantrik</h4>
-                                    <ul class="review-list">
-                                        <!-- Single Review List Start -->
-                                        <li>
-                                            <span>Quality</span>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star-o"></i>
-                                            <i class="fa fa-star-o"></i>
-                                            <label>Jantrik</label>
-                                        </li>
-                                        <!-- Single Review List End -->
-                                        <!-- Single Review List Start -->
-                                        <li>
-                                            <span>price</span>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star-o"></i>
-                                            <i class="fa fa-star-o"></i>
-                                            <i class="fa fa-star-o"></i>
-                                            <label>Review by <a href="https://themeforest.net/user/Jantrik">Jantrik</a></label>
-                                        </li>
-                                        <!-- Single Review List End -->
-                                        <!-- Single Review List Start -->
-                                        <li>
-                                            <span>value</span>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star-o"></i>
-                                            <label>Posted on 7/20/18</label>
-                                        </li>
-                                        <!-- Single Review List End -->
-                                    </ul>
                                 </div>
-                                <!-- Reviews End -->
-                                <!-- Reviews Start -->
-                                <div class="review border-default universal-padding mt-30">
-                                    <h2 class="review-title mb-30">You're reviewing: <br><span>Go-Get'r Pushup Grips</span></h2>
-                                    <p class="review-mini-title">your rating</p>
-                                    <ul class="review-list">
-                                        <!-- Single Review List Start -->
-                                        <li>
-                                            <span>Quality</span>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star-o"></i>
-                                            <i class="fa fa-star-o"></i>
-                                        </li>
-                                        <!-- Single Review List End -->
-                                        <!-- Single Review List Start -->
-                                        <li>
-                                            <span>price</span>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star-o"></i>
-                                            <i class="fa fa-star-o"></i>
-                                            <i class="fa fa-star-o"></i>
-                                        </li>
-                                        <!-- Single Review List End -->
-                                        <!-- Single Review List Start -->
-                                        <li>
-                                            <span>value</span>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star"></i>
-                                            <i class="fa fa-star-o"></i>
-                                        </li>
-                                        <!-- Single Review List End -->
-                                    </ul>
-                                    <!-- Reviews Field Start -->
-                                    <div class="riview-field mt-40">
-                                        <form autocomplete="off" action="#">
-                                            <div class="form-group">
-                                                <label class="req" for="sure-name">Nickname</label>
-                                                <input type="text" class="form-control" id="sure-name" required="required">
+                                <!-- Review Form -->
+                                {% if session.get('user_id') %}
+                                    {% if user_purchased %}
+                                        <div class="review border-default universal-padding mt-30">
+                                            <h2 class="review-title mb-30">You're reviewing: <br><span>{{ product_details['product_name'] }}</span></h2>
+                                            <p class="review-mini-title">Your rating</p>
+                                            <!-- Reviews Field Start -->
+                                            <div class="riview-field mt-40">
+                                                <form id="review-form" autocomplete="off">
+                                                    <div class="form-group">
+                                                        <label class="req">Rating</label>
+                                                        <div class="star-rating f-left">
+                                                            <i class="fa fa-star-o" data-rating="1"></i>
+                                                            <i class="fa fa-star-o" data-rating="2"></i>
+                                                            <i class="fa fa-star-o" data-rating="3"></i>
+                                                            <i class="fa fa-star-o" data-rating="4"></i>
+                                                            <i class="fa fa-star-o" data-rating="5"></i>
+                                                            <input type="hidden" name="rating" id="rating-value" value="0">
+                                                        </div>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="req" for="review-text">Review</label>
+                                                        <textarea class="form-control" id="review-text" name="review" required></textarea>
+                                                    </div>
+                                                    <button type="submit" class="btn-submit">Submit Review</button>
+                                                </form>
                                             </div>
-                                            <div class="form-group">
-                                                <label class="req" for="subject">Summary</label>
-                                                <input type="text" class="form-control" id="subject" required="required">
-                                            </div>
-                                            <div class="form-group">
-                                                <label class="req" for="comments">Review</label>
-                                                <textarea class="form-control" rows="5" id="comments" required="required"></textarea>
-                                            </div>
-                                            <button type="submit" class="btn-submit">Submit Review</button>
-                                        </form>
+                                            <!-- Reviews Field End -->
+                                        </div>
+                                    {% else %}
+                                        <div class="review border-default universal-padding mt-30">
+                                            <p>You need to purchase this product to leave a review.</p>
+                                        </div>
+                                    {% endif %}
+                                {% else %}
+                                    <div class="review border-default universal-padding mt-30">
+                                        <p>Please <a href="{{ url_for('login') }}">login</a> to leave a review.</p>
                                     </div>
-                                    <!-- Reviews Field Start -->
-                                </div>
-                                <!-- Reviews End -->
+                                {% endif %}
                             </div>
                         </div>
                         <!-- Product Thumbnail Tab Content End -->
@@ -446,7 +726,13 @@
                                 <div class="pro-actions">
                                     <div class="actions-secondary">
                                         <a href="#" class="add-to-wishlist" data-product-id="{{ product.id }}" data-toggle="tooltip" title="Add to Wishlist"><i class="fa fa-heart"></i></a>
-                                        <a class="add-cart" href="#" data-product-id="{{ product.id }}" data-toggle="tooltip" title="Add to Cart">Add To Cart</a>
+                                        <a class="add-cart" href="#" data-product-id="{{ product.id }}" data-stock="{{ product.product_quantity }}" data-toggle="tooltip" title="Add to Cart">
+                                            {% if product.product_quantity|int > 0 %}
+                                                Add To Cart
+                                            {% else %}
+                                                Out of Stock
+                                            {% endif %}
+                                        </a>
                                         <a href="{{ url_for('product_detail', product_id=product.id) }}" data-toggle="tooltip" title="View Product"><i class="fa fa-eye"></i></a>
                                     </div>
                                 </div>
@@ -539,7 +825,7 @@
                                         <span><i class="fa fa-envelope-o"></i>Mail Us: demo@example.com</span>
                                         <span><i class="fa fa-phone"></i>Phone: 0123456789</span>
                                     </div>
-                                    <div class="payment-mth"><a href="#"><img class="img" src="img/footer/1.png" alt="payment-image"></a></div>
+                                    <div class="payment-mth"><a href="#"><img class="img" src="{{ url_for('static', filename='img/footer/1.png') }}" alt="payment-image"></a></div>
                                 </div>
                             </div>
                         </div>
@@ -567,7 +853,7 @@
                                 <h3 class="footer-title">My Account</h3>
                                 <div class="footer-content">
                                     <ul class="footer-list">
-                                        <li><a href="account.html">My account</a></li>
+                                        <li><a href="/account">My account</a></li>
                                         <li><a href="#">Checkout</a></li>
                                         <li><a href="#">Login</a></li>
                                         <li><a href="#">address</a></li>
@@ -666,74 +952,6 @@
     <script src="{{ url_for('static', filename='js/plugins.js') }}"></script>
     <!-- main js -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <script>
-        $(document).ready(function() {
-            $('.add-cart').on('click', function(e) {
-                e.preventDefault();
-                var productId = $(this).data('product-id');
-                var quantity = parseInt($('#quantity').val()) || 1;
-
-                $.ajax({
-                    url: "{{ url_for('add_to_cart') }}",
-                    type: 'POST',
-                    contentType: 'application/json',  // Set the content type to JSON
-                    data: JSON.stringify({  // Stringify the data
-                        product_id: productId,
-                        quantity: quantity
-                    }),
-                    dataType: 'json',
-                    success: function(response) {
-                        showPopup(response.message);
-                        if (response.success && response.cart_count !== undefined) {
-                            $('#cart-counter').text(response.cart_count);
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Error:', xhr.responseText);
-                        showPopup('An error occurred. Please try again.');
-                    }
-                });
-            });
-
-            $('.add-to-wishlist').on('click', function(e) {
-                e.preventDefault();
-                var productId = $(this).data('product-id');
-
-                $.ajax({
-                    url: "{{ url_for('add_to_wishlist') }}",
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({ product_id: productId }),
-                    success: function(response) {
-                        showPopup(response.message);
-                    },
-                    error: function(xhr, status, error) {
-                        showPopup('An error occurred. Please try again.');
-                        console.error(xhr.responseText);
-                    }
-                });
-            });
-
-            function showPopup(message) {
-                console.log('Showing popup with message:', message);
-                var popup = document.getElementById('custom-popup');
-                var popupMessage = document.getElementById('popup-message');
-                
-                if (popup && popupMessage) {
-                    popupMessage.textContent = message;
-                    popup.style.display = 'block';
-                    
-                    // Remove the popup after 3 seconds
-                    setTimeout(function() {
-                        popup.style.display = 'none';
-                    }, 3000);
-                } else {
-                    console.error('Popup elements not found');
-                    alert(message);
-                }
-            }
-        });
-    </script>
     <div id="custom-popup" class="custom-popup" style="display: none;">
         <p id="popup-message"></p>
     </div>
