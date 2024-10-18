@@ -4658,7 +4658,9 @@ def cancel_order():
         app.logger.error(f"Error cancelling order: {str(e)}")
         return jsonify({'success': False, 'message': 'An error occurred while cancelling the order'}), 500
     
-    
+@app.route('/health')
+def health_check():
+    return "OK", 200   
      
      
 if __name__ == '__main__':
