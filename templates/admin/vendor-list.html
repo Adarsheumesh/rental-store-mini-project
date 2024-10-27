@@ -42,7 +42,7 @@
 			<div id="sidebar" class="sidebar ec-sidebar-footer">
 
 				<div class="ec-brand">
-					<a href="index.php">
+					<a href="/admin_dashboard">
 						<img class="ec-brand-icon" src="{{ url_for('static', filename='assets/img/logo/favicon.png') }}" alt="" />
 						<span class="ec-brand-name text-truncate">ANDSHOP</span>
 					</a>
@@ -54,7 +54,7 @@
 					<ul class="nav sidebar-inner" id="sidebar-menu">
 						<!-- Dashboard -->
 						<li class="active">
-							<a class="sidenav-item-link" href="index.php">
+							<a class="sidenav-item-link" href="/admin_dashboard">
 								<i class="mdi mdi-view-dashboard-outline"></i>
 								<span class="nav-text">Dashboard</span>
 							</a>
@@ -158,17 +158,12 @@
 									<!-- User image -->
 									<li class="dropdown-header">
 										<div class="d-inline-block">
-											<h5>Alex Dor</h5>
-											<p class="pt-2">demo@gmail.com</p>
+											<h5>{{ user_info.name }}</h5>
+											<p class="pt-2">{{ user_info.email }}</p>
 										</div>
 									</li>
-									<li>
-										<a href="user-profile.php">
-											<i class="mdi mdi-account"></i> My Profile
-										</a>
-									</li>
 									<li class="dropdown-footer">
-										<a href="index.php"> <i class="mdi mdi-logout"></i> Log Out </a>
+										<a href="{{ url_for('logout') }}"> <i class="mdi mdi-logout"></i> Log Out </a>
 									</li>
 								</ul>
 							</li>
@@ -357,43 +352,30 @@
 													<th>Photo</th>
 													<th>Full name</th>
 													<th>Email</th>
-													<th>Purchased</th>
-													<th>Location</th>
-													<th>Amount</th>
+													<th>Store Name</th>
+													<th>Phone</th>
+													<th>District</th>
+													<th>GST Number</th>
 													<th>Status</th>
-													<th>Joined</th>
-													<th>Action</th>
+													
 												</tr>
 											</thead>
-
 											<tbody>
 												{% for vendor_id, vendor in vendors.items() %}
 												<tr>
 													<td>{{ vendor_id[:8] }}</td>
 													<td><img class="cat-thumb" src="{{ vendor.get('profile_picture', url_for('static', filename='assets/img/user/default.jpg')) }}"
 															alt="Vendor Image" /></td>
-													<td>{{ vendor.get('full_name', 'N/A') }}</td>
+													<td>{{ vendor.get('name', 'N/A') }}</td>
 													<td>{{ vendor.get('email', 'N/A') }}</td>
-													<td>{{ vendor.get('purchased', 'N/A') }}</td>
-													<td>{{ vendor.get('location', 'N/A') }}</td>
-													<td>{{ vendor.get('total_amount', 'N/A') }}</td>
-													<td><span class="badge badge-success">{{ vendor.get('status', 'Unknown') }}</span></td>
-													<td>{{ vendor.get('joined_date', 'N/A') }}</td>
+													<td>{{ vendor.get('store_name', 'N/A') }}</td>
+													<td>{{ vendor.get('phone', 'N/A') }}</td>
+													<td>{{ vendor.get('district', 'N/A') }}</td>
+													<td>{{ vendor.get('gst_number', 'N/A') }}</td>
+													<td><span class="badge badge-success">{{ vendor.get('vendor_status', 'Unknown') }}</span></td>
 													<td>
-														<div class="btn-group">
-															<button type="button"
-																class="btn btn-outline-success">Info</button>
-															<button type="button"
-																class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
-																data-bs-toggle="dropdown" aria-haspopup="true"
-																aria-expanded="false" data-display="static">
-																<span class="sr-only">Info</span>
-															</button>
-															<div class="dropdown-menu">
-																<a class="dropdown-item" href="#">Edit</a>
-																<a class="dropdown-item" href="#">Delete</a>
-															</div>
-														</div>
+														
+														
 													</td>
 												</tr>
 												{% endfor %}

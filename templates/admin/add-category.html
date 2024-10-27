@@ -157,21 +157,17 @@
 							<li class="dropdown user-menu">
 								<button class="dropdown-toggle nav-link ec-drop" data-bs-toggle="dropdown"
 									aria-expanded="false">
-									<img src="assets/img/user/user-1.png" class="user-image" alt="User Image" />
+									<img src="{{ url_for('static', filename='assets/img/user/user-1.png') }}" class="user-image" alt="User Image" />
 								</button>
 								<ul class="dropdown-menu dropdown-menu-right ec-dropdown-menu">
 									<!-- User image -->
 									<li class="dropdown-header">
 										<div class="d-inline-block">
-											<h5>Alex Dor</h5>
-											<p class="pt-2">demo@gmail.com</p>
+											<h5>{{ user_info.name }}</h5>
+											<p class="pt-2">{{ user_info.email }}</p>
 										</div>
 									</li>
-									<li>
-										<a href="/user-profile">
-											<i class="mdi mdi-account"></i> My Profile
-										</a>
-									</li>
+									
 									<li class="dropdown-footer">
 										<a href="/logout"> <i class="mdi mdi-logout"></i> Log Out </a>
 									</li>
@@ -361,18 +357,25 @@
 									<div class="ec-cat-form">
 										<h4>Add New Category</h4>
 
-										<form action="{{ url_for('add_category') }}" method="post">
-											<div class="form-group col-6">
-												<label for="category_name" class="col-form-label">Category name</label> 
-												<input id="category_name" name="category-name" class="form-control" type="text" required>
+										{% if error_message %}
+											<div class="alert alert-danger" role="alert">
+												{{ error_message }}
 											</div>
-											<div class="row">
-												<div class="col-12">
-													<button name="submit" type="submit" class="btn btn-primary">Submit</button>
-												</div>
-											</div>
-										</form>																			
+										{% endif %}
 
+										{% if success_message %}
+											<div class="alert alert-success" role="alert">
+												{{ success_message }}
+											</div>
+										{% endif %}
+
+										<form method="POST" action="{{ url_for('add_category') }}">
+											<div class="form-group">
+												<label for="category_name">Category Name</label>
+												<input type="text" class="form-control" id="category_name" name="category_name" required>
+											</div>
+											<button type="submit" class="btn btn-primary">Add Category</button>
+										</form>
 									</div>
 								</div>
 							</div>
@@ -417,3 +420,4 @@
 
 <!-- Mirrored from andit.co/projects/html/andshop/andshop-dashboard/add-category.php by HTTrack Website Copier/3.x [XR&CO'2014], Sat, 25 Feb 2023 08:14:29 GMT -->
 </html>
+

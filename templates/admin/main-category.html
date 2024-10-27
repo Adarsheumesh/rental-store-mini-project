@@ -53,7 +53,7 @@
 			<div id="sidebar" class="sidebar ec-sidebar-footer">
 
 				<div class="ec-brand">
-					<a href="index.php">
+					<a href="/admin_dashboard">
 						<img class="ec-brand-icon" src="{{ url_for('static', filename='assets/img/logo/favicon.png') }}" alt="" />
 						<span class="ec-brand-name text-truncate">ANDSHOP</span>
 					</a>
@@ -65,7 +65,7 @@
 					<ul class="nav sidebar-inner" id="sidebar-menu">
 						<!-- Dashboard -->
 						<li class="active">
-							<a class="sidenav-item-link" href="index.php">
+							<a class="sidenav-item-link" href="/admin_dashboard">
 								<i class="mdi mdi-view-dashboard-outline"></i>
 								<span class="nav-text">Dashboard</span>
 							</a>
@@ -159,23 +159,19 @@
 							<li class="dropdown user-menu">
 								<button class="dropdown-toggle nav-link ec-drop" data-bs-toggle="dropdown"
 									aria-expanded="false">
-									<img src="assets/img/user/user-1.png" class="user-image" alt="User Image" />
+									<img src="{{ url_for('static', filename='assets/img/user/user-1.png') }}" class="user-image" alt="User Image" />
 								</button>
 								<ul class="dropdown-menu dropdown-menu-right ec-dropdown-menu">
 									<!-- User image -->
 									<li class="dropdown-header">
 										<div class="d-inline-block">
-											<h5>Alex Dor</h5>
-											<p class="pt-2">demo@gmail.com</p>
+											<h5>{{ user_info.name }}</h5>
+											<p class="pt-2">{{ user_info.email }}</p>
 										</div>
 									</li>
-									<li>
-										<a href="/user-profile">
-											<i class="mdi mdi-account"></i> My Profile
-										</a>
-									</li>
+									
 									<li class="dropdown-footer">
-										<a href="/logout"> <i class="mdi mdi-logout"></i> Log Out </a>
+										<a href="{{ url_for('logout') }}"> <i class="mdi mdi-logout"></i> Log Out </a>
 									</li>
 								</ul>
 							</li>
@@ -375,7 +371,7 @@
 												{% if categories %}
 													{% for category in categories %}
 													<tr>
-														<td>{{ category.category_name }}</td>
+														<td>{{ category.name }}</td>
 														<td>{{ category.created_at }}</td>
 														<td>
 															{% if category.status == 'active' %}

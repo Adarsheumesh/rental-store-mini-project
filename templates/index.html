@@ -187,6 +187,36 @@
         background-color: #e0e0e0;
         margin: 5px 0;
     }
+    .btn-become-seller {
+        background-color: #ff6a00;
+        color: #ffffff;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        font-size: 14px;
+    }
+    
+    .btn-become-seller:hover {
+        background-color: #e55d00;
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .btn-become-seller i {
+        font-size: 16px;
+    }
+    
+    @media (max-width: 768px) {
+        .become-seller {
+            display: none;
+        }
+    }
 </style>
 </head>
 
@@ -207,7 +237,7 @@
             <!-- Header Bottom Start -->
             <div class="header-bottom header-sticky">
                 <div class="container">
-                    <div class="row justify-content-between">
+                    <div class="row justify-content-between align-items-center">
                         <!--  logo Start-->
                         <div class="col-auto">
                             <div class="logo">
@@ -222,9 +252,15 @@
                         
                         <!--  Cartt Box  Start -->
                         <div class="col-auto">
-                            <div class="cart-box text-end">
-                                <ul>
+                            <div class="cart-box text-end d-flex align-items-center">
+                                <!-- Become a Seller button -->
+                                <div class="become-seller me-3">
+                                    <a href="/become-seller" class="btn btn-become-seller">
+                                        <i class="fa fa-store me-2"></i>Become a Seller
+                                    </a>
+                                </div>
 
+                                <ul>
                                     <!-- Your existing dropdown code -->
                                     <li class="user-account-dropdown">
                                         {% if user_name %}
@@ -565,9 +601,9 @@
                                 <h3>Contact us</h3>
                                 <div class="footer-content">
                                     <div class="loc-address">
-                                        <span><i class="fa fa-map-marker"></i>Your address goes here.</span>
-                                        <span><i class="fa fa-envelope-o"></i>Mail Us: demo@example.com</span>
-                                        <span><i class="fa fa-phone"></i>Phone: 0123456789</span>
+                                        <span><i class="fa fa-map-marker"></i>Xyz building y city.</span>
+                                        <span><i class="fa fa-envelope-o"></i>Mail Us: mail.rentaltools@gmail.com</span>
+                                        <span><i class="fa fa-phone"></i>Phone: 952245752</span>
                                     </div>
                                     <div class="payment-mth"><a href="#"><img class="img" src="{{ url_for('static', filename='img/footer/1.png') }}" alt="payment-image"></a></div> 
                                 </div>

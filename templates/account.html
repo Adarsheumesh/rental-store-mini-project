@@ -268,32 +268,41 @@
                                                             {% if item.get('size') %}Size: {{ item.get('size') }}{% endif %}
                                                         </td>
                                                         <td>₹{{ "%.2f"|format(item.get('item_total', 0)) }}</td>
-                                                        <td>
+                                                        <td id="status-cell-{{ order.order_id }}">
                                                             {% if order.get('status') == 'cancelled' %}
                                                                 <span class="badge bg-danger">Cancelled</span><br>
-                                                                <small>Cancelled on: {{ order.get('cancelled_at', 'N/A').split('T')[0] if order.get('cancelled_at') else 'N/A' }}</small>
+                                                                <small>Cancelled on: <span class="cancelled-date">{{ order.get('cancelled_at', 'N/A').split('T')[0] if order.get('cancelled_at') else 'N/A' }}</span></small>
                                                             {% elif order.get('returns', {}).get('status') == 'returned' %}
                                                                 <span class="badge bg-success">Returned</span><br>
-                                                                <small>Returned on: {{ order.get('returns', {}).get('completed_at', 'N/A').split('T')[0] if order.get('returns', {}).get('completed_at') else 'N/A' }}</small>
+                                                                <small>Returned on: <span class="returned-date">{{ order.get('returns', {}).get('completed_at', 'N/A').split('T')[0] if order.get('returns', {}).get('completed_at') else 'N/A' }}</span></small>
                                                             {% elif order.get('returns', {}).get('status') == 'return_initiated' %}
                                                                 <span class="badge bg-warning text-dark">Return Initiated</span><br>
-                                                                <small>Initiated on: {{ order.get('returns', {}).get('initiated_at', 'N/A').split('T')[0] if order.get('returns', {}).get('initiated_at') else 'N/A' }}</small>
+                                                                <small>Initiated on: <span class="return-initiated-date">{{ order.get('returns', {}).get('initiated_at', 'N/A').split('T')[0] if order.get('returns', {}).get('initiated_at') else 'N/A' }}</span></small>
                                                             {% else %}
                                                                 {% set earliest_rent_from = order.get('items', [])|map(attribute='rent_from')|reject('none')|first %}
                                                                 <span class="badge bg-primary">Active</span><br>
-                                                                <small>Rental Start: {{ earliest_rent_from.split('T')[0] if earliest_rent_from else 'N/A' }}</small>
+                                                                <small>Rental Start: <span class="rental-start-date">{{ earliest_rent_from.split('T')[0] if earliest_rent_from else 'N/A' }}</span></small>
                                                             {% endif %}
                                                         </td>
                                                     </tr>
                                                     {% endfor %}
                                                     <tr>
-                                                        <td colspan="5">
+                                                        <td colspan="6">
                                                             <div class="d-flex flex-column align-items-start">
                                                                 <div class="btn-group-vertical w-100 mb-2" role="group">
                                                                     <button class="btn btn-outline-primary btn-sm view-order-details" data-order-id="{{ order.get('order_id', '') }}">
                                                                         <i class="fa fa-eye"></i> View Details
                                                                     </button>
-                                                                    <a href="{{ url_for('download_order_pdf', order_id=order.get('order_id', '')) }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+                                                                    {% if order.get('status') != 'cancelled' and order.get('returns', {}).get('status') != 'returned' %}
+                                                                        <button class="btn btn-outline-info btn-sm edit-order" data-order-id="{{ order.get('order_id', '') }}">
+                                                                            <i class="fa fa-edit"></i> Edit Order
+                                                                        </button>
+                                                                    {% endif %}
+                                                                    <a href="{{ url_for('download_order_pdf', order_id=order.get('order_id', '')) }}" 
+                                                                       class="btn btn-outline-secondary btn-sm download-invoice" 
+                                                                       id="download-invoice-{{ order.get('order_id', '') }}"
+                                                                       data-order-id="{{ order.get('order_id', '') }}" 
+                                                                       target="_blank">
                                                                         <i class="fa fa-download"></i> Download Invoice
                                                                     </a>
                                                                 </div>
@@ -304,6 +313,9 @@
                                                                             id="return-button-{{ order.get('order_id', '') }}"
                                                                             data-order-id="{{ order.get('order_id', '') }}"
                                                                             data-product-id="{{ order.get('items', [])[0].get('product_id', '') }}"
+                                                                            data-product-name="{{ order.get('items', [])[0].get('product_name', '') }}"
+                                                                            data-rent-from="{{ order.get('items', [])[0].get('rent_from', '') }}"
+                                                                            data-rent-to="{{ order.get('items', [])[0].get('rent_to', '') }}"
                                                                             data-return-status="{{ order.get('returns', {}).get('status', 'not_initiated') }}"
                                                                             {% if order.get('returns', {}).get('status') in ['return_initiated', 'returned'] %}disabled{% endif %}
                                                                             style="border-color: #ffc107; color: #ffc107; background-color: transparent;">
@@ -313,7 +325,9 @@
                                                                         <button class="btn btn-sm cancel-order btn-outline-danger"
                                                                             id="cancel-button-{{ order.get('order_id', '') }}"
                                                                             data-order-id="{{ order.get('order_id', '') }}"
-                                                                            data-order-time="{{ order.get('created_at', '') }}">
+                                                                            data-order-time="{{ order.get('created_at', '') }}"
+                                                                            data-order-status="{{ order.get('status', '') }}"
+                                                                            data-product-name="{{ order.get('items', [{}])[0].get('product_name', 'Unknown Product') }}">
                                                                             <i class="fa fa-times"></i> Cancel Order
                                                                         </button>
                                                                     </div>
@@ -645,24 +659,29 @@
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
-<!-- Modal for Order Details -->
-<div class="modal fade" id="orderDetailsModal" tabindex="-1" role="dialog" aria-labelledby="orderDetailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="orderDetailsModalLabel">Order Details</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body" id="orderDetailsContent">
-                <!-- Order details will be inserted here -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            </div>
-        </div>
+<!-- Add this at the end of your body tag -->
+<div class="modal fade" id="confirmReturnModal" tabindex="-1" role="dialog" aria-labelledby="confirmReturnModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmReturnModalLabel">Confirm Return</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to initiate a return for this item?</p>
+        <p><strong>Product:</strong> <span id="returnProductName"></span></p>
+        <p><strong>Rent From:</strong> <span id="returnRentFrom"></span></p>
+        <p><strong>Rent To:</strong> <span id="returnRentTo"></span></p>
+        <p><strong>Remaining Days:</strong> <span id="returnRemainingDays"></span></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmReturn">Confirm Return</button>
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- Add this just before the closing </body> tag -->
@@ -700,212 +719,609 @@
   </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const returnButtons = document.querySelectorAll('.return-item');
-    const returnModal = document.getElementById('returnModal');
-    const returnModalBody = document.getElementById('returnModalBody');
-    const confirmReturnButton = document.getElementById('confirmReturn');
-
-    function createToastContainer() {
-        const toastContainer = document.createElement('div');
-        toastContainer.className = 'position-fixed bottom-0 right-0 p-3';
-        toastContainer.style.zIndex = '5';
-        toastContainer.style.right = '0';
-        toastContainer.style.bottom = '0';
-        toastContainer.innerHTML = `
-            <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-delay="5000">
-                <div class="toast-header">
-                    <strong class="mr-auto" id="toastTitle">Notification</strong>
-                    <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="toast-body" id="toastMessage"></div>
+<!-- More Details Modal -->
+<div class="modal fade" id="moreDetailsModal" tabindex="-1" role="dialog" aria-labelledby="moreDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="moreDetailsModalLabel">Order Details</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
-        `;
-        document.body.appendChild(toastContainer);
-    }
+            <div class="modal-body" id="moreDetailsContent">
+                <!-- Order details will be populated here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-    function showToast(title, message, isError = false) {
-        let toast = document.getElementById('liveToast');
-        if (!toast) {
-            createToastContainer();
-            toast = document.getElementById('liveToast');
-        }
-        const toastTitle = document.getElementById('toastTitle');
-        const toastMessage = document.getElementById('toastMessage');
-        
-        if (toastTitle) toastTitle.textContent = title;
-        if (toastMessage) toastMessage.textContent = message;
-        
-        toast.classList.toggle('bg-danger', isError);
-        toast.classList.toggle('text-white', isError);
-        
-        // Initialize the toast with options
-        $(toast).toast({
-            delay: 5000, // 5 seconds
-            autohide: true
-        });
-        
-        // Show the toast
-        $(toast).toast('show');
-    }
-
-    function calculateRemainingDays(rentToDate) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const rentTo = new Date(rentToDate);
-        rentTo.setHours(0, 0, 0, 0);
-        const timeDiff = rentTo.getTime() - today.getTime();
-        return Math.ceil(timeDiff / (1000 * 3600 * 24));
-    }
-
-    returnButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const orderId = this.getAttribute('data-order-id');
-            
-            console.log('Return button clicked:', orderId);
-
-            fetch(`/order/${orderId}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Fetched data:', data);
-                    if (data.success && data.order && data.order.items && data.order.items.length > 0) {
-                        const order = data.order;
-                        const item = order.items[0];
-                        console.log('Item found:', item);
-                        
-                        if (item && item.rent_to) {
-                            const rentToDate = new Date(item.rent_to);
-                            const returnDate = new Date(rentToDate);
-                            const pickupDate = new Date(rentToDate);
-                            pickupDate.setDate(pickupDate.getDate() + 1);
-
-                            const remainingDays = calculateRemainingDays(rentToDate);
-                            const daysText = remainingDays > 0 ? `${remainingDays} days remaining` : 'Return overdue';
-
-                            returnModalBody.innerHTML = `
-                                <p><strong>Product:</strong> ${item.product_name}</p>
-                                <p><strong>Return Date:</strong> ${returnDate.toLocaleDateString()}</p>
-                                <p><strong>Pickup Date:</strong> ${pickupDate.toLocaleDateString()}</p>
-                                <p><strong>Countdown:</strong> <span class="text-${remainingDays > 0 ? 'success' : 'danger'}">${daysText}</span></p>
-                                <p>Please ensure the product is ready for pickup on the specified date.</p>
-                            `;
-
-                            confirmReturnButton.style.display = 'block';
-                            $(returnModal).modal('show');
-                        } else {
-                            showToast('Error', 'Unable to process return due to missing rental information. Please contact support.', true);
-                        }
-                    } else {
-                        showToast('Error', 'Could not find order details. Please contact support.', true);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('Error', 'An error occurred while processing your request. Please try again later.', true);
-                });
-        });
-    });
-
-    confirmReturnButton.addEventListener('click', function() {
-        // Here you would implement the logic to process the return
-        // For now, we'll just close the modal and show a success message
-        $(returnModal).modal('hide');
-        showToast('Success', 'Return process initiated. You will be contacted for pickup.');
-    });
-
-    // Close modal when clicking on close button or outside the modal
-    returnModal.addEventListener('click', function(event) {
-        if (event.target === returnModal || event.target.classList.contains('close')) {
-            $(returnModal).modal('hide');
-        }
-    });
-});
-</script>
+<!-- Cancel Order Confirmation Modal -->
+<div class="modal fade" id="cancelOrderModal" tabindex="-1" role="dialog" aria-labelledby="cancelOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cancelOrderModalLabel">Cancel Order</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel this order?</p>
+                <p><strong>Order ID:</strong> <span id="cancelOrderId"></span></p>
+                <p><strong>Product:</strong> <span id="cancelProductName"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">No, Keep Order</button>
+                <button type="button" class="btn btn-danger" id="confirmCancelOrder">Yes, Cancel Order</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const cancelButtons = document.querySelectorAll('.cancel-order');
+$(document).ready(function() {
+    // View Order Details functionality
+    $('.view-order-details').on('click', function() {
+        const orderId = $(this).data('order-id');
+        fetchOrderDetails(orderId);
+    });
 
-    cancelButtons.forEach(button => {
-        const orderId = button.getAttribute('data-order-id');
-        const orderTime = new Date(button.getAttribute('data-order-time'));
-        const cancelWindowMs = 10 * 60 * 1000; // 10 minutes in milliseconds
-        
-        // Hide the corresponding return button
-        const returnButton = document.getElementById(`return-button-${orderId}`);
-        if (returnButton) {
-            returnButton.style.display = 'none';
-        }
-
-        updateCancelButton(button, orderTime, cancelWindowMs, returnButton);
-
-        button.addEventListener('click', function() {
-            if (!this.disabled) {
-                if (confirm('Are you sure you want to cancel this order?')) {
-                    cancelOrder(orderId, this, returnButton);
+    function fetchOrderDetails(orderId) {
+        $.ajax({
+            url: '/get-order-details',
+            method: 'GET',
+            data: { order_id: orderId },
+            success: function(response) {
+                if (response.success) {
+                    populateMoreDetailsModal(response.order);
+                } else {
+                    console.error('Failed to fetch order details:', response.message);
+                    showToast('Error', 'Failed to load order details. Please try again.', true);
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error fetching order details:', error);
+                showToast('Error', 'An error occurred while loading order details.', true);
             }
         });
+    }
+
+    function populateMoreDetailsModal(order) {
+        let detailsHtml = `
+            <h4>Order ID: ${order.order_id}</h4>
+            <p>Order Date: ${new Date(order.created_at).toLocaleString()}</p>
+            <p>Total Price: ₹${parseFloat(order.order_total).toFixed(2)}</p>
+            <p>Status: ${order.status}</p>
+            
+            <h5>Order Progress</h5>
+            <div class="progress-wrapper mb-4">
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <div class="progress-labels d-flex justify-content-between mt-2"></div>
+            </div>
+            
+            <h5>Items:</h5>
+            <ul class="list-group">
+        `;
+        order.items.forEach(item => {
+            detailsHtml += `
+                <li class="list-group-item">
+                    <strong>${item.product_name}</strong><br>
+                    Quantity: ${item.quantity}<br>
+                    Price: ₹${parseFloat(item.item_total).toFixed(2)}<br>
+                    Rent From: ${new Date(item.rent_from).toLocaleDateString()}<br>
+                    Rent To: ${new Date(item.rent_to).toLocaleDateString()}
+                </li>
+            `;
+        });
+        detailsHtml += '</ul>';
+        $('#moreDetailsContent').html(detailsHtml);
+        $('#moreDetailsModal').modal('show');
+        
+        updateProgressBar(order.status);
+    }
+
+    function updateProgressBar(status) {
+        let progressPercentage = 0;
+        let progressBarColor = 'bg-primary';
+        let progressLabels = ['Order Placed', 'Processing', 'Shipped', 'Delivered'];
+        
+        switch(status.toLowerCase()) {
+            case 'pending':
+            case 'order placed':
+                progressPercentage = 25;
+                break;
+            case 'processing':
+                progressPercentage = 50;
+                break;
+            case 'shipped':
+                progressPercentage = 75;
+                break;
+            case 'delivered':
+            case 'paid':
+                progressPercentage = 100;
+                break;
+            case 'returned':
+                progressPercentage = 100;
+                progressBarColor = 'bg-success';
+                progressLabels[3] = 'Returned';
+                break;
+            case 'cancelled':
+                progressPercentage = 100;
+                progressBarColor = 'bg-danger';
+                progressLabels = ['Cancelled'];
+                break;
+            case 'return_initiated':
+                progressPercentage = 75;
+                progressBarColor = 'bg-warning';
+                progressLabels[3] = 'Return Initiated';
+                break;
+            default:
+                console.warn('Unknown status:', status);
+                progressPercentage = 0;
+        }
+
+        const $progressBar = $('.progress-bar');
+        $progressBar.css('width', `${progressPercentage}%`)
+                    .attr('aria-valuenow', progressPercentage)
+                    .removeClass('bg-primary bg-danger bg-success bg-warning')
+                    .addClass(progressBarColor);
+
+        // Update progress labels
+        const $progressLabels = $('.progress-labels');
+        $progressLabels.empty();
+        progressLabels.forEach(label => {
+            $progressLabels.append(`<span>${label}</span>`);
+        });
+
+        // Add status message
+        if (status.toLowerCase() === 'returned') {
+            $('.progress-wrapper').append('<p class="text-success mt-2">This order has been returned.</p>');
+        } else if (status.toLowerCase() === 'cancelled') {
+            $('.progress-wrapper').append('<p class="text-danger mt-2">This order has been cancelled.</p>');
+        } else if (status.toLowerCase() === 'return_initiated') {
+            $('.progress-wrapper').append('<p class="text-warning mt-2">Return has been initiated for this order.</p>');
+        } else if (status.toLowerCase() === 'paid') {
+            $('.progress-wrapper').append('<p class="text-success mt-2">This order has been paid and delivered.</p>');
+        }
+    }
+
+    // Return functionality (keep this part from the previous code)
+    $('.return-item').on('click', function() {
+        const orderId = $(this).data('order-id');
+        const productId = $(this).data('product-id');
+        const productName = $(this).data('product-name');
+        const rentFrom = $(this).data('rent-from');
+        const rentTo = $(this).data('rent-to');
+
+        // Calculate remaining days
+        const today = new Date();
+        const rentToDate = new Date(rentTo);
+        const remainingDays = Math.max(0, Math.ceil((rentToDate - today) / (1000 * 60 * 60 * 24)));
+
+        // Populate modal
+        $('#returnProductName').text(productName);
+        $('#returnRentFrom').text(new Date(rentFrom).toLocaleDateString());
+        $('#returnRentTo').text(new Date(rentTo).toLocaleDateString());
+        $('#returnRemainingDays').text(remainingDays);
+
+        // Store orderId and productId for use in confirmReturn
+        $('#confirmReturn').data('order-id', orderId).data('product-id', productId);
+
+        // Show modal
+        $('#confirmReturnModal').modal('show');
     });
 
-    function updateCancelButton(button, orderTime, cancelWindowMs, returnButton) {
+    $('#confirmReturn').on('click', function() {
+        const orderId = $(this).data('order-id');
+        const productId = $(this).data('product-id');
+        initiateReturn(orderId, productId);
+        $('#confirmReturnModal').modal('hide');
+    });
+
+    function initiateReturn(orderId, productId) {
+        $.ajax({
+            url: '/initiate-return',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ order_id: orderId, product_id: productId }),
+            success: function(response) {
+                if (response.success) {
+                    showToast('Success', 'Return initiated successfully', false);
+                    updateOrderStatus(orderId, 'return_initiated');
+                    $(`#return-button-${orderId}`).hide();
+                } else {
+                    showToast('Error', 'Failed to initiate return: ' + response.message, true);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error:', error);
+                showToast('Error', 'An error occurred while initiating the return', true);
+            }
+        });
+    }
+
+    function updateOrderStatus(orderId, newStatus) {
+        const statusCell = $(`#status-cell-${orderId}`);
+        let statusHtml = '';
+
+        switch(newStatus.toLowerCase()) {
+            case 'cancelled':
+                statusHtml = `
+                    <span class="badge bg-danger">Cancelled</span><br>
+                    <small>Cancelled on: <span class="cancelled-date">${new Date().toISOString().split('T')[0]}</span></small>
+                `;
+                // Hide the cancel order and download invoice buttons
+                $(`#cancel-button-${orderId}`).hide();
+                $(`#download-invoice-${orderId}`).hide();
+                $(`#return-button-${orderId}`).hide();
+                break;
+            case 'returned':
+                statusHtml = `
+                    <span class="badge bg-success">Returned</span><br>
+                    <small>Returned on: <span class="returned-date">${new Date().toISOString().split('T')[0]}</span></small>
+                `;
+                break;
+            case 'return_initiated':
+                statusHtml = `
+                    <span class="badge bg-warning text-dark">Return Initiated</span><br>
+                    <small>Initiated on: <span class="return-initiated-date">${new Date().toISOString().split('T')[0]}</span></small>
+                `;
+                break;
+            default:
+                statusHtml = `
+                    <span class="badge bg-primary">Active</span><br>
+                    <small>Rental Start: <span class="rental-start-date">${new Date().toISOString().split('T')[0]}</span></small>
+                `;
+        }
+
+        statusCell.html(statusHtml);
+    }
+
+    // Add this function to show toast notifications
+    function showToast(title, message, isError) {
+        // Implement your toast notification logic here
+        // You can use a library like Toastr or create a custom implementation
+        console.log(`${title}: ${message}`);
+    }
+
+    function updateCancelButton(button, orderTime, cancelWindowMs, orderStatus) {
         const now = new Date();
         const timeSinceOrder = now - orderTime;
         const timeLeftMs = cancelWindowMs - timeSinceOrder;
+        const orderId = button.data('order-id');
 
-        if (timeLeftMs <= 0) {
-            button.style.display = 'none';
-            if (returnButton) {
-                returnButton.style.display = 'inline-block'; // Show return button when cancel window closes
+        if (timeLeftMs <= 0 || orderStatus.toLowerCase() === 'cancelled') {
+            button.hide();
+            $(`#download-invoice-${orderId}`).hide();
+            if (orderStatus === 'paid') {
+                $(`#return-button-${orderId}`).show();
             }
+            updateEditOrderButtonVisibility(orderId);
             return;
         }
 
         const minutes = Math.floor(timeLeftMs / 60000);
         const seconds = Math.floor((timeLeftMs % 60000) / 1000);
 
-        button.textContent = `Cancel Order (${minutes}:${seconds.toString().padStart(2, '0')})`;
+        button.text(`Cancel Order (${minutes}:${seconds.toString().padStart(2, '0')})`);
+        button.show();
+        $(`#return-button-${orderId}`).hide();
 
-        setTimeout(() => updateCancelButton(button, orderTime, cancelWindowMs, returnButton), 1000);
+        // Store the timer in a global variable
+        window[`cancelTimer_${orderId}`] = setTimeout(() => {
+            button.hide();
+            updateEditOrderButtonVisibility(orderId);
+            showToast('Info', `Cancellation window for Order #${orderId} has ended.`, false);
+        }, timeLeftMs);
     }
 
-    function cancelOrder(orderId, button, returnButton) {
-        fetch('/cancel-order', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ order_id: orderId })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Order cancelled successfully');
-                button.textContent = 'Cancelled';
-                button.classList.remove('btn-danger');
-                button.classList.add('btn-secondary');
-                button.disabled = true;
+    function updateEditOrderButtonVisibility(orderId) {
+        const cancelButton = $(`#cancel-button-${orderId}`);
+        const editButton = $(`.edit-order[data-order-id="${orderId}"]`);
+        
+        if (cancelButton.is(':visible')) {
+            editButton.show();
+        } else {
+            editButton.hide();
+        }
+    }
 
-                // Keep the return button hidden after cancellation
-                if (returnButton) {
-                    returnButton.style.display = 'none';
-                }
-            } else {
-                alert('Failed to cancel order: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while cancelling the order');
+    // Make sure to call updateCancelButton for each order when the page loads
+    $(document).ready(function() {
+        $('.cancel-order').each(function() {
+            const button = $(this);
+            const orderId = button.data('order-id');
+            const orderTime = new Date(button.data('order-time'));
+            const cancelWindowMs = 10 * 60 * 1000; // 10 minutes in milliseconds
+            const orderStatus = button.data('order-status');
+            
+            updateCancelButton(button, orderTime, cancelWindowMs, orderStatus);
         });
+
+        // ... rest of your existing code ...
+    });
+
+    $('.cancel-order').on('click', function() {
+        const orderId = $(this).data('order-id');
+        const productName = $(this).data('product-name');
+        const orderTime = new Date($(this).data('order-time'));
+        const cancelWindowMs = 10 * 60 * 1000; // 10 minutes in milliseconds
+        const now = new Date();
+        const timeSinceOrder = now - orderTime;
+
+        if (timeSinceOrder <= cancelWindowMs) {
+            $('#cancelOrderId').text(orderId);
+            $('#cancelProductName').text(productName);
+            $('#cancelOrderModal').modal('show');
+        } else {
+            showToast('Error', 'The cancellation window for this order has expired.', true);
+        }
+    });
+
+    $('#confirmCancelOrder').on('click', function() {
+        const orderId = $('#cancelOrderId').text();
+        cancelOrder(orderId);
+    });
+
+    function cancelOrder(orderId) {
+        $.ajax({
+            url: '/cancel-order',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ order_id: orderId }),
+            success: function(response) {
+                if (response.success) {
+                    showToast('Success', 'Order cancelled successfully', false);
+                    updateOrderStatus(orderId, 'Cancelled');
+                    // Immediately hide buttons without waiting for updateCancelButton
+                    $(`#cancel-button-${orderId}`).hide();
+                    $(`#download-invoice-${orderId}`).hide();
+                    $(`#return-button-${orderId}`).hide();
+                    // Stop the cancel button timer
+                    clearTimeout(window[`cancelTimer_${orderId}`]);
+                } else {
+                    showToast('Error', 'Failed to cancel order: ' + response.message, true);
+                }
+                $('#cancelOrderModal').modal('hide');
+            },
+            error: function(xhr, status, error) {
+                console.error('Error:', error);
+                showToast('Error', 'An error occurred while cancelling the order', true);
+                $('#cancelOrderModal').modal('hide');
+            }
+        });
+    }
+
+    // Handle Edit Order button click
+    $(document).on('click', '.edit-order', function() {
+        const orderId = $(this).data('order-id');
+        openEditOrderModal(orderId);
+    });
+
+    function openEditOrderModal(orderId) {
+        // Fetch the order details
+        $.ajax({
+            url: '/get-order-details',
+            method: 'GET',
+            data: { order_id: orderId },
+            success: function(response) {
+                if (response.success) {
+                    showEditOrderModal(response.order);
+                } else {
+                    showToast('Error', 'Failed to load order details: ' + response.message, true);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error:', error);
+                showToast('Error', 'An error occurred while loading order details', true);
+            }
+        });
+    }
+
+    function showEditOrderModal(order) {
+        // Create the modal HTML
+        let modalHtml = `
+            <div class="modal fade" id="editOrderModal" tabindex="-1" role="dialog" aria-labelledby="editOrderModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="editOrderModalLabel">Edit Order #${order.order_id}</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Quantity</th>
+                                        <th>Price</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+        `;
+
+        order.items.forEach((item, index) => {
+            modalHtml += `
+                <tr>
+                    <td>${item.product_name}</td>
+                    <td>
+                        <input type="number" class="form-control edit-item-quantity" 
+                               data-item-index="${index}" value="${item.quantity}" min="0" max="10">
+                    </td>
+                    <td>₹${item.item_total.toFixed(2)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger remove-item" data-item-index="${index}">
+                            Remove
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        modalHtml += `
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary" id="saveOrderChanges" data-order-id="${order.order_id}">Save changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add the modal to the page and show it
+        $('body').append(modalHtml);
+        $('#editOrderModal').modal('show');
+
+        // Remove the modal from the DOM when it's hidden
+        $('#editOrderModal').on('hidden.bs.modal', function () {
+            $(this).remove();
+        });
+    }
+
+    // Handle quantity changes
+    $(document).on('change', '.edit-item-quantity', function() {
+        // You can add logic here to update the price in real-time if needed
+    });
+
+    // Handle remove item
+    $(document).on('click', '.remove-item', function() {
+        $(this).closest('tr').remove();
+    });
+
+    // Handle save changes
+    $(document).on('click', '#saveOrderChanges', function() {
+        const orderId = $(this).data('order-id');
+        const updatedItems = [];
+
+        $('#editOrderModal .edit-item-quantity').each(function() {
+            const itemIndex = $(this).data('item-index');
+            const newQuantity = parseInt($(this).val());
+            if (newQuantity > 0) {
+                const itemRow = $(this).closest('tr');
+                const itemTotal = parseFloat(itemRow.find('td:nth-child(3)').text().replace('₹', ''));
+                updatedItems.push({
+                    item_total: itemTotal,
+                    product_id: itemRow.data('product-id'),
+                    quantity: newQuantity,
+                    rent_from: itemRow.data('rent-from'),
+                    rent_to: itemRow.data('rent-to'),
+                    rental_days: itemRow.data('rental-days'),
+                    store_name: itemRow.data('store-name')
+                });
+            }
+        });
+
+        updateOrder(orderId, updatedItems);
+    });
+
+    function updateOrder(orderId, updatedItems) {
+        // Get a reference to the specific order in Firebase
+        const orderRef = database.ref('orders/' + orderId);
+
+        // Fetch the current order data
+        orderRef.once('value')
+            .then((snapshot) => {
+                const currentOrder = snapshot.val();
+                if (!currentOrder) {
+                    throw new Error('Order not found');
+                }
+
+                // Update the items and recalculate the order total
+                let newOrderTotal = 0;
+                updatedItems.forEach(item => {
+                    newOrderTotal += item.item_total;
+                });
+
+                // Prepare the update object
+                const updates = {
+                    items: updatedItems,
+                    order_total: newOrderTotal,
+                    updated_at: new Date().toISOString()
+                };
+
+                // Update the order in Firebase
+                return orderRef.update(updates);
+            })
+            .then(() => {
+                // If the update is successful, update the UI
+                showToast('Success', 'Order updated successfully', false);
+                $('#editOrderModal').modal('hide');
+                
+                // Update the order display in the UI
+                updateOrderDisplay(orderId, updatedItems);
+            })
+            .catch((error) => {
+                console.error('Error updating order:', error);
+                showToast('Error', 'Failed to update order: ' + error.message, true);
+            });
+    }
+
+    function updateOrderDisplay(orderId, updatedItems) {
+        const orderRow = $(`tr[data-order-id="${orderId}"]`);
+        
+        // Update the items display
+        let itemsHtml = '';
+        let totalPrice = 0;
+        
+        updatedItems.forEach((item, index) => {
+            itemsHtml += `
+                <tr class="order-item" data-order-id="${orderId}" data-item-index="${index}">
+                    <td>
+                        <img src="${item.image_url || '/static/img/default-product.jpg'}" 
+                             alt="${item.product_name}" width="50" height="50">
+                    </td>
+                    <td>
+                        <strong>${item.product_name}</strong><br>
+                        Rent From: ${item.rent_from}<br>
+                        Rent To: ${item.rent_to}
+                    </td>
+                    <td>₹${item.item_total.toFixed(2)}</td>
+                    <td>Quantity: <span class="item-quantity">${item.quantity}</span></td>
+                    <td>
+                        <!-- Add status cell content here if needed -->
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger cancel-single-item"
+                                data-order-id="${orderId}"
+                                data-item-index="${index}"
+                                data-product-name="${item.product_name}">
+                            <i class="fa fa-times"></i> Cancel Item
+                        </button>
+                    </td>
+                </tr>
+            `;
+            totalPrice += item.item_total;
+        });
+
+        // Update the order total and items
+        orderRow.find('td:first').html(`
+            <strong>Order ID: ${orderId}</strong><br>
+            Total Price: ₹${totalPrice.toFixed(2)}<br>
+            Order Date: ${new Date().toLocaleString()} <!-- You might want to keep the original order date -->
+        `);
+        orderRow.nextUntil('tr:has(td[colspan="6"])').remove();
+        orderRow.after(itemsHtml);
+
+        // Update cancel and edit buttons visibility
+        if (updatedItems.length === 0) {
+            $(`#cancel-button-${orderId}`).hide();
+            $(`.edit-order[data-order-id="${orderId}"]`).hide();
+        } else {
+            $(`#cancel-button-${orderId}`).show();
+            $(`.edit-order[data-order-id="${orderId}"]`).show();
+        }
     }
 });
 </script>

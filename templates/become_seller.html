@@ -1,0 +1,643 @@
+<!doctype html>
+<html class="no-js" lang="en-US">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Become a Seller | Jantrik</title>
+    <meta name="description" content="Default Description">
+    <meta name="keywords" content="E-commerce" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- place favicon.ico in the root directory -->
+    <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/icon/favicon.png') }}">
+
+    <!-- Google Font css -->
+    <link href="https://fonts.googleapis.com/css?family=Lily+Script+One" rel="stylesheet"> 
+
+    <!-- mobile menu css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/meanmenu.min.css') }}">
+    <!-- animate css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/animate.css') }}">
+    <!-- nivo slider css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/nivo-slider.css') }}">
+    <!-- owl carousel css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/owl.carousel.min.css') }}">
+    <!-- slick css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/slick.css') }}">
+    <!-- price slider css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.min.css') }}">
+    <!-- fontawesome css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/font-awesome.min.css') }}">
+    <!-- fancybox css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery.fancybox.css') }}">
+    <!-- bootstrap css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <!-- default css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/default.css') }}">
+    <!-- style css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- responsive css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+
+    <!-- modernizr js -->
+    <script src="{{ url_for('static', filename='js/vendor/modernizr-2.8.3.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+    <style>
+        .custom-popup {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 15px 25px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            text-align: center;
+            animation: fadeInOut 3s ease-in-out;
+        }
+
+        #popup-message {
+            margin: 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .user-account-dropdown {
+            position: relative;
+        }
+
+        .user-account-dropdown .user-toggle {
+            color: #2874f0;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 16px;
+            padding: 8px 12px;
+            background-color: #fff;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .user-account-dropdown .user-toggle:hover {
+            background-color: #f0f0f0;
+        }
+
+        .user-account-dropdown .user-toggle i {
+            margin-right: 5px;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            display: none;
+            z-index: 1000;
+            min-width: 200px;
+            padding: 5px 0;
+        }
+
+        .user-account-dropdown:hover .ht-dropdown.user-menu {
+            display: block;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu li {
+            list-style: none;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu a {
+            display: block;
+            padding: 10px 20px;
+            color: #333;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu a:hover {
+            background-color: #f5f5f5;
+            color: #2874f0;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .user-account-dropdown .ht-dropdown.user-menu .divider {
+            height: 1px;
+            background-color: #e0e0e0;
+            margin: 5px 0;
+        }
+
+        .btn-become-seller {
+            background-color: #ff6a00;
+            color: #ffffff;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            font-size: 14px;
+        }
+        
+        .btn-become-seller:hover {
+            background-color: #e55d00;
+            color: #ffffff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-become-seller i {
+            font-size: 16px;
+        }
+        
+        @media (max-width: 768px) {
+            .become-seller {
+                display: none;
+            }
+        }
+
+        .step {
+            display: none;
+        }
+        .step.active {
+            display: block;
+        }
+        .progress-bar {
+            height: 3px;
+            background-color: #ffd700;
+            margin-bottom: 15px;
+            transition: width 0.3s ease;
+        }
+        .card-body {
+            padding: 1.5rem;
+        }
+        .form-label {
+            margin-bottom: 0.25rem;
+        }
+        .form-control, .form-select {
+            padding: 0.375rem 0.75rem;
+        }
+        .mb-4 {
+            margin-bottom: 1rem !important;
+        }
+        .btn {
+            padding: 0.375rem 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <!--[if lt IE 8]>
+    <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+    <![endif]-->
+    <!-- Wrapper Start -->
+    <div class="wrapper homepage">
+        <!-- Header Area Start -->
+        <header>
+            <!-- Header Bottom Start -->
+            <div class="header-bottom header-sticky">
+                <div class="container">
+                    <div class="row justify-content-between align-items-center">
+                        <!--  logo Start-->
+                        <div class="col-auto">
+                            <div class="logo">
+                                <a href="/index"><img src="{{ url_for('static', filename='img/logo/logo.png') }}"></a>
+                            </div>                          
+                        </div>
+                        <!--  logo End -->
+                        
+                        <!--  Cart Box  Start -->
+                        <div class="col-auto">
+                            <div class="cart-box text-end d-flex align-items-center">
+                                <!-- Become a Seller button -->
+                                <div class="become-seller me-3">
+                                    <a href="{{ url_for('become_seller') }}" class="btn btn-become-seller">
+                                        <i class="fa fa-store me-2"></i>Become a Seller
+                                    </a>
+                                </div>
+
+                                <ul>
+                                    <!-- User account dropdown -->
+                                    <li class="user-account-dropdown">
+                                        {% if name and name != 'Unknown' %}
+                                            <a href="#" class="user-toggle">
+                                                <i class="fa fa-user-circle"></i> Hello, {{ name }} <i class="fa fa-angle-down"></i>
+                                            </a>
+                                            <ul class="ht-dropdown user-menu">
+                                                <li><a href="{{ url_for('account') }}"><i class="fa fa-user"></i> My Account</a></li>
+                                                <li><a href="{{ url_for('wishlist') }}"><i class="fa fa-heart"></i> Wishlist</a></li>
+                                                <li class="divider"></li>
+                                                <li><a href="{{ url_for('logout') }}"><i class="fa fa-sign-out"></i> Logout</a></li>
+                                            </ul>
+                                        {% else %}
+                                            <a href="{{ url_for('login') }}" class="user-toggle">
+                                                <i class="fa fa-user"></i> Login / Register <i class="fa fa-angle-down"></i>
+                                            </a>
+                                            <ul class="ht-dropdown user-menu">
+                                                <li><a href="{{ url_for('login') }}"><i class="fa fa-sign-in"></i> Login</a></li>
+                                                <li><a href="{{ url_for('register') }}"><i class="fa fa-user-plus"></i> Register</a></li>
+                                            </ul>
+                                        {% endif %}
+                                    </li>
+                                    <li><a href="{{ url_for('wishlist') }}"><i class="fa fa-heart-o"></i></a></li>
+                                    <li><a href="{{ url_for('cart') }}"><i class="fa fa-shopping-basket"></i><span class="cart-counter">{{ cart_count }}</span></a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <!--  Cart Box  End-->
+                    </div>
+                    <!-- Row End -->
+                </div>
+                <!-- Container End -->
+            </div>
+            <!-- Header Bottom End -->
+        </header>
+        <!-- Header Area End -->
+
+      
+
+        <!-- Become a Seller Form Start -->
+        <div class="become-seller-area py-4" style="background: linear-gradient(135deg, #f6f9fc 0%, #f1f4f8 100%);">
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        <div class="card shadow-lg border-0">
+                            <div class="card-header bg-primary text-white py-3" style="background: linear-gradient(135deg, #4e54c8, #8f94fb);">
+                                <h4 class="text-center mb-0">Become a Seller</h4>
+                            </div>
+                            <div class="card-body">
+                                {% if application_pending %}
+                                    <div class="text-center">
+                                        <i class="fa fa-clock-o fa-4x mb-3" style="color: #ffd700;"></i>
+                                        <h2 class="mb-3">Application Pending</h2>
+                                        <p class="lead">Your vendor application is currently under review. We'll notify you once it's approved.</p>
+                                        <a href="{{ url_for('account') }}" class="btn btn-primary mt-3">Go to Account</a>
+                                    </div>
+                                {% else %}
+                                    <div class="progress-bar" id="progress-bar"></div>
+                                    <p class="text-center mb-4" id="step-title">Step 1 of 3: Basic Information</p>
+                                    <form id="seller-form" method="POST" action="{{ url_for('become_seller') }}" class="needs-validation" novalidate>
+                                        <!-- Step 1: Basic Information -->
+                                        <div class="step active">
+                                            <div class="mb-3">
+                                                <label for="store_name" class="form-label">Store Name</label>
+                                                <input type="text" class="form-control" id="store_name" name="store_name" required maxlength="15">
+                                                <div id="storeNameError" class="invalid-feedback"></div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="name" class="form-label">Your Name</label>
+                                                <input type="text" class="form-control" id="name" name="name" value="{{ name }}" required maxlength="20">
+                                                <div id="nameError" class="invalid-feedback"></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Step 2: Contact Details -->
+                                        <div class="step">
+                                            <div class="mb-3">
+                                                <label for="phone" class="form-label">Phone Number</label>
+                                                <input type="tel" class="form-control" id="phone" name="phone" value="{{ phone }}" required maxlength="10" pattern="\d{10}">
+                                                <div id="phoneError" class="invalid-feedback"></div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="address" class="form-label">Address</label>
+                                                <textarea class="form-control" id="address" name="address" rows="3" required maxlength="20">{{ district }}</textarea>
+                                                <div id="addressError" class="invalid-feedback"></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Step 3: Additional Information -->
+                                        <div class="step">
+                                            <div class="mb-3">
+                                                <label for="gst_number" class="form-label">GST Number</label>
+                                                <input type="text" class="form-control" id="gst_number" name="gst_number" required maxlength="15">
+                                                <div id="gstError" class="invalid-feedback"></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex justify-content-between mt-4">
+                                            <button type="button" id="prev-btn" class="btn btn-secondary">Previous</button>
+                                            <button type="button" id="next-btn" class="btn btn-primary">Next</button>
+                                            <button type="submit" id="submit-btn" class="btn btn-success" style="display: none;">Submit</button>
+                                        </div>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Become a Seller Form End -->
+
+        <!-- Footer Start -->
+        <footer class="off-white-bg">
+            <!-- Your existing footer code -->
+        </footer>
+        <!-- Footer End -->
+    </div>
+
+    <!-- Include your JavaScript files here -->
+    <script src="{{ url_for('static', filename='js/vendor/jquery-1.12.4.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <!-- Add other JS files as needed -->
+
+    <script>
+    // Example starter JavaScript for disabling form submissions if there are invalid fields
+    (function () {
+      'use strict'
+
+      // Fetch all the forms we want to apply custom Bootstrap validation styles to
+      var forms = document.querySelectorAll('.needs-validation')
+
+      // Loop over them and prevent submission
+      Array.prototype.slice.call(forms)
+        .forEach(function (form) {
+          form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+              event.preventDefault()
+              event.stopPropagation()
+            }
+
+            form.classList.add('was-validated')
+          }, false)
+        })
+    })()
+    </script>
+
+    <script>
+    function validateStoreName() {
+        const storeNameInput = document.getElementById('store_name');
+        const errorElement = document.getElementById('storeNameError');
+        // Remove any non-alphabetic characters except spaces
+        storeNameInput.value = storeNameInput.value.replace(/[^A-Za-z\s]/g, '');
+    
+        const storeName = storeNameInput.value;
+        const regex = /^[A-Za-z\s]{1,15}$/;
+    
+        if (!regex.test(storeName) || storeName.trim() === '') {
+            errorElement.textContent = 'Store name must be 1-15 characters long and can only contain letters and spaces.';
+            errorElement.style.display = 'block';
+            storeNameInput.classList.add('is-invalid');
+            return false;
+        } else {
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+            storeNameInput.classList.remove('is-invalid');
+            return true;
+        }
+    }
+
+    function validateName() {
+        const nameInput = document.getElementById('name');
+        const errorElement = document.getElementById('nameError');
+        // Remove any non-alphabetic characters except spaces
+        nameInput.value = nameInput.value.replace(/[^A-Za-z\s]/g, '');
+    
+        const name = nameInput.value;
+        const regex = /^[A-Za-z\s]+$/;
+    
+        if (!regex.test(name) || name.trim() === '') {
+            errorElement.textContent = 'Name cannot contain numbers or special characters.';
+            errorElement.style.display = 'block';
+            nameInput.classList.add('is-invalid');
+            return false;
+        } else {
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+            nameInput.classList.remove('is-invalid');
+            return true;
+        }
+    }
+
+    function validatePhone() {
+        const phoneInput = document.getElementById('phone');
+        const errorElement = document.getElementById('phoneError');
+        phoneInput.value = phoneInput.value.replace(/[^0-9]/g, '');
+    
+        const phone = phoneInput.value;
+        const regex = /^\d{10}$/;
+    
+        if (!regex.test(phone)) {
+            errorElement.textContent = 'Phone number must be exactly 10 digits.';
+            errorElement.style.display = 'block';
+            phoneInput.classList.add('is-invalid');
+            return false;
+        } else {
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+            phoneInput.classList.remove('is-invalid');
+            return true;
+        }
+    }
+
+    function validateAddress() {
+        const addressInput = document.getElementById('address');
+        const errorElement = document.getElementById('addressError');
+        const regex = /^[A-Za-z0-9\s,.-]{5,20}$/;
+    
+        if (!regex.test(addressInput.value.trim())) {
+            errorElement.textContent = 'Address must be 5-20 characters long and can only contain letters, numbers, spaces, commas, periods, and hyphens.';
+            errorElement.style.display = 'block';
+            addressInput.classList.add('is-invalid');
+            return false;
+        } else {
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+            addressInput.classList.remove('is-invalid');
+            return true;
+        }
+    }
+
+    function validateGST() {
+        const gstInput = document.getElementById('gst_number');
+        const errorElement = document.getElementById('gstError');
+        gstInput.value = gstInput.value.toUpperCase();
+        const regex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+        
+        if (!regex.test(gstInput.value) || gstInput.value.length !== 15) {
+            errorElement.textContent = 'Please enter a valid 15-character GST number.';
+            errorElement.style.display = 'block';
+            gstInput.classList.add('is-invalid');
+            return false;
+        } else {
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+            gstInput.classList.remove('is-invalid');
+            return true;
+        }
+    }
+
+    function validateForm() {
+        const storeNameValid = validateStoreName();
+        const nameValid = validateName();
+        const phoneValid = validatePhone();
+        const addressValid = validateAddress();
+        const gstValid = validateGST();
+        return storeNameValid && nameValid && phoneValid && addressValid && gstValid;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('seller-form');
+        const steps = document.querySelectorAll('.step');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const submitBtn = document.getElementById('submit-btn');
+        const stepTitle = document.getElementById('step-title');
+        const progressBar = document.getElementById('progress-bar');
+        let currentStep = 0;
+
+        function showStep(stepIndex) {
+            steps.forEach((step, index) => {
+                step.classList.toggle('active', index === stepIndex);
+            });
+            stepTitle.textContent = `Step ${stepIndex + 1} of 3: ${getStepTitle(stepIndex)}`;
+            prevBtn.style.display = stepIndex > 0 ? 'inline-block' : 'none';
+            nextBtn.style.display = stepIndex < steps.length - 1 ? 'inline-block' : 'none';
+            submitBtn.style.display = stepIndex === steps.length - 1 ? 'inline-block' : 'none';
+            progressBar.style.width = `${((stepIndex + 1) / steps.length) * 100}%`;
+        }
+
+        function getStepTitle(stepIndex) {
+            switch (stepIndex) {
+                case 0: return 'Basic Information';
+                case 1: return 'Contact Details';
+                case 2: return 'Additional Information';
+                default: return '';
+            }
+        }
+
+        function validateStep(stepIndex) {
+            let isValid = true;
+            switch (stepIndex) {
+                case 0:
+                    isValid = validateStoreName() && validateName();
+                    break;
+                case 1:
+                    isValid = validatePhone() && validateAddress();
+                    break;
+                case 2:
+                    isValid = validateGST();
+                    break;
+            }
+            return isValid;
+        }
+
+        function showPopup(message) {
+            const popup = document.getElementById('updatePopup');
+            const popupMessage = document.getElementById('popup-message');
+            popupMessage.textContent = message;
+            popup.style.display = 'block';
+            setTimeout(() => {
+                popup.style.display = 'none';
+            }, 3000); // Hide after 3 seconds
+        }
+
+        nextBtn.addEventListener('click', () => {
+            if (validateStep(currentStep)) {
+                const formData = new FormData(form);
+                formData.append('current_step', currentStep);
+                fetch('{{ url_for("become_seller") }}', {
+                    method: 'POST',
+                    body: formData
+                }).then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showPopup(`Step ${currentStep + 1} updated successfully!`);
+                        currentStep++;
+                        showStep(currentStep);
+                    } else {
+                        alert('Failed to save data. Please try again.');
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                });
+            }
+        });
+
+        prevBtn.addEventListener('click', () => {
+            currentStep--;
+            showStep(currentStep);
+        });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (validateStep(currentStep)) {
+                const formData = new FormData(form);
+                formData.append('current_step', currentStep);
+                formData.append('final_submit', 'true');
+                fetch('{{ url_for("become_seller") }}', {
+                    method: 'POST',
+                    body: formData
+                }).then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        var successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                        successModal.show();
+                    } else {
+                        alert('Failed to submit form. Please try again.');
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred. Please try again.');
+                });
+            }
+        });
+
+        // Pre-fill validation for pre-filled fields
+        validateName();
+        validatePhone();
+        validateAddress();
+
+        // Add event listeners for real-time validation
+        document.getElementById('store_name').addEventListener('input', validateStoreName);
+        document.getElementById('name').addEventListener('input', validateName);
+        document.getElementById('phone').addEventListener('input', validatePhone);
+        document.getElementById('address').addEventListener('input', validateAddress);
+        document.getElementById('gst_number').addEventListener('input', validateGST);
+
+        showStep(currentStep);
+    });
+    </script>
+
+    <!-- Add this modal at the end of the body, just before the closing </body> tag -->
+    <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="successModalLabel">Registration Successful</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Your vendor registration was successful! Your application is now pending approval.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" onclick="window.location.href='{{ url_for('account') }}'">Go to Account</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add this just before the closing </body> tag -->
+    <div id="updatePopup" class="custom-popup">
+        <p id="popup-message"></p>
+    </div>
+</body>
+</html>

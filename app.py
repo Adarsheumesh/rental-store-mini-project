@@ -2894,38 +2894,69 @@ def delete_product(product_id):
         flash(f"Failed to delete product: {str(e)}", 'danger')
     
     return redirect(url_for('product_list'))
-
-@app.route('/add-category')
-def add_category_page():
-    return render_template('Admin/add-category.html')  # Updated path
-@app.route('/add-category', methods=['POST'])
+ # Updated path
+@app.route('/add-category', methods=['GET', 'POST'])
 def add_category():
-    if request.method == 'POST':
-        # Retrieve category name from form
-        category_name = request.form.get('category-name')
+    if 'user_id' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
 
-        # Validate category name
-        if not category_name:
-            flash('Category name is required.', 'danger')
-            return redirect(url_for('add_category_page'))
+    try:
+        user_id = session['user_id']
+        user_info = db.child("users").child(user_id).get().val()
+        
+        if not user_info or user_info.get('user_type') != 'Admin':
+            flash('Unauthorized access.', 'danger')
+            return redirect(url_for('dashboard'))
 
-        try:
-            # Insert category into Firebase Realtime Database
-            db.child("categories").push({
-                "category_name": category_name,
-                "status": "active",  # Set default status as active
-                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            })
+        existing_categories = db.child("categories").get().val()
+        error_message = ''
+        success_message = ''
 
-            flash('Category added successfully!', 'success')
-            return redirect(url_for('main_category'))  # Redirect to the category list page
-        except Exception as e:
-            flash(f"Failed to add category: {str(e)}", 'danger')
+        if request.method == 'POST':
+            category_name = request.form.get('category_name')
+            
+            if not category_name:
+                error_message = 'Category name is required.'
+            elif existing_categories:
+                if any(cat['name'].lower() == category_name.lower() for cat in existing_categories.values()):
+                    error_message = 'Category already exists.'
+                else:
+                    # Add new category
+                    new_category = {
+                        'name': category_name,
+                        'status': 'active',
+                        'created_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    db.child("categories").push(new_category)
+                    success_message = 'Category added successfully.'
+            else:
+                # If no categories exist, add the first one
+                new_category = {
+                    'name': category_name,
+                    'status': 'active',
+                    'created_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+                db.child("categories").push(new_category)
+                success_message = 'Category added successfully.'
 
-    return redirect(url_for('add_category_page'))  # Redirect if method is not POST
+        return render_template('Admin/add-category.html', 
+                               user_info=user_info, 
+                               error_message=error_message,
+                               success_message=success_message)
+
+    except Exception as e:
+        app.logger.error(f"Error in add_category: {str(e)}")
+        flash('An error occurred while processing your request. Please try again.', 'danger')
+        return redirect(url_for('admin_dashboard'))
 @app.route('/categories', methods=['GET'])
 def categories():
     try:
+        # Check if user is logged in
+        if 'user_id' not in session:
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('login'))
+
         # Fetch categories from Firebase
         categories_data = db.child("categories").get().val()
         print("Raw categories data:", categories_data)  # Debug print
@@ -2936,38 +2967,34 @@ def categories():
             for key, value in categories_data.items():
                 categories_list.append({
                     "id": key,
-                    "category_name": value.get('category_name', 'N/A'),
-                    "status": value.get('status', 'inactive'),  # Ensure status is included
+                    "name": value.get('name', 'N/A'),
+                    "status": value.get('status', 'inactive'),
                     "created_at": value.get('created_at', 'N/A')
                 })
         
         print("Processed categories list:", categories_list)  # Debug print
 
-        # Pass the categories list to the template
-        return render_template('Admin/main-category.html', categories=categories_list)
+        # Fetch user info
+        user_info = db.child("users").child(session['user_id']).get().val()
+        if not user_info or user_info.get('user_type') != 'Admin':
+            flash('Unauthorized access.', 'danger')
+            return redirect(url_for('dashboard'))
+
+        # Pass the categories list and user info to the template
+        return render_template('Admin/main-category.html', categories=categories_list, user_info=user_info)
         
     except Exception as e:
         error_message = f"Error fetching categories: {str(e)}"
         print(error_message)  # Print to console for debugging
         flash(error_message, 'danger')
-        return render_template('Admin/main-category.html', categories=[])
+        return redirect(url_for('login'))
 
 @app.route('/main-category')
 def main_category():
     return categories()
-@app.route('/delete-category/<id>', methods=['POST'])
-def delete_category(id):
-    try:
-        # Delete the category from the database using the provided ID
-        db.child("categories").child(id).remove()
-        flash('Category deleted successfully!', 'success')
-    except Exception as e:
-        flash(f"Failed to delete category: {str(e)}", 'danger')
 
-    return redirect(url_for('main_category'))  # Redirect back to the main category page
 import logging
 from flask import abort, render_template
-
 import requests
 def get_user_id_by_email(email):
     try:
@@ -3062,6 +3089,7 @@ def new_order():
         logging.error(traceback.format_exc())
         flash('An error occurred while loading the page. Please try again.', 'danger')
         return redirect(url_for('index'))
+
 @app.route('/add-to-cart', methods=['POST'])
 def add_to_cart():
     if 'user_id' not in session:
@@ -4183,7 +4211,8 @@ def vendor_list():
     try:
         user_info = db.child("users").child(user_id).get().val()
         if not user_info or user_info.get('user_type') != 'Admin':
-            raise ValueError("Unauthorized access")
+            flash('Unauthorized access.', 'danger')
+            return redirect(url_for('dashboard'))
 
         # Fetch all users from the database
         all_users = db.child("users").get().val()
@@ -4191,7 +4220,10 @@ def vendor_list():
         # Filter vendors
         vendors = {uid: user for uid, user in all_users.items() if user.get('user_type') == 'vendor'}
 
-        return render_template('Admin/vendor-list.html', user_info=user_info, email=email, vendors=vendors)
+        return render_template('Admin/vendor-list.html', 
+                               user_info=user_info, 
+                               email=email,  # Pass email to the template
+                               vendors=vendors)
     except Exception as e:
         app.logger.error(f"Error in vendor_list: {str(e)}")
         flash('An error occurred while loading the page. Please try again.', 'danger')
@@ -4202,25 +4234,69 @@ def vendor_accept():
         flash('Please log in to access this page.', 'warning')
         return redirect(url_for('login'))
 
-    user_id = session['user_id']
-    email = session['email']
-
     try:
-        user_info = db.child("users").child(user_id).get().val()
+        user_info = db.child("users").child(session['user_id']).get().val()
         if not user_info or user_info.get('user_type') != 'Admin':
             raise ValueError("Unauthorized access")
 
-        # Fetch all users from the database
         all_users = db.child("users").get().val()
 
         # Filter pending vendors
-        pending_vendors = {uid: user for uid, user in all_users.items() if user.get('user_type') == 'vendor' and user.get('status') == 'pending'}
+        pending_vendors = {uid: user for uid, user in all_users.items() if user.get('vendor_status') == 'pending'}
 
-        return render_template('Admin/vendor-accept.html', user_info=user_info, email=email, pending_vendors=pending_vendors)
+        return render_template('Admin/vendor-accept.html', 
+                               user_info=user_info, 
+                               email=session['email'], 
+                               pending_vendors=pending_vendors)
     except Exception as e:
         app.logger.error(f"Error in vendor_accept: {str(e)}")
         flash('An error occurred while loading the page. Please try again.', 'danger')
         return redirect(url_for('admin_dashboard'))
+@app.route('/approve-vendor/<vendor_id>')
+def approve_vendor(vendor_id):
+    if 'user_id' not in session or 'email' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
+
+    try:
+        user_info = db.child("users").child(session['user_id']).get().val()
+        if not user_info or user_info.get('user_type') != 'Admin':
+            raise ValueError("Unauthorized access")
+
+        # Update vendor status to approved and change user_type to vendor
+        db.child("users").child(vendor_id).update({
+            "vendor_status": "approved",
+            "user_type": "vendor"
+        })
+        flash('Vendor has been approved successfully.', 'success')
+    except Exception as e:
+        app.logger.error(f"Error in approve_vendor: {str(e)}")
+        flash('An error occurred while approving the vendor. Please try again.', 'danger')
+
+    return redirect(url_for('vendor_accept'))
+
+@app.route('/reject-vendor/<vendor_id>')
+def reject_vendor(vendor_id):
+    if 'user_id' not in session or 'email' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
+
+    try:
+        user_info = db.child("users").child(session['user_id']).get().val()
+        if not user_info or user_info.get('user_type') != 'Admin':
+            raise ValueError("Unauthorized access")
+
+        # Update vendor status to rejected and change user_type to customer
+        db.child("users").child(vendor_id).update({
+            "vendor_status": "rejected",
+            "user_type": "customer"
+        })
+        flash('Vendor has been rejected.', 'success')
+    except Exception as e:
+        app.logger.error(f"Error in reject_vendor: {str(e)}")
+        flash('An error occurred while rejecting the vendor. Please try again.', 'danger')
+
+    return redirect(url_for('vendor_accept'))
 def update_product_quantities(order_items):
     try:
         app.logger.info(f"Updating quantities for order items: {order_items}")
@@ -4533,6 +4609,16 @@ def complete_return(order_id, product_id):
 
 from firebase_admin import db as admin_db
 
+from flask import jsonify, request
+from datetime import datetime, timedelta
+
+
+from apscheduler.schedulers.background import BackgroundScheduler
+import logging
+
+scheduler = BackgroundScheduler()
+scheduler.start()
+
 @app.route('/initiate-return', methods=['POST'])
 def initiate_return():
     if 'user_id' not in session:
@@ -4548,35 +4634,28 @@ def initiate_return():
         if not order:
             return jsonify({'success': False, 'message': 'Order not found'}), 404
 
-        # Find the specific item in the order
-        item_to_return = next((item for item in order.get('items', []) if item.get('product_id') == product_id), None)
-        if not item_to_return:
-            return jsonify({'success': False, 'message': 'Product not found in order'}), 404
+        # If product_id is not provided, get it from the order
+        if not product_id and order.get('items'):
+            product_id = order['items'][0].get('product_id')
 
-        # Get the current product details
-        product = db.child("products").child(product_id).get().val()
-        if not product:
-            return jsonify({'success': False, 'message': 'Product not found'}), 404
-
-        # Update the product quantity
-        current_quantity = int(product.get('product_quantity', '0'))
-        returned_quantity = int(item_to_return.get('quantity', 1))
-        new_quantity = current_quantity + returned_quantity
-
-        # Update the product quantity in the database
-        db.child("products").child(product_id).update({'product_quantity': str(new_quantity)})
+        if not product_id:
+            app.logger.warning(f"Product ID not found for order: {order_id}")
+            return jsonify({'success': False, 'message': 'Product ID not found'}), 400
 
         # Update the order status
         db.child("orders").child(order_id).child('returns').update({
-            'status': 'returned',
-            'returned_at': datetime.now().isoformat(),
+            'status': 'return_initiated',
+            'initiated_at': datetime.now().isoformat(),
             'product_id': product_id
         })
 
-        return jsonify({'success': True, 'message': 'Return processed successfully'})
+        # Schedule the return completion after 10 seconds
+        scheduler.add_job(complete_return, 'date', run_date=datetime.now() + timedelta(seconds=10), args=[order_id, product_id])
+
+        return jsonify({'success': True, 'message': 'Return initiated successfully'})
     except Exception as e:
-        app.logger.error(f"Error processing return: {str(e)}")
-        return jsonify({'success': False, 'message': 'An error occurred while processing the return'}), 500
+        app.logger.error(f"Error initiating return: {str(e)}")
+        return jsonify({'success': False, 'message': 'An error occurred while initiating the return'}), 500
 
 @app.route('/get-return-status/<order_id>')
 def get_return_status(order_id):
@@ -4593,25 +4672,45 @@ def get_return_status(order_id):
         app.logger.error(f"Error getting return status: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-def complete_return(order_id):
+def complete_return(order_id, product_id):
     try:
-        # Get the current return information
-        return_info = db.child("orders").child(order_id).child('returns').get().val()
+        # Get the order details
+        order = db.child("orders").child(order_id).get().val()
+        if not order:
+            app.logger.error(f"Order not found: {order_id}")
+            return
 
-        if return_info and return_info['status'] == 'return_initiated':
-            # Update the return status to 'returned' and add completed_at timestamp
-            return_info['status'] = 'returned'
-            return_info['completed_at'] = datetime.now().isoformat()
+        # Find the specific item in the order
+        item_to_return = next((item for item in order.get('items', []) if item.get('product_id') == product_id), None)
+        if not item_to_return:
+            app.logger.error(f"Product not found in order: {product_id}")
+            return
 
-            # Update the database
-            db.child("orders").child(order_id).child('returns').set(return_info)
+        # Get the current product details
+        product = db.child("products").child(product_id).get().val()
+        if not product:
+            app.logger.error(f"Product not found: {product_id}")
+            return
 
-            app.logger.info(f"Return completed automatically for order {order_id}")
-        else:
-            app.logger.warning(f"Return not completed for order {order_id}. Current status: {return_info.get('status') if return_info else 'No return info'}")
+        # Update the product quantity
+        current_quantity = int(product.get('product_quantity', '0'))
+        returned_quantity = int(item_to_return.get('quantity', 1))
+        new_quantity = current_quantity + returned_quantity
 
+        # Update the product quantity in the database
+        db.child("products").child(product_id).update({'product_quantity': str(new_quantity)})
+
+        # Update the order status
+        db.child("orders").child(order_id).child('returns').update({
+            'status': 'returned',
+            'completed_at': datetime.now().isoformat(),
+            'product_id': product_id
+        })
+
+        app.logger.info(f"Return completed for order {order_id}, product {product_id}")
     except Exception as e:
-        app.logger.error(f"Error completing return automatically: {str(e)}")
+        app.logger.error(f"Error completing return: {str(e)}")
+
 
 from flask import jsonify, request
 
@@ -4657,5 +4756,136 @@ def cancel_order():
     except Exception as e:
         app.logger.error(f"Error cancelling order: {str(e)}")
         return jsonify({'success': False, 'message': 'An error occurred while cancelling the order'}), 500
+@app.route('/become-seller', methods=['GET', 'POST'])
+def become_seller():
+    app.logger.info(f"Entering become_seller route. Method: {request.method}")
+    if 'user_id' not in session:
+        app.logger.warning("User not logged in, redirecting to login")
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    app.logger.info(f"User ID from session: {user_id}")
+    
+    # Fetch user data from the database
+    user_data = db.child("users").child(user_id).get().val()
+    app.logger.info(f"Fetched user data: {user_data}")
+    
+    if user_data:
+        name = user_data.get('name', 'Unknown')
+        email = user_data.get('email', 'Unknown')
+        phone = user_data.get('phone', 'Unknown')
+        district = user_data.get('district', 'Unknown')
+        vendor_status = user_data.get('vendor_status', None)
+    else:
+        name = email = phone = district = 'Unknown'
+        vendor_status = None
+        app.logger.warning(f"No user data found for user_id: {user_id}")
+
+    if vendor_status == 'pending':
+        app.logger.info("Vendor application is pending")
+        return render_template('become_seller.html', 
+                               application_pending=True,
+                               name=name, 
+                               email=email, 
+                               phone=phone,
+                               district=district)
+    elif vendor_status == 'approved':
+        flash('You are already a registered vendor.', 'info')
+        return redirect(url_for('vendor_dashboard'))
+
+    if request.method == 'POST':
+        app.logger.info("Processing POST request")
+        current_step = int(request.form.get('current_step', 0))
+        app.logger.info(f"Current step: {current_step}")
+
+        update_data = {}
+        if current_step == 0:
+            update_data['store_name'] = request.form.get('store_name')
+            update_data['name'] = request.form.get('name')
+        elif current_step == 1:
+            update_data['phone'] = request.form.get('phone')
+            update_data['district'] = request.form.get('address')
+        elif current_step == 2:
+            update_data['gst_number'] = request.form.get('gst_number')
+            if request.form.get('final_submit') == 'true':
+                update_data['vendor_status'] = 'pending'
+
+        app.logger.info(f"Update data prepared: {update_data}")
+
+        try:
+            # Update user data in the Realtime Database
+            app.logger.info(f"Attempting to update user data for user_id: {user_id}")
+            result = db.child("users").child(user_id).update(update_data)
+            app.logger.info(f"Update result: {result}")
+            
+            # Verify the update
+            updated_user_data = db.child("users").child(user_id).get().val()
+            app.logger.info(f"Updated user data: {updated_user_data}")
+
+            if all(updated_user_data.get(key) == value for key, value in update_data.items()):
+                app.logger.info("Update successful")
+                # Update session info
+                if 'user_info' in session:
+                    session['user_info'].update(update_data)
+                return jsonify({'success': True, 'message': 'Vendor registration successful!'})
+            else:
+                app.logger.error("Data update verification failed")
+                raise Exception("Data update verification failed")
+
+        except Exception as e:
+            app.logger.error(f"Error in become_seller for user {user_id}: {str(e)}")
+            app.logger.error(traceback.format_exc())
+            return jsonify({'success': False, 'error': str(e)})
+
+    app.logger.info("Rendering become_seller template with form")
+    return render_template('become_seller.html', 
+                           application_pending=False,
+                           name=name, 
+                           email=email, 
+                           phone=phone,
+                           district=district)
+@app.route('/get-low-stock-notifications', methods=['GET'])
+def get_low_stock_notifications():
+    try:
+        # Fetch all products
+        products = db.child("products").get().val()
+        
+        low_stock_notifications = []
+        
+        for product_id, product in products.items():
+            if int(product.get('product_quantity', 0)) == 0:
+                low_stock_notifications.append({
+                    'product_id': product_id,
+                    'product_name': product.get('product_name', 'Unknown Product'),
+                    'store_name': product.get('store_name', 'Unknown Store'),
+                    'message': f"{product.get('product_name', 'A product')} is out of stock!"
+                })
+        
+        return jsonify(low_stock_notifications)
+    except Exception as e:
+        app.logger.error(f"Error fetching low stock notifications: {str(e)}")
+        return jsonify([]), 500
+from flask import request, jsonify
+
+@app.route('/update-order', methods=['POST'])
+def update_order():
+    data = request.json
+    order_id = data['order_id']
+    updated_items = data['items']
+    new_order_total = data['order_total']
+
+    try:
+        # Update the order in your database
+        # This is a placeholder - replace with your actual database update logic
+        update_order_in_database(order_id, updated_items, new_order_total)
+
+        return jsonify({'success': True, 'message': 'Order updated successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+def update_order_in_database(order_id, updated_items, new_order_total):
+    # Implement your database update logic here
+    # This might involve updating a SQL database, a NoSQL database, or whatever storage system you're using
+    pass
 if __name__ == '__main__':
     app.run(debug=True)

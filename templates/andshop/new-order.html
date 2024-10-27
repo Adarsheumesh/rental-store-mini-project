@@ -7,7 +7,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<meta name="description" content="Andshop - Admin Dashboard HTML Template.">
 
-	<title>Andshop - Admin Dashboard HTML Template.</title>
+	<title>Andshop</title>
 
 	<!-- GOOGLE FONTS -->
 	<link rel="preconnect" href="https://fonts.googleapis.com/">
@@ -380,7 +380,7 @@
 													<th>Payment Status</th>
 													<th>Shipping address</th>
 													<th>Quantity</th>
-													<th>Action</th>
+													 <!-- Changed from "Action" to "Cancel" -->
 												</tr>
 											</thead>
 
@@ -398,23 +398,7 @@
 													<td>{{ order.payment_status }}</td>
 													<td>{{ order.shipping_address }}</td>
 													<td>{{ order.quantity }}</td>
-													<td>
-														<div class="btn-group mb-1">
-															<button type="button"
-																class="btn btn-outline-success">Info</button>
-															<button type="button"
-																class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
-																data-bs-toggle="dropdown" aria-haspopup="true"
-																aria-expanded="false" data-display="static">
-																<span class="sr-only">Info</span>
-															</button>
-
-															<div class="dropdown-menu">
-																<a class="dropdown-item" href="{{ url_for('order_details', order_id=order.order_id) }}">Order detail</a>
-																<a class="dropdown-item" href="#">Order Cancel</a>
-															</div>
-														</div>
-													</td>
+													
 												</tr>
 												{% endfor %}
 												{% else %}
@@ -461,6 +445,79 @@
 
 	<!-- custom js -->
 	<script src="{{ url_for('static', filename='assets/js/custom.js') }}"></script>
+
+	<!-- Add this script for cancel order functionality -->
+	<script>
+	$(document).ready(function() {
+		function showAlert(message) {
+			$('#alertModalBody').text(message);
+			$('#alertModal').modal('show');
+		}
+
+		$('.cancel-order-btn').on('click', function() {
+			var orderId = $(this).data('order-id');
+			if (confirm('Are you sure you want to cancel this order?')) {
+				$.ajax({
+					url: '/cancel-order',
+					method: 'POST',
+					data: JSON.stringify({ order_id: orderId }),
+					contentType: 'application/json',
+					success: function(response) {
+						if (response.success) {
+							showAlert('Order cancelled successfully');
+							location.reload();  // Reload the page to reflect the changes
+						} else {
+							showAlert('Failed to cancel order: ' + response.message);
+						}
+					},
+					error: function() {
+						showAlert('An error occurred while trying to cancel the order');
+					}
+				});
+			}
+		});
+	});
+	</script>
+
+	<!-- Add this just before the closing </body> tag -->
+	<div class="modal fade" id="alertModal" tabindex="-1" role="dialog" aria-labelledby="alertModalLabel" aria-hidden="true">
+	  <div class="modal-dialog" role="document">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <h5 class="modal-title" id="alertModalLabel">Alert</h5>
+	        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+	          <span aria-hidden="true">&times;</span>
+	        </button>
+	      </div>
+	      <div class="modal-body" id="alertModalBody">
+	      </div>
+	      <div class="modal-footer">
+	        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+	      </div>
+	    </div>
+	  </div>
+	</div>
+
+	<!-- Confirmation Modal -->
+	<div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-labelledby="confirmModalLabel" aria-hidden="true">
+	  <div class="modal-dialog" role="document">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <h5 class="modal-title" id="confirmModalLabel">Confirm Order Cancellation</h5>
+	        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+	          <span aria-hidden="true">&times;</span>
+	        </button>
+	      </div>
+	      <div class="modal-body">
+	        Are you sure you want to cancel this order?
+	      </div>
+	      <div class="modal-footer">
+	        <button type="button" class="btn btn-secondary" data-dismiss="modal">No</button>
+	        <button type="button" class="btn btn-danger" id="confirmCancelBtn">Yes, Cancel Order</button>
+	      </div>
+	    </div>
+	  </div>
+	</div>
 </body>
 
 
