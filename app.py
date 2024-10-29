@@ -3521,7 +3521,39 @@ def handle_exception(e):
     app.logger.error(f"Unhandled Exception: {str(e)}")
     app.logger.error(traceback.format_exc())
     return jsonify({'success': False, 'error': 'An unexpected error occurred'}), 500
+def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
+    try:
+        order_id = str(uuid.uuid4())
+        
+        # Set initial status for each item
+        for item in order_items:
+            product_id = item.get('product_id')
+            product_details = get_product_details(product_id)
+            item['store_name'] = product_details.get('store_name', 'Unknown Store')
+            item['status'] = 'ordered'  # Set initial status
+            item['ordered_at'] = datetime.now().isoformat()
 
+        order_data = {
+            'order_id': order_id,
+            'user_id': user_id,
+            'items': order_items,
+            'order_total': order_total,
+            'use_different_shipping': use_different_shipping,
+            'shipping_address': shipping_address,
+            'shipping_address2': shipping_address2,
+            'status': 'pending',
+            'created_at': datetime.now().isoformat()
+        }
+        new_order = db.child("orders").push(order_data)
+        
+        # Schedule status update for items after 10 minutes
+        Timer(600, update_items_status, args=[order_id]).start()
+        
+        app.logger.info(f"New order created with ID: {order_id}")
+        return order_id
+    except Exception as e:
+        app.logger.error(f"Error creating order in database: {str(e)}")
+        raise
 
 
 def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
@@ -3779,15 +3811,37 @@ def update_order_status(order_id, status, payment_intent_id=None):
         app.logger.error(traceback.format_exc())
         raise
 
+from threading import Timer  # Add this import at the top with other imports
+
+def update_items_status_to_delivered(order_name):
+    try:
+        order = db.child("orders").child(order_name).get().val()
+        if order:
+            items = order.get('items', [])
+            for item in items:
+                item['status'] = 'delivered'
+                item['delivered_at'] = datetime.now().isoformat()
+            
+            db.child("orders").child(order_name).update({
+                'items': items,
+                'status': 'delivered',
+                'updated_at': datetime.now().isoformat()
+            })
+    except Exception as e:
+        app.logger.error(f"Error updating order status: {str(e)}")
+
 def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
     try:
         order_id = str(uuid.uuid4())  # Generate a unique order ID
         
-        # Fetch store names for each item
+        # Set initial status for each item only if status doesn't exist
         for item in order_items:
             product_id = item.get('product_id')
             product_details = get_product_details(product_id)
             item['store_name'] = product_details.get('store_name', 'Unknown Store')
+            if 'status' not in item:
+                item['status'] = 'ordered'
+                item['ordered_at'] = datetime.now().isoformat()
 
         order_data = {
             'order_id': order_id,
@@ -3800,8 +3854,14 @@ def create_order_in_database(user_id, order_items, order_total, use_different_sh
             'status': 'pending',
             'created_at': datetime.now().isoformat()
         }
+        
         new_order = db.child("orders").push(order_data)
-        app.logger.info(f"New order created with ID: {order_id}")
+        
+        # Create and start the timer for status update
+        status_timer = Timer(600, update_items_status_to_delivered, args=[new_order['name']])
+        status_timer.daemon = True  # Make it a daemon thread
+        status_timer.start()
+        
         return order_id
     except Exception as e:
         app.logger.error(f"Error creating order in database: {str(e)}")
@@ -4887,5 +4947,146 @@ def update_order_in_database(order_id, updated_items, new_order_total):
     # Implement your database update logic here
     # This might involve updating a SQL database, a NoSQL database, or whatever storage system you're using
     pass
+# Add this new route after your existing routes
+@app.route('/cancel-order-item', methods=['POST'])
+def cancel_order_item():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'User not logged in'}), 401
+
+    data = request.json
+    order_id = data.get('order_id')
+    product_id = data.get('product_id')
+    cancel_quantity = int(data.get('quantity', 1))
+
+    try:
+        # Fetch the order from the database
+        order = db.child("orders").child(order_id).get().val()
+        if not order:
+            return jsonify({'success': False, 'message': 'Order not found'}), 404
+
+        # Ensure the order belongs to the logged-in user
+        if order['user_id'] != session['user_id']:
+            return jsonify({'success': False, 'message': 'Unauthorized access'}), 403
+
+        # Find the item in the order
+        items = order.get('items', [])
+        item = next((item for item in items if item['product_id'] == product_id), None)
+        if not item:
+            return jsonify({'success': False, 'message': 'Item not found in order'}), 404
+
+        # Update the item status
+        if item['quantity'] == 1 or cancel_quantity >= item['quantity']:
+            item['status'] = 'cancelled'
+            new_status = 'cancelled'
+            remaining_quantity = 0
+        else:
+            item['quantity'] -= cancel_quantity
+            item['status'] = 'partially_cancelled'
+            remaining_quantity = item['quantity']
+            new_status = 'partially_cancelled'
+
+        # Update the order in the database
+        db.child("orders").child(order_id).update({
+            'items': items,
+            'updated_at': datetime.now().isoformat()
+        })
+
+        # Recalculate the order total
+        new_order_total = sum(item.get('item_total', 0) for item in items if item.get('status') != 'cancelled')
+
+        # Update product quantity in stock
+        product = db.child("products").child(product_id).get().val()
+        if product:
+            current_quantity = int(product.get('product_quantity', '0'))
+            new_quantity = current_quantity + cancel_quantity
+            db.child("products").child(product_id).update({'product_quantity': str(new_quantity)})
+
+        return jsonify({
+            'success': True,
+            'newStatus': new_status,
+            'remainingQuantity': remaining_quantity,
+            'newOrderTotal': new_order_total
+        })
+
+    except Exception as e:
+        app.logger.error(f"Error in cancel_order_item: {str(e)}")
+        return jsonify({'success': False, 'message': f'An error occurred: {str(e)}'}), 500
+@app.route('/update-item-status', methods=['POST'])
+def update_item_status():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'User not logged in'}), 401
+
+    data = request.json
+    order_id = data.get('order_id')
+    product_id = data.get('product_id')
+    returns_data = data.get('returns', {})
+
+    try:
+        # Fetch the order
+        order = db.child("orders").child(order_id).get().val()
+        if not order:
+            return jsonify({'success': False, 'message': 'Order not found'}), 404
+
+        # Ensure the order belongs to the logged-in user
+        if order['user_id'] != session['user_id']:
+            return jsonify({'success': False, 'message': 'Unauthorized access'}), 403
+
+        # Find and update the specific item
+        items = order.get('items', [])
+        item_updated = False
+        
+        for item in items:
+            if item['product_id'] == product_id:
+                # Update item status and dates based on returns status
+                item['status'] = returns_data.get('status')
+                if returns_data.get('status') == 'return_initiated':
+                    item['return_initiated_at'] = returns_data.get('initiated_at')
+                elif returns_data.get('status') == 'returned':
+                    item['return_completed_at'] = returns_data.get('completed_at')
+                item_updated = True
+                break
+
+        if not item_updated:
+            return jsonify({'success': False, 'message': 'Item not found in order'}), 404
+
+        # Update items in the order
+        update_data = {
+            'items': items,
+            'updated_at': datetime.now().isoformat()
+        }
+
+        # Update the order in the database
+        db.child("orders").child(order_id).update(update_data)
+
+        # Handle product quantity update for returned items
+        if returns_data.get('status') == 'returned':
+            try:
+                product = db.child("products").child(product_id).get().val()
+                if product:
+                    current_quantity = int(product.get('product_quantity', '0'))
+                    returned_quantity = 1  # or get from item['quantity'] if needed
+                    new_quantity = current_quantity + returned_quantity
+                    db.child("products").child(product_id).update({
+                        'product_quantity': str(new_quantity)
+                    })
+            except Exception as e:
+                app.logger.error(f"Error updating product quantity: {str(e)}")
+
+        response_data = {
+            'success': True,
+            'message': f'Return {returns_data.get("status")} successfully'
+        }
+
+        # Include invoice URL for completed returns
+        if returns_data.get('status') == 'returned':
+            invoice_url = url_for('download_order_pdf', order_id=order_id)
+            response_data['invoice_url'] = invoice_url
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        app.logger.error(f"Error in update_item_status: {str(e)}")
+        return jsonify({'success': False, 'message': f'An error occurred: {str(e)}'}), 500
+    
 if __name__ == '__main__':
     app.run(debug=True)

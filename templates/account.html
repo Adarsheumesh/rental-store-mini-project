@@ -115,6 +115,20 @@
             background-color: #e0e0e0;
             margin: 5px 0;
         }
+
+        #refundNotification {
+            min-width: 300px;
+            max-width: 400px;
+            border: 1px solid #ddd;
+            animation: fadeInOut 3.3s ease-in-out;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
     </style>
 </head>
 
@@ -257,7 +271,7 @@
                                                         </td>
                                                     </tr>
                                                     {% for item in order.get('items', []) %}
-                                                    <tr>
+                                                    <tr id="item-row-{{ order.get('order_id', '') }}-{{ item.get('product_id', '') }}">
                                                         <td>
                                                             <img src="{{ item.get('image_url', url_for('static', filename='img/default-product.jpg')) }}" 
                                                                  alt="{{ item.get('product_name', 'Product') }}" width="50" height="50">
@@ -266,26 +280,92 @@
                                                             <strong>{{ item.get('product_name', 'Unknown Product') }}</strong><br>
                                                             {% if item.get('color') %}Color: {{ item.get('color') }}{% endif %}
                                                             {% if item.get('size') %}Size: {{ item.get('size') }}{% endif %}
+                                                            <br>
+                                                            Quantity: <span id="item-quantity-{{ order.get('order_id', '') }}-{{ item.get('product_id', '') }}">{{ item.get('quantity', 1) }}</span>
                                                         </td>
                                                         <td>₹{{ "%.2f"|format(item.get('item_total', 0)) }}</td>
-                                                        <td id="status-cell-{{ order.order_id }}">
-                                                            {% if order.get('status') == 'cancelled' %}
-                                                                <span class="badge bg-danger">Cancelled</span><br>
-                                                                <small>Cancelled on: <span class="cancelled-date">{{ order.get('cancelled_at', 'N/A').split('T')[0] if order.get('cancelled_at') else 'N/A' }}</span></small>
-                                                            {% elif order.get('returns', {}).get('status') == 'returned' %}
-                                                                <span class="badge bg-success">Returned</span><br>
-                                                                <small>Returned on: <span class="returned-date">{{ order.get('returns', {}).get('completed_at', 'N/A').split('T')[0] if order.get('returns', {}).get('completed_at') else 'N/A' }}</span></small>
-                                                            {% elif order.get('returns', {}).get('status') == 'return_initiated' %}
-                                                                <span class="badge bg-warning text-dark">Return Initiated</span><br>
-                                                                <small>Initiated on: <span class="return-initiated-date">{{ order.get('returns', {}).get('initiated_at', 'N/A').split('T')[0] if order.get('returns', {}).get('initiated_at') else 'N/A' }}</span></small>
+                                                        <td id="status-cell-{{ order.get('order_id', '') }}-{{ item.get('product_id', '') }}">
+                                                            {% if order.get('items')|length > 1 %}
+                                                                {% if item.get('status') == 'cancelled' %}
+                                                                    <span class="badge bg-danger">Cancelled</span><br>
+                                                                    <small>Rental Period: {{ item.get('rent_from', 'N/A') }} to {{ item.get('rent_to', 'N/A') }}</small>
+                                                        
+                                                                {% elif item.get('status') == 'partially_cancelled' %}
+                                                                    <span class="badge bg-warning text-dark">Partially Cancelled</span><br>
+                                                                    <small>Cancelled: {{ item.get('cancelled_quantity', 'N/A') }}, Remaining: {{ item.get('quantity', 'N/A') }}</small>
+                                                        
+                                                                {% elif item.get('status') == 'returned' %}
+                                                                    <span class="badge bg-success">Returned</span><br>
+                                                                    <small>Rental Period: {{ item.get('rent_from', 'N/A') }} to {{ item.get('rent_to', 'N/A') }}</small>
+                                                        
+                                                                {% elif item.get('status') == 'return_initiated' %}
+                                                                    <span class="badge bg-warning text-dark">Return Initiated</span><br>
+                                                                    <small>Rental Period: {{ item.get('rent_from', 'N/A') }} to {{ item.get('rent_to', 'N/A') }}</small>
+                                                        
+                                                                {% else %}
+                                                                    <span class="badge bg-primary">Active</span><br>
+                                                                    <small>Rental Period: {{ item.get('rent_from', 'N/A') }} to {{ item.get('rent_to', 'N/A') }}</small>
+                                                                {% endif %}
+                                                                <br>
+                                                                <small>Quantity: {{ item.get('quantity', 'N/A') }} | Days: {{ item.get('rental_days', 'N/A') }}</small>
+                                                        
                                                             {% else %}
-                                                                {% set earliest_rent_from = order.get('items', [])|map(attribute='rent_from')|reject('none')|first %}
-                                                                <span class="badge bg-primary">Active</span><br>
-                                                                <small>Rental Start: <span class="rental-start-date">{{ earliest_rent_from.split('T')[0] if earliest_rent_from else 'N/A' }}</span></small>
+                                                                {% if item.get('status') == 'cancelled' %}
+                                                                    <span class="badge bg-danger">Cancelled</span><br>
+                                                                    <small>Rental Period: {{ item.get('rent_from', 'N/A') }} to {{ item.get('rent_to', 'N/A') }}</small>
+                                                        
+                                                                {% elif item.get('status') == 'returned' %}
+                                                                    <span class="badge bg-success">Returned</span><br>
+                                                                    <small>Rental Period: {{ item.get('rent_from', 'N/A') }} to {{ item.get('rent_to', 'N/A') }}</small>
+                                                        
+                                                                {% elif item.get('status') == 'return_initiated' %}
+                                                                    <span class="badge bg-warning text-dark">Return Initiated</span><br>
+                                                                    <small>Rental Period: {{ item.get('rent_from', 'N/A') }} to {{ item.get('rent_to', 'N/A') }}</small>
+                                                        
+                                                                {% else %}
+                                                                    <span class="badge bg-primary">Active</span><br>
+                                                                    <small>Rental Period: {{ item.get('rent_from', 'N/A') }} to {{ item.get('rent_to', 'N/A') }}</small>
+                                                                {% endif %}
+                                                                <br>
+                                                                <small>Quantity: {{ item.get('quantity', 'N/A') }} | Days: {{ item.get('rental_days', 'N/A') }}</small>
                                                             {% endif %}
+                                                        </td>
+                                                        <td class="product-add-to-cart">
+                                                            <div class="d-flex flex-column gap-2">
+                                                                {% if item.get('status') == 'ordered' %}
+                                                                    <!-- Cancel Button (show for first 10 minutes when status is ordered) -->
+                                                                    <button class="btn btn-outline-danger btn-sm cancel-item" 
+                                                                            id="cancel-button-{{ order.get('order_id', '') }}-{{ item.get('product_id', '') }}"
+                                                                            data-order-id="{{ order.get('order_id', '') }}"
+                                                                            data-product-id="{{ item.get('product_id', '') }}"
+                                                                            data-product-name="{{ item.get('product_name', '') }}"
+                                                                            data-order-time="{{ order.get('created_at', '') }}"
+                                                                            data-quantity="{{ item.get('quantity', 1) }}">
+                                                                        <i class="fa fa-times"></i> Cancel
+                                                                    </button>
+                                                                {% elif item.get('status') == 'delivered' %}
+                                                                    <!-- Return Button (show when status is delivered) -->
+                                                                    <button type="button" 
+                                                                            class="btn btn-warning btn-sm return-btn"
+                                                                            id="return-button-{{ order.get('order_id', '') }}-{{ item.get('product_id', '') }}"
+                                                                            data-order-id="{{ order.get('order_id', '') }}"
+                                                                            data-product-id="{{ item.get('product_id', '') }}"
+                                                                            data-product-name="{{ item.get('product_name', '') }}"
+                                                                            data-rent-from="{{ item.get('rent_from', '') }}"
+                                                                            data-rent-to="{{ item.get('rent_to', '') }}"
+                                                                            {% if item.get('return_status') in ['return_initiated', 'returned'] %}disabled{% endif %}>
+                                                                        <i class="fa fa-undo"></i> Return Item
+                                                                    </button>
+                                                                {% endif %}
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                     {% endfor %}
+                                                    <tr>
+                                                        <td colspan="5">
+                                                            <strong>Total: </strong><span id="order-total-{{ order.get('order_id', '') }}">₹{{ "%.2f"|format(order.get('order_total', 0)) }}</span>
+                                                        </td>
+                                                    </tr>
                                                     <tr>
                                                         <td colspan="6">
                                                             <div class="d-flex flex-column align-items-start">
@@ -293,43 +373,53 @@
                                                                     <button class="btn btn-outline-primary btn-sm view-order-details" data-order-id="{{ order.get('order_id', '') }}">
                                                                         <i class="fa fa-eye"></i> View Details
                                                                     </button>
-                                                                    {% if order.get('status') != 'cancelled' and order.get('returns', {}).get('status') != 'returned' %}
-                                                                        <button class="btn btn-outline-info btn-sm edit-order" data-order-id="{{ order.get('order_id', '') }}">
-                                                                            <i class="fa fa-edit"></i> Edit Order
-                                                                        </button>
+                                                                   
+                                                                    {% if order.get('returns') and order.get('returns', {}).get('status') == 'returned' %}
+                                                                        <a href="{{ url_for('download_order_pdf', order_id=order.get('order_id', '')) }}" 
+                                                                           class="btn btn-outline-secondary btn-sm download-invoice" 
+                                                                           id="download-invoice-{{ order.get('order_id', '') }}"
+                                                                           data-order-id="{{ order.get('order_id', '') }}" 
+                                                                           target="_blank">
+                                                                            <i class="fa fa-download"></i> Download Invoice
+                                                                        </a>
                                                                     {% endif %}
-                                                                    <a href="{{ url_for('download_order_pdf', order_id=order.get('order_id', '')) }}" 
-                                                                       class="btn btn-outline-secondary btn-sm download-invoice" 
-                                                                       id="download-invoice-{{ order.get('order_id', '') }}"
-                                                                       data-order-id="{{ order.get('order_id', '') }}" 
-                                                                       target="_blank">
-                                                                        <i class="fa fa-download"></i> Download Invoice
-                                                                    </a>
                                                                 </div>
                                                                 
-                                                                {% if order.get('status') != 'cancelled' and order.get('returns', {}).get('status') != 'returned' %}
+                                                                {% if order.get('status') != 'cancelled' %}
                                                                     <div class="btn-group w-100" role="group">
-                                                                        <button class="btn btn-outline-warning btn-sm return-item" 
-                                                                            id="return-button-{{ order.get('order_id', '') }}"
-                                                                            data-order-id="{{ order.get('order_id', '') }}"
-                                                                            data-product-id="{{ order.get('items', [])[0].get('product_id', '') }}"
-                                                                            data-product-name="{{ order.get('items', [])[0].get('product_name', '') }}"
-                                                                            data-rent-from="{{ order.get('items', [])[0].get('rent_from', '') }}"
-                                                                            data-rent-to="{{ order.get('items', [])[0].get('rent_to', '') }}"
-                                                                            data-return-status="{{ order.get('returns', {}).get('status', 'not_initiated') }}"
-                                                                            {% if order.get('returns', {}).get('status') in ['return_initiated', 'returned'] %}disabled{% endif %}
-                                                                            style="border-color: #ffc107; color: #ffc107; background-color: transparent;">
-                                                                            <i class="fa fa-undo"></i> Return
-                                                                        </button>
+                                                                        {% set all_items_returned = true %}
+                                                                        {% for item in order.get('items', []) %}
+                                                                            {% if item.get('status') != 'returned' %}
+                                                                                {% set all_items_returned = false %}
+                                                                            {% endif %}
+                                                                        {% endfor %}
+
+                                                                        {% if all_items_returned %}
+                                                                            <!-- Download Invoice Button (when all items are returned) -->
+                                                                            <button type="button" class="btn btn-primary btn-sm"
+                                                                                    onclick="window.location.href='{{ url_for('download_order_pdf', order_id=order.get('order_id', '')) }}'">
+                                                                                <i class="fa fa-download"></i> Download Invoice
+                                                                            </button>
+                                                                        {% else %}
+                                                                            {% for item in order.get('items', []) %}
+                                                                                {% if item.get('status') != 'returned' %}
+                                                                                    <!-- Return Button (for non-returned items) -->
+                                                                                    <button class="btn btn-outline-warning btn-sm return-item" 
+                                                                                            id="return-button-{{ order.get('order_id', '') }}-{{ item.get('product_id', '') }}"
+                                                                                            data-order-id="{{ order.get('order_id', '') }}"
+                                                                                            data-product-id="{{ item.get('product_id', '') }}"
+                                                                                            data-product-name="{{ item.get('product_name', '') }}"
+                                                                                            data-rent-from="{{ item.get('rent_from', '') }}"
+                                                                                            data-rent-to="{{ item.get('rent_to', '') }}"
+                                                                                            data-return-status="{{ item.get('return_status', 'not_initiated') }}"
+                                                                                            style="border-color: #ffc107; color: #ffc107; background-color: transparent;">
+                                                                                        <i class="fa fa-undo"></i> Return {{ item.get('product_name', '') }}
+                                                                                    </button>
+                                                                                {% endif %}
+                                                                            {% endfor %}
+                                                                        {% endif %}
+
                                                                         
-                                                                        <button class="btn btn-sm cancel-order btn-outline-danger"
-                                                                            id="cancel-button-{{ order.get('order_id', '') }}"
-                                                                            data-order-id="{{ order.get('order_id', '') }}"
-                                                                            data-order-time="{{ order.get('created_at', '') }}"
-                                                                            data-order-status="{{ order.get('status', '') }}"
-                                                                            data-product-name="{{ order.get('items', [{}])[0].get('product_name', 'Unknown Product') }}">
-                                                                            <i class="fa fa-times"></i> Cancel Order
-                                                                        </button>
                                                                     </div>
                                                                 {% endif %}
                                                             </div>
@@ -391,7 +481,7 @@
                                         {% endfor %}
                                     {% endif %}
                                     {% endwith %}
-                
+
                                 </div>
                             </div>
                         </div>
@@ -684,41 +774,6 @@
   </div>
 </div>
 
-<!-- Add this just before the closing </body> tag -->
-<!-- Modal for Return Process -->
-<div class="modal fade" id="returnModal" tabindex="-1" role="dialog" aria-labelledby="returnModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="returnModalLabel">Return Product</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body" id="returnModalBody">
-                <!-- Content will be dynamically inserted here -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="confirmReturn">Confirm Return</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="position-fixed bottom-0 right-0 p-3" style="z-index: 5; right: 0; bottom: 0;">
-  <div id="liveToast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true" data-delay="5000">
-    <div class="toast-header">
-      <strong class="mr-auto" id="toastTitle">Notification</strong>
-      <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
-        <span aria-hidden="true">&times;</span>
-      </button>
-    </div>
-    <div class="toast-body" id="toastMessage">
-    </div>
-  </div>
-</div>
-
 <!-- More Details Modal -->
 <div class="modal fade" id="moreDetailsModal" tabindex="-1" role="dialog" aria-labelledby="moreDetailsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
@@ -760,6 +815,44 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- Add this modal for item cancellation -->
+<div class="modal fade" id="cancelItemModal" tabindex="-1" role="dialog" aria-labelledby="cancelItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cancelItemModalLabel">Cancel Item</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel this item?</p>
+                <p><strong>Order ID:</strong> <span id="cancelItemOrderId"></span></p>
+                <p><strong>Product:</strong> <span id="cancelItemProductName"></span></p>
+                <div id="cancelQuantitySelector" style="display: none;">
+                    <label for="cancelQuantity">Select quantity to cancel:</label>
+                    <select id="cancelQuantity" class="form-control">
+                        <!-- Options will be dynamically populated -->
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">No, Keep Item</button>
+                <button type="button" class="btn btn-danger" id="confirmCancelItem">Yes, Cancel Item</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Refund Notification Popup -->
+<div id="refundNotification" class="position-fixed top-50 start-50 translate-middle bg-white p-4 rounded shadow-lg text-center" style="display: none; z-index: 9999;">
+    <div class="mb-3">
+        <i class="fa fa-check-circle text-success" style="font-size: 48px;"></i>
+    </div>
+    <h4>Refund Initiated</h4>
+    <p>Your refund will be processed within 48 hours.</p>
 </div>
 
 <script>
@@ -891,96 +984,109 @@ $(document).ready(function() {
         }
     }
 
-    // Return functionality (keep this part from the previous code)
-    $('.return-item').on('click', function() {
-        const orderId = $(this).data('order-id');
-        const productId = $(this).data('product-id');
-        const productName = $(this).data('product-name');
-        const rentFrom = $(this).data('rent-from');
-        const rentTo = $(this).data('rent-to');
-
-        // Calculate remaining days
-        const today = new Date();
-        const rentToDate = new Date(rentTo);
-        const remainingDays = Math.max(0, Math.ceil((rentToDate - today) / (1000 * 60 * 60 * 24)));
-
-        // Populate modal
-        $('#returnProductName').text(productName);
-        $('#returnRentFrom').text(new Date(rentFrom).toLocaleDateString());
-        $('#returnRentTo').text(new Date(rentTo).toLocaleDateString());
-        $('#returnRemainingDays').text(remainingDays);
-
-        // Store orderId and productId for use in confirmReturn
-        $('#confirmReturn').data('order-id', orderId).data('product-id', productId);
-
-        // Show modal
+    // Combined event handler for both return buttons
+    $('.return-btn, .return-item').on('click', function() {
+        const button = $(this);
+        const orderId = button.data('order-id');
+        const productId = button.data('product-id');
+        
+        // Show confirmation modal
+        $('#returnProductName').text(button.data('product-name'));
+        $('#returnRentFrom').text(button.data('rent-from'));
+        $('#returnRentTo').text(button.data('rent-to'));
+        
+        $('#confirmReturn').off('click').on('click', function() {
+            $('#confirmReturnModal').modal('hide');
+            initiateReturn(orderId, productId, button);
+        });
+        
         $('#confirmReturnModal').modal('show');
     });
 
-    $('#confirmReturn').on('click', function() {
-        const orderId = $(this).data('order-id');
-        const productId = $(this).data('product-id');
-        initiateReturn(orderId, productId);
-        $('#confirmReturnModal').modal('hide');
-    });
+    function initiateReturn(orderId, productId, button) {
+        const initiatedAt = new Date().toISOString();
+        const data = {
+            order_id: orderId,
+            product_id: productId,
+            returns: {
+                status: 'return_initiated',
+                initiated_at: initiatedAt
+            }
+        };
 
-    function initiateReturn(orderId, productId) {
         $.ajax({
-            url: '/initiate-return',
+            url: '/update-item-status',
             method: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({ order_id: orderId, product_id: productId }),
+            data: JSON.stringify(data),
             success: function(response) {
                 if (response.success) {
+                    button.prop('disabled', true);
+                    button.html('<i class="fa fa-spinner fa-spin"></i> Processing Return...');
+                    
+                    // Update the status cell to show initiated status and date
+                    const statusCell = $(`#status-cell-${orderId}-${productId}`);
+                    statusCell.html(`
+                        <span class="badge bg-warning text-dark">Return Initiated</span><br>
+                        <small>Initiated on: ${new Date(initiatedAt).toLocaleDateString()}</small>
+                    `);
+                    
                     showToast('Success', 'Return initiated successfully', false);
-                    updateOrderStatus(orderId, 'return_initiated');
-                    $(`#return-button-${orderId}`).hide();
+                    
+                    setTimeout(() => {
+                        completeReturn(orderId, productId, button);
+                    }, 10000);
                 } else {
                     showToast('Error', 'Failed to initiate return: ' + response.message, true);
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Error:', error);
-                showToast('Error', 'An error occurred while initiating the return', true);
+                showToast('Error', 'An error occurred while initiating return', true);
             }
         });
     }
 
-    function updateOrderStatus(orderId, newStatus) {
-        const statusCell = $(`#status-cell-${orderId}`);
-        let statusHtml = '';
+    function completeReturn(orderId, productId, button) {
+        const completedAt = new Date().toISOString();
+        const data = {
+            order_id: orderId,
+            product_id: productId,
+            returns: {
+                status: 'returned',
+                completed_at: completedAt
+            }
+        };
 
-        switch(newStatus.toLowerCase()) {
-            case 'cancelled':
-                statusHtml = `
-                    <span class="badge bg-danger">Cancelled</span><br>
-                    <small>Cancelled on: <span class="cancelled-date">${new Date().toISOString().split('T')[0]}</span></small>
-                `;
-                // Hide the cancel order and download invoice buttons
-                $(`#cancel-button-${orderId}`).hide();
-                $(`#download-invoice-${orderId}`).hide();
-                $(`#return-button-${orderId}`).hide();
-                break;
-            case 'returned':
-                statusHtml = `
-                    <span class="badge bg-success">Returned</span><br>
-                    <small>Returned on: <span class="returned-date">${new Date().toISOString().split('T')[0]}</span></small>
-                `;
-                break;
-            case 'return_initiated':
-                statusHtml = `
-                    <span class="badge bg-warning text-dark">Return Initiated</span><br>
-                    <small>Initiated on: <span class="return-initiated-date">${new Date().toISOString().split('T')[0]}</span></small>
-                `;
-                break;
-            default:
-                statusHtml = `
-                    <span class="badge bg-primary">Active</span><br>
-                    <small>Rental Start: <span class="rental-start-date">${new Date().toISOString().split('T')[0]}</span></small>
-                `;
-        }
+        $.ajax({
+            url: '/update-item-status',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(data),
+            success: function(response) {
+                if (response.success) {
+                    // Update the status cell to show returned status and date
+                    const statusCell = $(`#status-cell-${orderId}-${productId}`);
+                    statusCell.html(`
+                        <span class="badge bg-success">Returned</span><br>
+                        <small>Returned on: ${new Date(completedAt).toLocaleDateString()}</small>
+                    `);
 
-        statusCell.html(statusHtml);
+                    button.replaceWith(`
+                        <a href="${response.invoice_url}" 
+                           class="btn btn-outline-secondary btn-sm download-invoice" 
+                           target="_blank">
+                            <i class="fa fa-download"></i> Download Invoice
+                        </a>
+                    `);
+                    showToast('Success', 'Return completed successfully', false);
+                } else {
+                    showToast('Error', 'Failed to complete return: ' + response.message, true);
+                }
+            },
+            error: function(xhr, status, error) {
+                showToast('Error', 'An error occurred while completing return', true);
+            }
+        });
     }
 
     // Add this function to show toast notifications
@@ -1098,234 +1204,208 @@ $(document).ready(function() {
         });
     }
 
-    // Handle Edit Order button click
-    $(document).on('click', '.edit-order', function() {
-        const orderId = $(this).data('order-id');
-        openEditOrderModal(orderId);
-    });
+    // Add this to your existing JavaScript
+    $(document).ready(function() {
+        // ... existing code ...
 
-    function openEditOrderModal(orderId) {
-        // Fetch the order details
-        $.ajax({
-            url: '/get-order-details',
-            method: 'GET',
-            data: { order_id: orderId },
-            success: function(response) {
-                if (response.success) {
-                    showEditOrderModal(response.order);
-                } else {
-                    showToast('Error', 'Failed to load order details: ' + response.message, true);
+        $('.cancel-item').on('click', function() {
+            const orderId = $(this).data('order-id');
+            const productId = $(this).data('product-id');
+            const productName = $(this).data('product-name');
+            const quantity = $(this).data('quantity');
+
+            // Populate modal
+            $('#cancelItemOrderId').text(orderId);
+            $('#cancelItemProductName').text(productName);
+
+            // Show quantity selector if quantity > 1
+            if (quantity > 1) {
+                $('#cancelQuantitySelector').show();
+                const $quantitySelect = $('#cancelQuantity');
+                $quantitySelect.empty();
+                for (let i = 1; i <= quantity; i++) {
+                    $quantitySelect.append($('<option>', {
+                        value: i,
+                        text: i
+                    }));
                 }
-            },
-            error: function(xhr, status, error) {
-                console.error('Error:', error);
-                showToast('Error', 'An error occurred while loading order details', true);
+            } else {
+                $('#cancelQuantitySelector').hide();
             }
-        });
-    }
 
-    function showEditOrderModal(order) {
-        // Create the modal HTML
-        let modalHtml = `
-            <div class="modal fade" id="editOrderModal" tabindex="-1" role="dialog" aria-labelledby="editOrderModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-lg" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="editOrderModalLabel">Edit Order #${order.order_id}</h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Product</th>
-                                        <th>Quantity</th>
-                                        <th>Price</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-        `;
+            // Store data for use in confirmCancelItem
+            $('#confirmCancelItem').data('order-id', orderId).data('product-id', productId);
 
-        order.items.forEach((item, index) => {
-            modalHtml += `
-                <tr>
-                    <td>${item.product_name}</td>
-                    <td>
-                        <input type="number" class="form-control edit-item-quantity" 
-                               data-item-index="${index}" value="${item.quantity}" min="0" max="10">
-                    </td>
-                    <td>₹${item.item_total.toFixed(2)}</td>
-                    <td>
-                        <button class="btn btn-sm btn-danger remove-item" data-item-index="${index}">
-                            Remove
-                        </button>
-                    </td>
-                </tr>
-            `;
+            // Show modal
+            $('#cancelItemModal').modal('show');
         });
 
-        modalHtml += `
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                            <button type="button" class="btn btn-primary" id="saveOrderChanges" data-order-id="${order.order_id}">Save changes</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        // Add the modal to the page and show it
-        $('body').append(modalHtml);
-        $('#editOrderModal').modal('show');
-
-        // Remove the modal from the DOM when it's hidden
-        $('#editOrderModal').on('hidden.bs.modal', function () {
-            $(this).remove();
-        });
-    }
-
-    // Handle quantity changes
-    $(document).on('change', '.edit-item-quantity', function() {
-        // You can add logic here to update the price in real-time if needed
-    });
-
-    // Handle remove item
-    $(document).on('click', '.remove-item', function() {
-        $(this).closest('tr').remove();
-    });
-
-    // Handle save changes
-    $(document).on('click', '#saveOrderChanges', function() {
-        const orderId = $(this).data('order-id');
-        const updatedItems = [];
-
-        $('#editOrderModal .edit-item-quantity').each(function() {
-            const itemIndex = $(this).data('item-index');
-            const newQuantity = parseInt($(this).val());
-            if (newQuantity > 0) {
-                const itemRow = $(this).closest('tr');
-                const itemTotal = parseFloat(itemRow.find('td:nth-child(3)').text().replace('₹', ''));
-                updatedItems.push({
-                    item_total: itemTotal,
-                    product_id: itemRow.data('product-id'),
-                    quantity: newQuantity,
-                    rent_from: itemRow.data('rent-from'),
-                    rent_to: itemRow.data('rent-to'),
-                    rental_days: itemRow.data('rental-days'),
-                    store_name: itemRow.data('store-name')
-                });
-            }
+        $('#confirmCancelItem').on('click', function() {
+            const orderId = $(this).data('order-id');
+            const productId = $(this).data('product-id');
+            const cancelQuantity = $('#cancelQuantity').is(':visible') ? parseInt($('#cancelQuantity').val()) : 1;
+            cancelOrderItem(orderId, productId, cancelQuantity);
         });
 
-        updateOrder(orderId, updatedItems);
-    });
+        function cancelOrderItem(orderId, productId, quantity) {
+            $.ajax({
+                url: '/cancel-order-item',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ order_id: orderId, product_id: productId, quantity: quantity }),
+                success: function(response) {
+                    if (response.success) {
+                        showToast('Success', 'Item cancelled successfully', false);
+                        updateItemStatus(orderId, productId, response.newStatus, quantity, response.remainingQuantity);
+                        
+                        // Update the quantity displayed in the order
+                        $(`#item-quantity-${orderId}-${productId}`).text(response.remainingQuantity);
+                        
+                        // Update the cancel button's data-quantity attribute
+                        $(`#cancel-button-${orderId}-${productId}`).data('quantity', response.remainingQuantity);
+                        
+                        // Update the order total
+                        if (response.newOrderTotal !== undefined) {
+                            $(`#order-total-${orderId}`).text(`₹${response.newOrderTotal.toFixed(2)}`);
+                        }
 
-    function updateOrder(orderId, updatedItems) {
-        // Get a reference to the specific order in Firebase
-        const orderRef = database.ref('orders/' + orderId);
-
-        // Fetch the current order data
-        orderRef.once('value')
-            .then((snapshot) => {
-                const currentOrder = snapshot.val();
-                if (!currentOrder) {
-                    throw new Error('Order not found');
+                        // Show refund notification
+                        showRefundNotification();
+                    } else {
+                        showToast('Error', 'Failed to cancel item: ' + response.message, true);
+                    }
+                    $('#cancelItemModal').modal('hide');
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error:', error);
+                    showToast('Error', 'An error occurred while cancelling the item', true);
+                    $('#cancelItemModal').modal('hide');
                 }
-
-                // Update the items and recalculate the order total
-                let newOrderTotal = 0;
-                updatedItems.forEach(item => {
-                    newOrderTotal += item.item_total;
-                });
-
-                // Prepare the update object
-                const updates = {
-                    items: updatedItems,
-                    order_total: newOrderTotal,
-                    updated_at: new Date().toISOString()
-                };
-
-                // Update the order in Firebase
-                return orderRef.update(updates);
-            })
-            .then(() => {
-                // If the update is successful, update the UI
-                showToast('Success', 'Order updated successfully', false);
-                $('#editOrderModal').modal('hide');
-                
-                // Update the order display in the UI
-                updateOrderDisplay(orderId, updatedItems);
-            })
-            .catch((error) => {
-                console.error('Error updating order:', error);
-                showToast('Error', 'Failed to update order: ' + error.message, true);
             });
-    }
-
-    function updateOrderDisplay(orderId, updatedItems) {
-        const orderRow = $(`tr[data-order-id="${orderId}"]`);
-        
-        // Update the items display
-        let itemsHtml = '';
-        let totalPrice = 0;
-        
-        updatedItems.forEach((item, index) => {
-            itemsHtml += `
-                <tr class="order-item" data-order-id="${orderId}" data-item-index="${index}">
-                    <td>
-                        <img src="${item.image_url || '/static/img/default-product.jpg'}" 
-                             alt="${item.product_name}" width="50" height="50">
-                    </td>
-                    <td>
-                        <strong>${item.product_name}</strong><br>
-                        Rent From: ${item.rent_from}<br>
-                        Rent To: ${item.rent_to}
-                    </td>
-                    <td>₹${item.item_total.toFixed(2)}</td>
-                    <td>Quantity: <span class="item-quantity">${item.quantity}</span></td>
-                    <td>
-                        <!-- Add status cell content here if needed -->
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-danger cancel-single-item"
-                                data-order-id="${orderId}"
-                                data-item-index="${index}"
-                                data-product-name="${item.product_name}">
-                            <i class="fa fa-times"></i> Cancel Item
-                        </button>
-                    </td>
-                </tr>
-            `;
-            totalPrice += item.item_total;
-        });
-
-        // Update the order total and items
-        orderRow.find('td:first').html(`
-            <strong>Order ID: ${orderId}</strong><br>
-            Total Price: ₹${totalPrice.toFixed(2)}<br>
-            Order Date: ${new Date().toLocaleString()} <!-- You might want to keep the original order date -->
-        `);
-        orderRow.nextUntil('tr:has(td[colspan="6"])').remove();
-        orderRow.after(itemsHtml);
-
-        // Update cancel and edit buttons visibility
-        if (updatedItems.length === 0) {
-            $(`#cancel-button-${orderId}`).hide();
-            $(`.edit-order[data-order-id="${orderId}"]`).hide();
-        } else {
-            $(`#cancel-button-${orderId}`).show();
-            $(`.edit-order[data-order-id="${orderId}"]`).show();
         }
+
+        function updateItemStatus(orderId, productId, newStatus, cancelledQuantity, remainingQuantity) {
+            const statusCell = $(`#status-cell-${orderId}-${productId}`);
+            let statusHtml = '';
+            if (newStatus === 'cancelled') {
+                statusHtml = `
+                    <span class="badge bg-danger">Cancelled</span><br>
+                    <small>Cancelled on: <span class="cancelled-date">${new Date().toISOString().split('T')[0]}</span></small>
+                `;
+            } else if (newStatus === 'partially_cancelled') {
+                statusHtml = `
+                    <span class="badge bg-warning">Partially Cancelled</span><br>
+                    <small>Cancelled: ${cancelledQuantity}, Remaining: ${remainingQuantity}</small><br>
+                    <small>Last update: <span class="cancelled-date">${new Date().toISOString().split('T')[0]}</span></small>
+                `;
+            }
+            statusCell.html(statusHtml);
+
+            // Disable the cancel button if the item is fully cancelled
+            if (newStatus === 'cancelled' || remainingQuantity === 0) {
+                $(`#cancel-button-${orderId}-${productId}`).prop('disabled', true);
+            }
+        }
+
+        // ... rest of your existing code ...
+    });
+
+    // Add this new function to handle the refund notification
+    function showRefundNotification() {
+        const $notification = $('#refundNotification');
+        
+        // Show the notification with fade effect
+        $notification.fadeIn(300);
+        
+        // Hide the notification after 3 seconds with fade effect
+        setTimeout(() => {
+            $notification.fadeOut(300);
+        }, 3000);
     }
+
+    // Initialize countdown for each cancel button
+    $('.cancel-item').each(function() {
+        const button = $(this);
+        const orderTime = new Date(button.data('order-time'));
+        const now = new Date();
+        const timeSinceOrder = now - orderTime;
+        const cancelWindowMs = 10 * 60 * 1000; // 10 minutes in milliseconds
+        
+        if (timeSinceOrder <= cancelWindowMs) {
+            // Start countdown
+            updateCancelButtonTimer(button, orderTime);
+        } else {
+            // Hide button if more than 10 minutes have passed
+            button.hide();
+        }
+    });
+
+    function updateCancelButtonTimer(button, orderTime) {
+        const updateTimer = () => {
+            const now = new Date();
+            const timeSinceOrder = now - orderTime;
+            const cancelWindowMs = 10 * 60 * 1000;
+            const timeLeftMs = cancelWindowMs - timeSinceOrder;
+            
+            if (timeLeftMs <= 0) {
+                // Time's up - hide cancel button
+                button.hide();
+                clearInterval(timerInterval);
+            } else {
+                // Update button text with countdown
+                const minutes = Math.floor(timeLeftMs / 60000);
+                const seconds = Math.floor((timeLeftMs % 60000) / 1000);
+                button.html(`<i class="fa fa-times"></i> Cancel (${minutes}:${seconds.toString().padStart(2, '0')})`);
+            }
+        };
+
+        // Update immediately and then every second
+        updateTimer();
+        const timerInterval = setInterval(updateTimer, 1000);
+        
+        // Store the interval ID on the button element for cleanup
+        button.data('timerInterval', timerInterval);
+    }
+
+    // Handle button click
+    $('.cancel-item').on('click', function() {
+        const button = $(this);
+        const orderTime = new Date(button.data('order-time'));
+        const now = new Date();
+        const timeSinceOrder = now - orderTime;
+        const cancelWindowMs = 10 * 60 * 1000;
+
+        if (timeSinceOrder > cancelWindowMs) {
+            showToast('Error', 'Cancel window has expired', true);
+            button.hide();
+            return;
+        }
+
+        // Your existing cancel logic here
+        const orderId = button.data('order-id');
+        const productId = button.data('product-id');
+        const productName = button.data('product-name');
+        const quantity = button.data('quantity');
+
+        // Show cancel confirmation modal
+        $('#cancelItemOrderId').text(orderId);
+        $('#cancelItemProductName').text(productName);
+        $('#cancelItemModal').modal('show');
+    });
+
+    // Cleanup intervals when the page is unloaded
+    $(window).on('unload', function() {
+        $('.cancel-item').each(function() {
+            const interval = $(this).data('timerInterval');
+            if (interval) {
+                clearInterval(interval);
+            }
+        });
+    });
+
 });
 </script>
-
+                     
 </body>
 
 
