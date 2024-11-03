@@ -118,7 +118,124 @@
         const districtValid = validateDistrict();
         return emailValid && passwordValid && phoneValid && nameValid && districtValid;
     }
+
+    function validateEmail() {
+        const emailInput = document.getElementById('email');
+        const emailError = document.getElementById('emailError');
+        
+        // Remove any characters that aren't allowed
+        emailInput.value = emailInput.value.replace(/[^a-zA-Z0-9@._-]/g, '');
+        
+        // Basic email format validation
+        const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        
+        if (!emailRegex.test(emailInput.value) && emailInput.value !== '') {
+            emailError.innerText = 'Please enter a valid email address';
+            return false;
+        } else {
+            emailError.innerText = '';
+            return true;
+        }
+    }
 </script>
+<style>
+    // ... existing styles ...
+    
+    .toolhive-logo {
+        text-decoration: none;
+        display: block;
+        padding: 10px 0;
+    }
+
+    .logo-text {
+        font-size: 32px;
+        font-weight: 700;
+        color: #333;
+        font-family: 'Lily Script One', cursive;
+    }
+
+    .logo-text .highlight {
+        color: #ff6a00;
+    }
+
+    @media (max-width: 768px) {
+        .logo-text {
+            font-size: 24px;
+        }
+    }
+
+    .register-wrapper {
+        border-radius: 15px !important;
+        transition: all 0.3s ease;
+    }
+
+    .register-wrapper:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .form-control {
+        padding: 0.75rem 1.25rem;
+        border: 1px solid #e1e1e1;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        border-color: #ff6a00;
+        box-shadow: 0 0 0 0.2rem rgba(255, 106, 0, 0.25);
+    }
+
+    .btn-primary {
+        background-color: #ff6a00;
+        border-color: #ff6a00;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background-color: #e65c00;
+        border-color: #e65c00;
+        transform: translateY(-2px);
+    }
+
+    .form-check-input:checked {
+        background-color: #ff6a00;
+        border-color: #ff6a00;
+    }
+
+    .text-primary {
+        color: #ff6a00 !important;
+    }
+
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+
+    .alert {
+        border: none;
+    }
+
+    @media (max-width: 768px) {
+        .register-wrapper {
+            padding: 1.5rem !important;
+        }
+    }
+
+    .newsletter-btn {
+        background: #ff6a00;
+        border: 0;
+        color: #fff;
+        height: 40px;
+        padding: 0 20px;
+        font-size: 16px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    .newsletter-btn:hover {
+        background-color: #e65c00;
+    }
+</style>
 <body>
     <!--[if lt IE 8]>
     <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
@@ -137,9 +254,10 @@
                         <!--  logo Start-->
                         <div class="col-auto">
                             <div class="logo">
-                                <a href="/index"><img src="{{ url_for('static', filename='img/logo/logo.png') }}" alt="logo-image">
+                                <a href="/index" class="toolhive-logo">
+                                    <span class="logo-text">Tool<span class="highlight">Hive</span></span>
                                 </a>
-                            </div>
+                            </div>                          
                         </div>
                        <!--  logo End -->
 
@@ -151,7 +269,7 @@
                         <div class="col-auto">
                             <div class="cart-box text-end">
                                 <ul>
-                                    <li><a href="compare.html"><i class="fa fa-cog"></i></a>
+                                    <li><a href="/login"><i class="fa fa-cog"></i></a>
                                         <ul class="ht-dropdown">
                                             {% if 'email' in session %}
                                             <li><a href="/account">Account</a></li> 
@@ -255,90 +373,92 @@
         <!-- Register Account Start -->
         <div class="register-account pb-60">
             <div class="container">
-                <div class="row">
-                    <div class="col-sm-12">
-                        <div class="register-title">
-                            <h3 class="mb-10">REGISTER ACCOUNT</h3>
-                            <p class="mb-10">If you already have an account with us, please login at the login page.</p>
-                        </div>
-                    </div>
-                </div>
-                <!-- Row End -->
-                <div class="row">
-                    <div class="col-sm-12">
-                        <form class="form-horizontal" action="/register" method="POST" onsubmit="return validateForm()">
-                            <fieldset>
-                                
-                                <div class="form-group">
-                                    <label class="control-label" for="f-name"><span class="require">*</span> Name</label>
-                                    <div class="col-sm-10">
-                                        <input type="text" name="name" maxlength="20" class="form-control" id="f-name" placeholder="Name" required oninput="validateName()">
-                                        <span id="nameError" style="color: red;"></span>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label class="control-label" for="email"><span class="require">*</span>Email address</label>
-                                    <div class="col-sm-10">
-                                        <input type="email" name="email" maxlength="30" class="form-control" id="email" placeholder="Enter your email address" required oninput="validateEmail()">
-                                        <span id="emailError" style="color: red;"></span>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label class="control-label" for="number"><span class="require">*</span>Phone</label>
-                                    <div class="col-sm-10">
-                                        <input type="tel" name="phone" class="form-control" id="number" placeholder="Phone number" required maxlength="10" pattern="[0-9]{10}" oninput="validatePhone()">
-                                        <span id="phoneError" style="color: red;"></span>
-                                    </div>
-                                </div>
-                            </fieldset>
-                            <fieldset>
-                                <div class="form-group">
-                                    <label class="control-label" for="pwd"><span class="require">*</span>Password:</label>
-                                    <div class="col-sm-10">
-                                        <input type="password" name="password" maxlength="16" class="form-control" id="pwd" placeholder="Password" required oninput="validatePassword()">
-                                        <span id="passwordError" style="color: red;"></span>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label class="control-label" for="district"><span class="require">*</span>Address</label>
-                                    <div class="col-sm-10">
-                                        <input type="text" name="district" maxlength="20" class="form-control" id="district" placeholder="Location" required oninput="validateDistrict()">
-                                        <span id="districtError" style="color: red;"></span>
-                                    </div>
-                                </div>
-                            </fieldset>
-                            <fieldset>
-                                <div class="form-group">
-                                    <label class="control-label" for="user_type"><span class="require">*</span>User Type</label>
-                                    <div class="col-sm-10">
-                                        <select name="user_type" class="form-control" id="user_type" required>
-                                            <option value="customer">Customer</option>
-                                            <option value="vendor">Vendor</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </fieldset>
-                            {% if error %}
-                                <p style="color:red;">{{ error }}</p>
-                            {% endif %}
-                    
-                            <div class="buttons newsletter-input">
-                                <div class="pull-right">I have read and agree to the <a href="#" class="agree"><b>Privacy Policy</b></a>
-                                    <input type="checkbox" name="agree" value="1" required> &nbsp; 
-                                    <input type="submit" value="Register" class="newsletter-btn">
-                                </div>
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        <div class="register-wrapper bg-white p-4 rounded shadow-sm">
+                            <div class="register-title text-center mb-4">
+                                <h3 class="mb-3">Create Your Account</h3>
+                                <p class="text-muted">Already have an account? <a href="/login" class="text-primary">Login here</a></p>
                             </div>
-                        </form>
-                        {% if error_message %}
-                        <div style="color: red;">
-                            {{ error_message }}
+                            
+                            <form class="form-horizontal" action="/register" method="POST" onsubmit="return validateForm()">
+                                <div class="row">
+                                    <!-- Left Column -->
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label" for="f-name">Full Name <span class="text-danger">*</span></label>
+                                            <input type="text" name="name" maxlength="20" class="form-control rounded-pill" 
+                                                   id="f-name" placeholder="Enter your full name" required oninput="validateName()">
+                                            <span id="nameError" class="text-danger small"></span>
+                                        </div>
+
+                                        <div class="form-group mb-3">
+                                            <label class="form-label" for="email">Email Address <span class="text-danger">*</span></label>
+                                            <input type="email" name="email" maxlength="30" class="form-control rounded-pill" 
+                                                   id="email" placeholder="Enter your email" required oninput="validateEmail()">
+                                            <span id="emailError" class="text-danger small"></span>
+                                        </div>
+
+                                        <div class="form-group mb-3">
+                                            <label class="form-label" for="number">Phone Number <span class="text-danger">*</span></label>
+                                            <input type="tel" name="phone" class="form-control rounded-pill" id="number" 
+                                                   placeholder="Enter your phone number" required maxlength="10" 
+                                                   pattern="[0-9]{10}" oninput="validatePhone()">
+                                            <span id="phoneError" class="text-danger small"></span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Right Column -->
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="form-label" for="pwd">Password <span class="text-danger">*</span></label>
+                                            <input type="password" name="password" maxlength="16" class="form-control rounded-pill" 
+                                                   id="pwd" placeholder="Create a strong password" required oninput="validatePassword()">
+                                            <span id="passwordError" class="text-danger small"></span>
+                                        </div>
+
+                                        <div class="form-group mb-3">
+                                            <label class="form-label" for="district">Address <span class="text-danger">*</span></label>
+                                            <input type="text" name="district" maxlength="20" class="form-control rounded-pill" 
+                                                   id="district" placeholder="Enter your address" required oninput="validateDistrict()">
+                                            <span id="districtError" class="text-danger small"></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Hidden User Type -->
+                                <input type="hidden" name="user_type" value="customer">
+
+                                {% if error %}
+                                    <div class="alert alert-danger rounded-pill" role="alert">
+                                        {{ error }}
+                                    </div>
+                                {% endif %}
+
+                                <div class="form-group mt-4">
+                                    <div class="d-flex align-items-center justify-content-between flex-wrap">
+                                        <div class="form-check mb-2">
+                                            <input type="checkbox" name="agree" value="1" required class="form-check-input" id="privacy">
+                                            <label class="form-check-label" for="privacy">
+                                                I agree to the <a href="#" class="text-primary">Privacy Policy</a>
+                                            </label>
+                                        </div>
+                                        <div class="buttons newsletter-input">
+                                            <input type="submit" value="Register" class="newsletter-btn">
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+
+                            {% if error_message %}
+                            <div class="alert alert-danger mt-3 rounded-pill" role="alert">
+                                {{ error_message }}
+                            </div>
+                            {% endif %}
                         </div>
-                        {% endif %}
                     </div>
                 </div>
-                <!-- Row End -->
             </div>
-            <!-- Container End -->
         </div>
         
         <!-- Register Account End -->
@@ -390,121 +510,13 @@
 
         <footer class="off-white-bg">
             <!-- Footer Top Start -->
-            <div class="footer-top pt-50 pb-60">
-                <div class="container">
-                    <div class="row justify-content-center">
-                        <div class="col-lg-6 mr-auto ml-auto">
-                            <div class="newsletter text-center">
-                                <div class="main-news-desc">
-                                     <div class="news-desc">
-                                         <h3>Sign Up For Newsletters</h3>
-                                         <p>Get e-mail updates about our latest shop and special offers.</p>
-                                     </div>
-                                </div>
-                                <div class="newsletter-box">
-                                    <form action="#">
-                                        <input class="subscribe" placeholder="Enter your email address" name="email" id="subscribe" type="text">
-                                        <button type="submit" class="submit">subscribe</button>
-                                    </form>
-                                </div>
-                             </div>                            
-                        </div>
-                    </div>                    
-                    <div class="row">
-                        <!-- Single Footer Start -->
-                        <div class="col-lg-4  col-md-7 col-sm-6">
-                            <div class="single-footer">
-                                <h3>Contact us</h3>
-                                <div class="footer-content">
-                                    <div class="loc-address">
-                                        <span><i class="fa fa-map-marker"></i>Your address goes here.</span>
-                                        <span><i class="fa fa-envelope-o"></i>Mail Us: demo@example.com</span>
-                                        <span><i class="fa fa-phone"></i>Phone: 0123456789</span>
-                                    </div>
-                                    <div class="payment-mth"><a href="#"><img class="img" src="img/footer/1.png" alt="payment-image"></a></div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Single Footer Start -->
-                        <!-- Single Footer Start -->
-                        <div class="col-lg-2  col-md-5 col-sm-6 footer-full">
-                            <div class="single-footer">
-                                <h3 class="footer-title">Information</h3>
-                                <div class="footer-content">
-                                    <ul class="footer-list">
-                                        <li><a href="#">Site Map</a></li>
-                                        <li><a href="#">Specials</a></li>
-                                        <li><a href="#">Jobs</a></li>
-                                        <li><a href="#">Delivery Information</a></li>
-                                        <li><a href="#">Order History</a></li>
-                                        <li><a href="#">Privacy Policy</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Single Footer Start -->
-                        <!-- Single Footer Start -->
-                        <div class="col-lg-2  col-md-4 col-md-4 col-sm-6 footer-full">
-                            <div class="single-footer">
-                                <h3 class="footer-title">My Account</h3>
-                                <div class="footer-content">
-                                    <ul class="footer-list">
-                                        <li><a href="account.html">My account</a></li>
-                                        <li><a href="#">Checkout</a></li>
-                                        <li><a href="#">Login</a></li>
-                                        <li><a href="#">address</a></li>
-                                        <li><a href="#">Order status</a></li>
-                                        <li><a href="#">Site Map</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Single Footer Start -->
-                        <!-- Single Footer Start -->
-                        <div class="col-lg-2 col-md-4 col-sm-6 footer-full">
-                            <div class="single-footer">
-                                <h3 class="footer-title">customer service</h3>
-                                <div class="footer-content">
-                                    <ul class="footer-list">
-                                        <li><a href="account.html">My account</a></li>
-                                        <li><a href="#">New</a></li>
-                                        <li><a href="#">Gift Cards</a></li>
-                                        <li><a href="#">Return Policy</a></li>
-                                        <li><a href="#">Your Orders</a></li>
-                                        <li><a href="#">Subway</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Single Footer Start -->
-                        <!-- Single Footer Start -->
-                        <div class="col-lg-2 col-md-4 col-sm-6 footer-full">
-                            <div class="single-footer">
-                                <h3 class="footer-title">Let Us Help You</h3>
-                                <div class="footer-content">
-                                    <ul class="footer-list">
-                                        <li><a href="#">Your Account</a></li>
-                                        <li><a href="#">Your Orders</a></li>
-                                        <li><a href="#">Shipping</a></li>
-                                        <li><a href="#">Amazon Prime</a></li>
-                                        <li><a href="#">Replacements</a></li>
-                                        <li><a href="#">Manage </a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Single Footer Start -->
-                    </div>
-                    <!-- Row End -->
-                </div>
-                <!-- Container End -->
-            </div>
+            
             <!-- Footer Top End -->
             <!-- Footer Bottom Start -->
             <div class="footer-bottom off-white-bg2">
                 <div class="container">
                     <div class="footer-bottom-content">
-                        <p class="copy-right-text">&copy; 2023 <strong> Jantrik </strong> Made with <i class="fa fa-heart text-danger"></i> by <a href="https://hasthemes.com/" target="_blank"><strong>HasThemes</strong></a></p>
+                       
                         <div class="footer-social-content">
                             <ul class="social-content-list">
                                 <li><a href="#"><i class="fa fa-twitter"></i></a></li>

@@ -201,6 +201,32 @@
             padding: 0.375rem 1rem;
         }
     </style>
+    <style>
+        // ... existing styles ...
+        
+        .toolhive-logo {
+            text-decoration: none;
+            display: block;
+            padding: 10px 0;
+        }
+    
+        .logo-text {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+            font-family: 'Lily Script One', cursive;
+        }
+    
+        .logo-text .highlight {
+            color: #ff6a00;
+        }
+    
+        @media (max-width: 768px) {
+            .logo-text {
+                font-size: 24px;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -218,7 +244,9 @@
                         <!--  logo Start-->
                         <div class="col-auto">
                             <div class="logo">
-                                <a href="/index"><img src="{{ url_for('static', filename='img/logo/logo.png') }}"></a>
+                                <a href="/index" class="toolhive-logo">
+                                    <span class="logo-text">Tool<span class="highlight">Hive</span></span>
+                                </a>
                             </div>                          
                         </div>
                         <!--  logo End -->

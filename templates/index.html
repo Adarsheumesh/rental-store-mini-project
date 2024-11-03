@@ -217,6 +217,41 @@
             display: none;
         }
     }
+    
+</style>
+<style>
+    // ... existing styles ...
+    
+    .toolhive-logo {
+        text-decoration: none;
+        display: block;
+        padding: 10px 0;
+    }
+
+    .logo-text {
+        font-size: 32px;
+        font-weight: 700;
+        color: #333;
+        font-family: 'Lily Script One', cursive;
+    }
+
+    .logo-text .highlight {
+        color: #ff6a00;
+    }
+
+    @media (max-width: 768px) {
+        .logo-text {
+            font-size: 24px;
+        }
+    }
+</style>
+<style>
+    .per-day {
+        font-size: 14px;
+        color: #666;
+        font-weight: normal;
+        margin-left: 2px;
+    }
 </style>
 </head>
 
@@ -241,7 +276,9 @@
                         <!--  logo Start-->
                         <div class="col-auto">
                             <div class="logo">
-                                <a href="/index"><img src="{{ url_for('static', filename='img/logo/logo.png') }}"></a>
+                                <a href="/index" class="toolhive-logo">
+                                    <span class="logo-text">Tool<span class="highlight">Hive</span></span>
+                                </a>
                             </div>                          
                         </div>
                        <!--  logo End -->
@@ -377,13 +414,27 @@
                             <!-- Product Content Start -->
                             <div class="pro-content">
                                 <div class="product-rating">
-                                    {% for i in range(5) %}
-                                            <i class="fa fa-star"></i>
-                                            {% endfor %}
+                                    {% set total_rating = 0 %}
+                                    {% set review_count = 0 %}
+                                    
+                                    {% if product_reviews %}
+                                        {% for review_id, review in product_reviews.items() %}
+                                            {% if review.rating %}
+                                                {% set total_rating = total_rating + review.rating|int %}
+                                                {% set review_count = review_count + 1 %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endif %}
+                                    
+                                    {% set average_rating = (total_rating / review_count)|round|int if review_count > 0 else 5 %}
+                                    
+                                    {% for _ in range(average_rating) %}
+                                        <i class="fa fa-star"></i>
+                                    {% endfor %}
                                 </div>                                
                                 <h4><a href="{{ url_for('product_detail', product_id=product_id) }}">{{ product['product_name']}}</a></h4>
                                 <p>
-                                    <span class="price">₹{{ product['product_price'] | default("Price not available") }}</span>
+                                    <span class="price">₹{{ product['product_price'] | default("Price not available") }}<span class="per-day">/day</span></span>
                                     <del class="prev-price"></del>
                                 </p>
                                 <div class="pro-actions">
@@ -525,7 +576,7 @@
                                             {% endfor %}
                                         </div>
                                         <h4><a href="{{ url_for('product_detail', product_id=product.id) }}">{{ product.product_name }}</a></h4>
-                                        <p><span class="price">₹{{ product.product_price }}</span>
+                                        <p><span class="price">₹{{ product.product_price }}<span class="per-day">/day</span></span>
                                         {% if product.original_price %}
                                             <del class="prev-price">₹{{ product.original_price }}</del>
                                         {% endif %}

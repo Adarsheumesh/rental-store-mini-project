@@ -130,6 +130,32 @@
             100% { opacity: 0; }
         }
     </style>
+    <style>
+        // ... existing styles ...
+        
+        .toolhive-logo {
+            text-decoration: none;
+            display: block;
+            padding: 10px 0;
+        }
+    
+        .logo-text {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+            font-family: 'Lily Script One', cursive;
+        }
+    
+        .logo-text .highlight {
+            color: #ff6a00;
+        }
+    
+        @media (max-width: 768px) {
+            .logo-text {
+                font-size: 24px;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -150,7 +176,9 @@
                         <!--  logo Start-->
                         <div class="col-auto">
                             <div class="logo">
-                                <a href="/index"><img src="{{ url_for('static', filename='img/logo/logo.png') }}"></a>
+                                <a href="/index" class="toolhive-logo">
+                                    <span class="logo-text">Tool<span class="highlight">Hive</span></span>
+                                </a>
                             </div>                          
                         </div>
                        <!--  logo End -->
@@ -374,15 +402,17 @@
                                                                         <i class="fa fa-eye"></i> View Details
                                                                     </button>
                                                                    
-                                                                    {% if order.get('returns') and order.get('returns', {}).get('status') == 'returned' %}
-                                                                        <a href="{{ url_for('download_order_pdf', order_id=order.get('order_id', '')) }}" 
-                                                                           class="btn btn-outline-secondary btn-sm download-invoice" 
-                                                                           id="download-invoice-{{ order.get('order_id', '') }}"
-                                                                           data-order-id="{{ order.get('order_id', '') }}" 
-                                                                           target="_blank">
-                                                                            <i class="fa fa-download"></i> Download Invoice
-                                                                        </a>
-                                                                    {% endif %}
+                                                                    {% for item in order.get('items', []) %}
+                                                                        {% if item.get('status') == 'returned' and item.get('return_completed_at') %}
+                                                                            <a href="{{ url_for('download_order_pdf', order_id=order.get('order_id', '')) }}" 
+                                                                               class="btn btn-outline-secondary btn-sm download-invoice" 
+                                                                               id="download-invoice-{{ order.get('order_id', '') }}-{{ item.get('product_id', '') }}"
+                                                                               data-order-id="{{ order.get('order_id', '') }}" 
+                                                                               target="_blank">
+                                                                                <i class="fa fa-download"></i> Download Invoice
+                                                                            </a>
+                                                                        {% endif %}
+                                                                    {% endfor %}
                                                                 </div>
                                                                 
                                                                 {% if order.get('status') != 'cancelled' %}
@@ -396,10 +426,7 @@
 
                                                                         {% if all_items_returned %}
                                                                             <!-- Download Invoice Button (when all items are returned) -->
-                                                                            <button type="button" class="btn btn-primary btn-sm"
-                                                                                    onclick="window.location.href='{{ url_for('download_order_pdf', order_id=order.get('order_id', '')) }}'">
-                                                                                <i class="fa fa-download"></i> Download Invoice
-                                                                            </button>
+                                                                           
                                                                         {% else %}
                                                                             {% for item in order.get('items', []) %}
                                                                                 {% if item.get('status') != 'returned' %}
@@ -587,24 +614,7 @@
             <!-- Footer Top Start -->
             <div class="footer-top pt-50 pb-60">
                 <div class="container">
-                    <div class="row justify-content-center">
-                        <div class="col-lg-6 mr-auto ml-auto">
-                            <div class="newsletter text-center">
-                                <div class="main-news-desc">
-                                     <div class="news-desc">
-                                         <h3>Sign Up For Newsletters</h3>
-                                         <p>Get e-mail updates about our latest shop and special offers.</p>
-                                     </div>
-                                </div>
-                                <div class="newsletter-box">
-                                    <form action="#">
-                                        <input class="subscribe" placeholder="Enter your email address" name="email" id="subscribe" type="text">
-                                        <button type="submit" class="submit">subscribe</button>
-                                    </form>
-                                </div>
-                             </div>                            
-                        </div>
-                    </div>                    
+                                  
                     <div class="row">
                         <!-- Single Footer Start -->
                         <div class="col-lg-4  col-md-7 col-sm-6">

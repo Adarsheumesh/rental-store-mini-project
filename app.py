@@ -366,7 +366,7 @@ def index():
 
     # Fetch data from the 'products' table
     try:
-        products = db.child("products").get().val()  # Fetch all products from the 'products' table
+        products = db.child("products").get().val()  # Fetch all products from the 'products' table   
     except Exception as e:
         products = None
         flash(f"Failed to retrieve products: {str(e)}", 'danger')
@@ -2237,6 +2237,7 @@ def index():
     # Fetch data from the 'products' table
     try:
         products = db.child("products").get().val()
+        product_reviews = db.child("product_reviews").get().val()
     except Exception as e:
         products = None
         flash(f"Failed to retrieve products: {str(e)}", 'danger')
@@ -2256,7 +2257,8 @@ def index():
                            user_info=user_info,
                            user_name=user_name,
                            products=products, 
-                           best_seller_products=best_seller_products)
+                           best_seller_products=best_seller_products,
+                            product_reviews=product_reviews)
 
 
 @app.route('/vendor_dashboard')

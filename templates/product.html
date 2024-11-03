@@ -426,6 +426,32 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
     </script>
+    <style>
+        // ... existing styles ...
+        
+        .toolhive-logo {
+            text-decoration: none;
+            display: block;
+            padding: 10px 0;
+        }
+    
+        .logo-text {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+            font-family: 'Lily Script One', cursive;
+        }
+    
+        .logo-text .highlight {
+            color: #ff6a00;
+        }
+    
+        @media (max-width: 768px) {
+            .logo-text {
+                font-size: 24px;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -443,7 +469,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         <!--  logo Start-->
                         <div class="col-auto">
                             <div class="logo">
-                                <a href="/index"><img src="{{ url_for('static', filename='img/logo/logo.png') }}"></a>
+                                <a href="/index" class="toolhive-logo">
+                                    <span class="logo-text">Tool<span class="highlight">Hive</span></span>
+                                </a>
                             </div>                          
                         </div>
                         <!--  logo End -->
@@ -542,12 +570,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <i class="fa fa-star-o"></i>
                                 </div>
                                 <div class="rating-feedback f-left">
-                                    <a href="#">(1 review)</a>
+                                    <a href="#">({% if product_reviews|length != 1 %}{% endif %} {{ product_reviews|length }} review)</a>
                                     <a href="#">add to your review</a>
                                 </div>
                             </div>
                             <div class="pro-price mb-10">
-                                <p><span class="price">₹{{ product_details['product_price'] }}</span><del class="prev-price"></del></p>
+                                <p><span class="price">₹{{ product_details['product_price'] }}<span class="per-day">/day</span></span><del class="prev-price"></del></p>
                             </div>
                             <div class="pro-ref mb-15">
                                 <p>
@@ -796,24 +824,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <!-- Footer Top Start -->
             <div class="footer-top pt-50 pb-60">
                 <div class="container">
-                    <div class="row justify-content-center">
-                        <div class="col-lg-6 mr-auto ml-auto">
-                            <div class="newsletter text-center">
-                                <div class="main-news-desc">
-                                     <div class="news-desc">
-                                         <h3>Sign Up For Newsletters</h3>
-                                         <p>Get e-mail updates about our latest shop and special offers.</p>
-                                     </div>
-                                </div>
-                                <div class="newsletter-box">
-                                    <form action="#">
-                                        <input class="subscribe" placeholder="Enter your email address" name="email" id="subscribe" type="text">
-                                        <button type="submit" class="submit">subscribe</button>
-                                    </form>
-                                </div>
-                             </div>                            
-                        </div>
-                    </div>                    
+                                     
                     <div class="row">
                         <!-- Single Footer Start -->
                         <div class="col-lg-4  col-md-7 col-sm-6">
