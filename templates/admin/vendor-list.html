@@ -349,7 +349,7 @@
 											<thead>
 												<tr>
 													<th>ID</th>
-													<th>Photo</th>
+													
 													<th>Full name</th>
 													<th>Email</th>
 													<th>Store Name</th>
@@ -364,8 +364,7 @@
 												{% for vendor_id, vendor in vendors.items() %}
 												<tr>
 													<td>{{ vendor_id[:8] }}</td>
-													<td><img class="cat-thumb" src="{{ vendor.get('profile_picture', url_for('static', filename='assets/img/user/default.jpg')) }}"
-															alt="Vendor Image" /></td>
+													
 													<td>{{ vendor.get('name', 'N/A') }}</td>
 													<td>{{ vendor.get('email', 'N/A') }}</td>
 													<td>{{ vendor.get('store_name', 'N/A') }}</td>

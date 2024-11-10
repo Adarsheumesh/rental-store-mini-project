@@ -48,7 +48,7 @@
 				<div class="ec-brand">
 					<a href="/admin_dashboard">
 						<img class="ec-brand-icon" src="{{ url_for('static', filename='assets/img/logo/favicon.png') }}" alt="" />
-						<span class="ec-brand-name text-truncate">ANDSHOP</span>
+						<span class="ec-brand-name text-truncate">ADMIN</span>
 					</a>
 				</div>
 
@@ -58,7 +58,7 @@
 					<ul class="nav sidebar-inner" id="sidebar-menu">
 						<!-- Dashboard -->
 						<li class="active">
-							<a class="sidenav-item-link" href="index.php">
+							<a class="sidenav-item-link" href="/admin_dashboard">
 								<i class="mdi mdi-view-dashboard-outline"></i>
 								<span class="nav-text">Dashboard</span>
 							</a>
@@ -162,7 +162,7 @@
 									<!-- User image -->
 									<li class="dropdown-header">
 										<div class="d-inline-block">
-											<h5>{{ user_name }}</h5>
+											<h5>{{ user_name if user_name else "Admin" }}</h5>
 											<p class="pt-2">{{ email }}</p>
 										</div>
 									</li>
@@ -220,41 +220,7 @@
 						</div>
 					</div>
 
-					<div class="row">
-						<div class="col-xl-8 col-md-12 p-b-15">
-							<!-- Sales Graph -->
-							<div id="user-acquisition" class="card card-default">
-								<div class="card-header">
-									<h2>Sales Report</h2>
-								</div>
-								<div class="card-body">
-									<div class="tab-content pt-4" id="salesReport">
-										<div class="tab-pane fade show active" id="source-medium" role="tabpanel">
-											<div class="mb-6" style="max-height:247px">
-												<canvas id="linechart"></canvas>
-												<div id="acqLegend" class="customLegend mb-2"></div>
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-
-						<div class="col-xl-4 col-md-12 p-b-15">
-							<!-- Doughnut Chart -->
-							<div class="card card-default">
-								<div class="card-header justify-content-center">
-									<h2>Orders Overview</h2>
-								</div>
-								<div class="card-body">
-									<canvas id="polar"></canvas>
-								</div>
-								<a href="#" class="pb-5 d-block text-center text-muted"><i
-										class="mdi mdi-download mr-2"></i> Download overall report</a>
-								
-							</div>
-						</div>
-					</div>
+					
 
 					<div class="row">
 						<div class="col-xl-8 col-md-12 p-b-15">
@@ -264,34 +230,27 @@
 									<div>
 										<div class="card-header justify-content-between">
 											<h2>User Activity</h2>
-											<div class="date-range-report ">
-												<span></span>
-											</div>
+											
 										</div>
 										<div class="card-body">
 											<div class="tab-content" id="userActivityContent"> 
 												<div class="tab-pane fade show active" id="user" role="tabpanel">
-													<canvas id="activity" class="chartjs"></canvas>
+													<canvas id="userActivityChart" class="chartjs"></canvas>
 												</div>
 											</div>
 										</div>
-										<div class="card-footer d-flex flex-wrap bg-white border-top">
-											<a href="#" class="text-uppercase py-3">In-Detail Overview</a>
-										</div>
+										
 									</div>
 								</div>
 							</div>
 						</div>
 						<div class="col-xl-4 col-md-12 p-b-15">
 							<div class="card card-default">
-								<div class="card-header flex-column align-items-start">
-									<h2>Current Users</h2>
+								<div class="card-header justify-content-center">
+									<h2>Vendor Statistics</h2>
 								</div>
 								<div class="card-body">
-									<canvas id="currentUser" class="chartjs"></canvas>
-								</div>
-								<div class="card-footer d-flex flex-wrap bg-white border-top">
-									<a href="#" class="text-uppercase py-3">In-Detail Overview</a>
+									<canvas id="vendorStats" class="chartjs"></canvas>
 								</div>
 							</div>
 						</div>
@@ -538,6 +497,231 @@
 			window.location.href = this.href;
 		});
 	</script>
+
+	<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		// Get the canvas element
+		var ctx = document.getElementById('userActivityChart').getContext('2d');
+		
+		// Create gradients
+		var gradientActive = ctx.createLinearGradient(0, 0, 0, 400);
+		gradientActive.addColorStop(0, 'rgba(40, 167, 69, 0.2)');
+		gradientActive.addColorStop(1, 'rgba(40, 167, 69, 0.0)');
+		
+		var gradientInactive = ctx.createLinearGradient(0, 0, 0, 400);
+		gradientInactive.addColorStop(0, 'rgba(220, 53, 69, 0.2)');
+		gradientInactive.addColorStop(1, 'rgba(220, 53, 69, 0.0)');
+
+		// Get user data from Flask
+		var userData = {
+			active: {{ user_stats.active }},
+			inactive: {{ user_stats.inactive }}
+		};
+
+		// Generate last 7 days dates
+		var dates = [];
+		for(let i = 6; i >= 0; i--) {
+			let d = new Date();
+			d.setDate(d.getDate() - i);
+			dates.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+		}
+
+		// Create the chart
+		new Chart(ctx, {
+			type: 'line',
+			data: {
+				labels: dates,
+				datasets: [
+					{
+						label: 'Active Users',
+						data: Array(7).fill(userData.active),
+						borderColor: '#28a745',
+						backgroundColor: gradientActive,
+						borderWidth: 2,
+						pointBackgroundColor: '#fff',
+						pointBorderColor: '#28a745',
+						pointRadius: 4,
+						pointHoverRadius: 6,
+						fill: true,
+						tension: 0.4
+					},
+					{
+						label: 'Inactive Users',
+						data: Array(7).fill(userData.inactive),
+						borderColor: '#dc3545',
+						backgroundColor: gradientInactive,
+						borderWidth: 2,
+						pointBackgroundColor: '#fff',
+						pointBorderColor: '#dc3545',
+						pointRadius: 4,
+						pointHoverRadius: 6,
+						fill: true,
+						tension: 0.4
+					}
+				]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				layout: {
+					padding: {
+						top: 20,
+						right: 20,
+						bottom: 20,
+						left: 20
+					}
+				},
+				scales: {
+					y: {
+						beginAtZero: true,
+						grid: {
+							color: 'rgba(0,0,0,0.05)',
+							drawBorder: false
+						},
+						ticks: {
+							stepSize: 5,
+							font: {
+								size: 12
+							},
+							color: '#666'
+						}
+					},
+					x: {
+						grid: {
+							display: false,
+							drawBorder: false
+						},
+						ticks: {
+							font: {
+								size: 12
+							},
+							color: '#666'
+						}
+					}
+				},
+				plugins: {
+					legend: {
+						position: 'top',
+						align: 'end',
+						labels: {
+							boxWidth: 12,
+							padding: 20,
+							font: {
+								size: 12
+							}
+						}
+					},
+					tooltip: {
+						mode: 'index',
+						intersect: false,
+						backgroundColor: '#fff',
+						titleColor: '#333',
+						bodyColor: '#666',
+						borderColor: '#e9ecef',
+						borderWidth: 1,
+						padding: 10,
+						boxPadding: 4,
+						titleFont: {
+							weight: 'bold'
+						},
+						callbacks: {
+							label: function(context) {
+								let label = context.dataset.label || '';
+								if (label) {
+									label += ': ';
+								}
+								label += context.parsed.y + ' users';
+								return label;
+							}
+						}
+					}
+				}
+			}
+		});
+	});
+	</script>
+
+	<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		var ctx = document.getElementById('vendorStats').getContext('2d');
+		
+		new Chart(ctx, {
+			type: 'doughnut',  // Changed to doughnut for better visualization
+			data: {
+				labels: ['Active', 'Pending', 'Rejected'],
+				datasets: [{
+					data: [
+						{{ vendor_stats.active|default(0) }},
+						{{ vendor_stats.pending|default(0) }},
+						{{ vendor_stats.rejected|default(0) }}
+					],
+					backgroundColor: [
+						'rgba(40, 167, 69, 0.8)',  // Green for active
+						'rgba(255, 193, 7, 0.8)',  // Yellow for pending
+						'rgba(220, 53, 69, 0.8)'   // Red for rejected
+					],
+					borderColor: [
+						'rgba(40, 167, 69, 1)',
+						'rgba(255, 193, 7, 1)',
+						'rgba(220, 53, 69, 1)'
+					],
+					borderWidth: 1
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				plugins: {
+					legend: {
+						position: 'bottom',
+						labels: {
+							padding: 20,
+							font: {
+								size: 12
+							}
+						}
+					},
+					tooltip: {
+						backgroundColor: '#fff',
+						titleColor: '#333',
+						bodyColor: '#666',
+						borderColor: '#e9ecef',
+						borderWidth: 1,
+						padding: 10,
+						displayColors: false,
+						callbacks: {
+							label: function(context) {
+								return context.label + ': ' + context.parsed + ' vendors';
+							}
+						}
+					}
+				}
+			}
+		});
+	});
+	</script>
+
+	<style>
+	#userActivityChart {
+		min-height: 350px;
+	}
+	.card-footer a {
+		color: #28a745;
+		font-size: 13px;
+		font-weight: 500;
+		text-decoration: none;
+	}
+	.card-footer a:hover {
+		color: #218838;
+	}
+	.date-range-report span {
+		color: #666;
+		font-size: 13px;
+	}
+	#vendorStats {
+		min-height: 300px;
+	}
+	</style>
 
 </body>
 

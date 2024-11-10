@@ -289,7 +289,53 @@
 							</div>
 						</div>
 					</div>
+					<div class="row">
+						<div class="col-xl-8 col-md-12 p-b-15">
+							<!-- Sales Graph -->
+							<div class="card card-default">
+								<div class="card-header d-flex justify-content-between align-items-center">
+									<h2>Monthly Sales Report</h2>
+									<div class="d-flex gap-2">
+										<select class="form-select" id="monthSelect" style="width: 140px;">
+											<option value="all">All Months</option>
+											<option value="1">January</option>
+											<option value="2">February</option>
+											<option value="3">March</option>
+											<option value="4">April</option>
+											<option value="5">May</option>
+											<option value="6">June</option>
+											<option value="7">July</option>
+											<option value="8">August</option>
+											<option value="9">September</option>
+											<option value="10">October</option>
+											<option value="11">November</option>
+											<option value="12">December</option>
+										</select>
+										<select class="form-select" id="yearSelect" style="width: 100px;">
+										</select>
+									</div>
+								</div>
+								<div class="card-body">
+									<canvas id="monthlySalesChart" style="height: 400px; width: 100%;"></canvas>
+								</div>
+							</div>
+						</div>
 
+						<div class="col-xl-4 col-md-12 p-b-15">
+							<!-- Doughnut Chart -->
+							<div class="card card-default">
+								<div class="card-header justify-content-center">
+									<h2>Orders Overview</h2>
+								</div>
+								<div class="card-body">
+									<canvas id="polar"></canvas>
+								</div>
+								<a href="/download-report" class="pb-5 d-block text-center text-muted">
+									<i class="mdi mdi-download mr-2"></i> Download overall report
+								</a>
+							</div>
+						</div>
+					</div>
 					
 
 					
@@ -383,17 +429,17 @@
     <script src="{{ url_for('static', filename='assets/plugins/slick/slick.min.js') }}"></script>
 
 	<!-- Chart -->
-	<script src="assets/plugins/charts/Chart.min.js"></script>
-	<script src="assets/js/chart.js"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/charts/Chart.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/js/chart.js') }}"></script>
 
 	<!-- Google map chart -->
-	<script src="assets/plugins/charts/google-map-loader.js"></script>
-	<script src="assets/plugins/charts/google-map.js"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/charts/google-map-loader.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/charts/google-map.js') }}"></script>
 
 	<!-- Date Range Picker -->
-	<script src="assets/plugins/daterangepicker/moment.min.js"></script>
-    <script src="assets/plugins/daterangepicker/daterangepicker.js"></script>
-	<script src="assets/js/date-range.js"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/daterangepicker/moment.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/daterangepicker/daterangepicker.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/js/date-range.js') }}"></script>
 	<!-- custom js -->
 	<script src="{{ url_for('static', filename='assets/js/custom.js') }}"></script>
 
@@ -441,6 +487,173 @@
 		
 		// Optionally, set up a timer to periodically fetch notifications
 		setInterval(fetchAndDisplayNotifications, 300000);  // Every 5 minutes
+	});
+	</script>
+
+	<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		let salesChart = null;
+		
+		// Populate year select with last 5 years
+		const yearSelect = document.getElementById('yearSelect');
+		const currentYear = new Date().getFullYear();
+		for (let year = currentYear; year >= currentYear - 4; year--) {
+			const option = document.createElement('option');
+			option.value = year;
+			option.textContent = year;
+			yearSelect.appendChild(option);
+		}
+
+		function createChart(data) {
+			if (salesChart) {
+				salesChart.destroy();
+			}
+
+			const ctx = document.getElementById('monthlySalesChart').getContext('2d');
+			salesChart = new Chart(ctx, {
+				type: 'bar',
+				data: {
+					labels: data.labels,
+					datasets: [{
+						label: 'Monthly Sales',
+						data: data.values,
+						backgroundColor: 'rgba(62, 128, 246, 0.8)',
+						borderColor: 'rgba(62, 128, 246, 1)',
+						borderWidth: 1,
+						borderRadius: 5,
+						barThickness: 25
+					}]
+				},
+				options: {
+					responsive: true,
+					maintainAspectRatio: false,
+					plugins: {
+						legend: {
+							display: false
+						},
+						tooltip: {
+							backgroundColor: 'rgba(255, 255, 255, 0.9)',
+							titleColor: '#000',
+							bodyColor: '#000',
+							borderColor: '#e0e6ed',
+							borderWidth: 1,
+							padding: 10,
+							callbacks: {
+								label: function(context) {
+									return `Revenue: $${context.parsed.y.toLocaleString()}`;
+								}
+							}
+						}
+					},
+					scales: {
+						y: {
+							beginAtZero: true,
+							grid: {
+								borderDash: [2, 2]
+							},
+							ticks: {
+								callback: function(value) {
+									if (value >= 1000) {
+										return `$${value/1000}k`;
+									}
+									return `$${value}`;
+								}
+							}
+						},
+						x: {
+							grid: {
+								display: false
+							}
+						}
+					}
+				}
+			});
+		}
+
+		function fetchSalesData() {
+			const month = document.getElementById('monthSelect').value;
+			const year = document.getElementById('yearSelect').value;
+			
+			fetch(`/get-monthly-sales?month=${month}&year=${year}`)
+				.then(response => response.json())
+				.then(data => {
+					createChart(data);
+				})
+				.catch(error => console.error('Error loading sales data:', error));
+		}
+
+		// Event listeners for selects
+		document.getElementById('monthSelect').addEventListener('change', fetchSalesData);
+		document.getElementById('yearSelect').addEventListener('change', fetchSalesData);
+
+		// Initial load
+		fetchSalesData();
+	});
+	</script>
+
+	<script>
+	document.addEventListener('DOMContentLoaded', function() {
+			fetch('/get-order-status-counts')
+				.then(response => response.json())
+				.then(data => {
+					const ctx = document.getElementById('polar').getContext('2d');
+					new Chart(ctx, {
+						type: 'doughnut',
+						data: {
+							labels: ['Ordered', 'Delivered', 'Returned', 'Cancelled'],
+							datasets: [{
+								data: [
+									data.ordered || 0,
+									data.delivered || 0,
+									data.returned || 0,
+									data.cancelled || 0
+								],
+								backgroundColor: [
+									'#3E80F6',   // Blue for Ordered
+									'#20D489',   // Green for Delivered
+									'#FFBA4B',   // Orange for Returned
+									'#F85778'    // Red for Cancelled
+								],
+								borderWidth: 0,
+								cutout: '75%'    // Makes the doughnut thinner
+							}]
+						},
+						options: {
+							responsive: true,
+							maintainAspectRatio: false,
+							plugins: {
+								legend: {
+									position: 'right',
+									labels: {
+										padding: 20,
+										usePointStyle: true,
+										font: {
+											size: 12
+										}
+									}
+								},
+								tooltip: {
+									backgroundColor: 'rgba(255, 255, 255, 0.9)',
+									titleColor: '#000',
+									bodyColor: '#000',
+									borderColor: '#e0e6ed',
+									borderWidth: 1,
+									padding: 10,
+									callbacks: {
+										label: function(context) {
+											const label = context.label || '';
+											const value = context.raw || 0;
+											const total = context.dataset.data.reduce((a, b) => a + b, 0);
+											const percentage = ((value / total) * 100).toFixed(1);
+											return `${label}: ${value} (${percentage}%)`;
+										}
+									}
+								}
+							}
+						}
+					});
+				})
+				.catch(error => console.error('Error loading order status data:', error));
 	});
 	</script>
 

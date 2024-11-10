@@ -2194,26 +2194,63 @@ def google_callback():
         return redirect(url_for('login'))
 @app.route('/admin_dashboard')
 def admin_dashboard():
-    if 'user_id' not in session or 'email' not in session:
-        flash('Please log in to access this page.', 'warning')
+    if 'email' not in session:
         return redirect(url_for('login'))
 
-    user_id = session['user_id']
-    email = session['email']
-
     try:
-        user_info = db.child("users").child(user_id).get().val()
-        if not user_info or user_info.get('user_type') != 'Admin':
-            raise ValueError("Unauthorized access")
+        # Get all users
+        users = db.child("users").get().val()
+        email = session.get('email')
+        
+        # Find the current user's data using their email
+        user_name = None
+        if users:
+            for user in users.values():
+                if user.get('email') == email:
+                    user_name = user.get('name')
+                    break
+        
+        # Initialize counters for both users and vendors
+        user_stats = {
+            'active': 0,
+            'inactive': 0
+        }
+        
+        vendor_stats = {
+            'active': 0,
+            'pending': 0,
+            'rejected': 0
+        }
+        
+        # Count both user and vendor statistics
+        if users:
+            for user in users.values():
+                if user.get('user_type') == 'vendor':
+                    # Count vendor statistics
+                    status = user.get('vendor_status', 'pending')
+                    if status == 'approved':
+                        vendor_stats['active'] += 1
+                    elif status == 'pending':
+                        vendor_stats['pending'] += 1
+                    elif status == 'rejected':
+                        vendor_stats['rejected'] += 1
+                else:
+                    # Count user statistics
+                    if user.get('status') == 'active':
+                        user_stats['active'] += 1
+                    else:
+                        user_stats['inactive'] += 1
 
-        # Here you can add any admin-specific data you want to pass to the template
-        # For example, you might want to get some statistics or user lists
+        return render_template('Admin/index.html',
+                            user_name=user_name or "Admin",  # Fallback to "Admin" if name not found
+                            email=email,
+                            today=datetime.now(),
+                            user_stats=user_stats,
+                            vendor_stats=vendor_stats)
 
-        return render_template('Admin/index.html', user_info=user_info, email=email)
     except Exception as e:
         app.logger.error(f"Error in admin_dashboard: {str(e)}")
-        flash('An error occurred while loading the page. Please try again.', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('login'))
 @app.route('/index')
 def index():
     email = session.get('email')
@@ -4094,10 +4131,10 @@ def download_order_pdf(order_id):
     elements.append(Spacer(1, 0.25*inch))
 
     # Company Info
-    elements.append(Paragraph("Janthrik", styles['Heading2']))
+    elements.append(Paragraph("ToolHive", styles['Heading2']))
     elements.append(Paragraph("123 Business Street, Xyz, India", styles['Normal']))
     elements.append(Paragraph("Phone: +91 1800 567 890", styles['Normal']))
-    elements.append(Paragraph("Email: janthrik@gmail.com", styles['Normal']))
+    elements.append(Paragraph("Email: toolhive@gmail.com", styles['Normal']))
     elements.append(Spacer(1, 0.25*inch))
 
     # Customer and Order Info
@@ -4424,7 +4461,7 @@ def send_deactivation_email(user_id, reason):
         smtp_server = "smtp.gmail.com"
         smtp_port = 587
         sender_email = "mail.rentaltools@gmail.com"
-        sender_password = "iuya jsnr rljw hxxq"  # Your App Password
+        sender_password = "ffnr ygih qpec mvsm"  # Your App Password
 
         # Create the email message
         message = MIMEMultipart()
@@ -5089,6 +5126,314 @@ def update_item_status():
     except Exception as e:
         app.logger.error(f"Error in update_item_status: {str(e)}")
         return jsonify({'success': False, 'message': f'An error occurred: {str(e)}'}), 500
+from collections import defaultdict
+from datetime import datetime, timedelta
+
+@app.route('/get-sales-data')
+def get_sales_data():
+    try:
+        period = request.args.get('period', 'monthly')
+        orders = db.child("orders").get().val()
+        
+        # Initialize data structures
+        monthly_data = defaultdict(float)
+        
+        if orders:
+            for order_id, order in orders.items():
+                try:
+                    # Get order date from created_at field
+                    created_at = datetime.strptime(order.get('created_at', ''), '%Y-%m-%dT%H:%M:%S.%f')
+                    order_total = float(order.get('order_total', 0))
+                    
+                    # Create month key in format "MMM YYYY"
+                    month_key = created_at.strftime('%b %Y')
+                    monthly_data[month_key] += order_total
+                    
+                except (ValueError, TypeError) as e:
+                    app.logger.warning(f"Error processing order {order_id}: {str(e)}")
+                    continue
+        
+        # Sort the data by date
+        sorted_months = sorted(monthly_data.keys(), 
+                             key=lambda x: datetime.strptime(x, '%b %Y'))
+        
+        # Get last 12 months if monthly view
+        if period == 'monthly':
+            sorted_months = sorted_months[-12:] if len(sorted_months) > 12 else sorted_months
+        
+        response_data = {
+            'labels': sorted_months,
+            'values': [monthly_data[month] for month in sorted_months]
+        }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        app.logger.error(f"Error in get_sales_data: {str(e)}")
+        return jsonify({'labels': [], 'values': []})
+@app.route('/get-monthly-sales')
+def get_monthly_sales():
+    try:
+        month = request.args.get('month', 'all')
+        year = request.args.get('year', datetime.now().year)
+        
+        orders = db.child("orders").get().val()
+        monthly_sales = defaultdict(float)
+        
+        if orders:
+            for order in orders.values():
+                try:
+                    # Parse the created_at timestamp
+                    created_at = datetime.strptime(order.get('created_at', ''), '%Y-%m-%dT%H:%M:%S.%f')
+                    
+                    # Apply year filter
+                    if str(created_at.year) != str(year):
+                        continue
+                        
+                    # Apply month filter if not "all"
+                    if month != 'all' and created_at.month != int(month):
+                        continue
+                        
+                    order_total = float(order.get('order_total', 0))
+                    
+                    # Format month as "MMM YYYY" or just "MMM" if year is selected
+                    month_key = created_at.strftime('%b %Y' if month == 'all' else '%b')
+                    monthly_sales[month_key] += order_total
+                    
+                except (ValueError, TypeError) as e:
+                    continue
+        
+        # Sort months chronologically
+        if month == 'all':
+            sorted_months = sorted(monthly_sales.keys(), 
+                                 key=lambda x: datetime.strptime(x, '%b %Y'))
+        else:
+            # Use month number for sorting when showing single year
+            month_order = {
+                'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+                'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+            }
+            sorted_months = sorted(monthly_sales.keys(), 
+                                 key=lambda x: month_order[x])
+        
+        return jsonify({
+            'labels': sorted_months,
+            'values': [monthly_sales[month] for month in sorted_months]
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error getting monthly sales: {str(e)}")
+        return jsonify({'labels': [], 'values': []})
+@app.route('/get-order-status-counts')
+def get_order_status_counts():
+    try:
+        orders = db.child("orders").get().val()
+        status_counts = {
+            'ordered': 0,
+            'delivered': 0,
+            'returned': 0,
+            'cancelled': 0
+        }
+        
+        if orders:
+            for order in orders.values():
+                try:
+                    # Get status from items array
+                    items = order.get('items', [])
+                    if items:
+                        for item in items:
+                            status = item.get('status', '').lower()
+                            if status == 'ordered':
+                                status_counts['ordered'] += 1
+                            elif status == 'delivered':
+                                status_counts['delivered'] += 1
+                            elif status == 'returned':
+                                status_counts['returned'] += 1
+                            elif status == 'cancelled':
+                                status_counts['cancelled'] += 1
+                    
+                except Exception as e:
+                    continue
+        
+        return jsonify(status_counts)
+        
+    except Exception as e:
+        app.logger.error(f"Error getting order status counts: {str(e)}")
+        return jsonify({
+            'ordered': 0,
+            'delivered': 0,
+            'returned': 0,
+            'cancelled': 0
+        })
+from fpdf import FPDF
+from datetime import datetime
+import io
+
+from fpdf import FPDF
+from datetime import datetime
+from flask import send_file
+import tempfile
+import os
+
+@app.route('/download-report')
+def download_report():
+    try:
+        # Create PDF object
+        pdf = FPDF()
+        pdf.add_page()
+        
+        # Set font
+        pdf.set_font('Arial', 'B', 16)
+        
+        # Title
+        pdf.cell(190, 10, 'Sales and Orders Report', 0, 1, 'C')
+        pdf.ln(10)
+        
+        # Get orders data
+        orders = db.child("orders").get().val()
+        
+        # Initialize counters
+        status_counts = {
+            'ordered': 0,
+            'delivered': 0,
+            'returned': 0,
+            'cancelled': 0
+        }
+        total_revenue = 0
+        
+        # Process orders
+        order_details = []
+        if orders:
+            for order_id, order in orders.items():
+                items = order.get('items', [])
+                for item in items:
+                    status = item.get('status', '').lower()
+                    if status in status_counts:
+                        status_counts[status] += 1
+                    
+                    # Calculate revenue for delivered orders
+                    if status == 'delivered':
+                        total_revenue += float(item.get('item_total', 0))
+                    
+                    # Store order details for the report
+                    order_details.append({
+                        'order_id': order_id,
+                        'status': status,
+                        'amount': item.get('item_total', 0),
+                        'date': order.get('created_at', ''),
+                        'store': item.get('store_name', '')
+                    })
+        
+        # Add Order Status Summary
+        pdf.set_font('Arial', 'B', 14)
+        pdf.cell(190, 10, 'Order Status Summary', 0, 1, 'L')
+        pdf.set_font('Arial', '', 12)
+        for status, count in status_counts.items():
+            pdf.cell(190, 10, f'{status.capitalize()}: {count}', 0, 1, 'L')
+        
+        # Add Total Revenue
+        pdf.ln(5)
+        pdf.set_font('Arial', 'B', 14)
+        pdf.cell(190, 10, 'Revenue Summary', 0, 1, 'L')
+        pdf.set_font('Arial', '', 12)
+        pdf.cell(190, 10, f'Total Revenue: ₹{total_revenue:,.2f}', 0, 1, 'L')
+        
+        # Add Recent Orders
+        pdf.ln(5)
+        pdf.set_font('Arial', 'B', 14)
+        pdf.cell(190, 10, 'Recent Orders', 0, 1, 'L')
+        pdf.set_font('Arial', '', 12)
+        
+        # Table header
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(40, 10, 'Order ID', 1)
+        pdf.cell(30, 10, 'Status', 1)
+        pdf.cell(30, 10, 'Amount', 1)
+        pdf.cell(50, 10, 'Date', 1)
+        pdf.cell(40, 10, 'Store', 1)
+        pdf.ln()
+        
+        # Table content
+        pdf.set_font('Arial', '', 10)
+        for order in order_details[-10:]:  # Show last 10 orders
+            # Truncate order ID to fit
+            order_id_short = order['order_id'][:10] + '...'
+            
+            pdf.cell(40, 10, order_id_short, 1)
+            pdf.cell(30, 10, order['status'].capitalize(), 1)
+            pdf.cell(30, 10, f"₹{float(order['amount']):,.2f}", 1)
+            
+            # Format date
+            try:
+                date_obj = datetime.strptime(order['date'], '%Y-%m-%dT%H:%M:%S.%f')
+                formatted_date = date_obj.strftime('%Y-%m-%d')
+            except:
+                formatted_date = order['date']
+                
+            pdf.cell(50, 10, formatted_date, 1)
+            pdf.cell(40, 10, order['store'], 1)
+            pdf.ln()
+
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
+            pdf.output(tmp.name)
+            
+            # Generate timestamp for filename
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            
+            # Send the temporary file
+            return send_file(
+                tmp.name,
+                mimetype='application/pdf',
+                as_attachment=True,
+                download_name=f'sales_report_{timestamp}.pdf'
+            )
+        
+    except Exception as e:
+        app.logger.error(f"Error generating report: {str(e)}")
+        return "Error generating report", 500
     
+    finally:
+        # Clean up the temporary file
+        if 'tmp' in locals():
+            try:
+                os.unlink(tmp.name)
+            except:
+                pass
+from datetime import datetime, timedelta
+
+@app.route('/get-daily-user-stats')
+def get_daily_user_stats():
+    try:
+        users = db.child("users").get().val()
+        
+        # Get last 7 days
+        dates = [(datetime.now() - timedelta(days=x)).strftime('%Y-%m-%d') for x in range(6, -1, -1)]
+        
+        stats = {
+            'active': [0] * 7,
+            'inactive': [0] * 7,
+            'dates': dates
+        }
+        
+        if users:
+            for user_id, user_data in users.items():
+                if user_data.get('user_type') != 'vendor':  # Exclude vendors
+                    reg_date = user_data.get('registration_date')
+                    status = user_data.get('status', 'inactive')
+                    
+                    # Find which day index this user belongs to
+                    if reg_date in dates:
+                        day_index = dates.index(reg_date)
+                        if status == 'active':
+                            stats['active'][day_index] += 1
+                        else:
+                            stats['inactive'][day_index] += 1
+        
+        return jsonify(stats)
+    except Exception as e:
+        app.logger.error(f"Error getting daily user stats: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True)
