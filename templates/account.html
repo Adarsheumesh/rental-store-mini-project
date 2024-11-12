@@ -896,14 +896,24 @@ $(document).ready(function() {
     function populateMoreDetailsModal(order) {
         let detailsHtml = `
             <h4>Order ID: ${order.order_id}</h4>
-            <p>Order Date: ${new Date(order.created_at).toLocaleString()}</p>
-            <p>Total Price: ₹${parseFloat(order.order_total).toFixed(2)}</p>
-            <p>Status: ${order.status}</p>
+            <div class="d-flex justify-content-between">
+                <div>
+                    <p>Order Date: ${new Date(order.created_at).toLocaleString()}</p>
+                    <p>Total Price: ₹${parseFloat(order.order_total).toFixed(2)}</p>
+                    <p>Status: ${order.status}</p>
+                </div>
+                <div>
+                    <p><strong>Store Details:</strong></p>
+                    <p>Store Name: ${order.store_name || 'N/A'}</p>
+                    <p>GST Number: ${order.gst_number || 'GSTIN29AAAAA0000A1Z5'}</p>
+                </div>
+            </div>
             
             <h5>Order Progress</h5>
             <div class="progress-wrapper mb-4">
                 <div class="progress">
-                    <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    <div class="progress-bar" role="progressbar" style="width: 0%;" 
+                         aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
                 <div class="progress-labels d-flex justify-content-between mt-2"></div>
             </div>
@@ -911,22 +921,108 @@ $(document).ready(function() {
             <h5>Items:</h5>
             <ul class="list-group">
         `;
+        
         order.items.forEach(item => {
+            let statusBadge = '';
+            switch(item.status?.toLowerCase()) {
+                case 'cancelled':
+                    statusBadge = '<span class="badge bg-danger">Cancelled</span>';
+                    break;
+                case 'delivered':
+                    statusBadge = '<span class="badge bg-success">Delivered</span>';
+                    break;
+                case 'processing':
+                    statusBadge = '<span class="badge bg-warning">Processing</span>';
+                    break;
+                case 'returned':
+                    statusBadge = '<span class="badge bg-info">Returned</span>';
+                    break;
+                default:
+                    statusBadge = `<span class="badge bg-secondary">${item.status || 'Pending'}</span>`;
+            }
+
             detailsHtml += `
                 <li class="list-group-item">
-                    <strong>${item.product_name}</strong><br>
-                    Quantity: ${item.quantity}<br>
-                    Price: ₹${parseFloat(item.item_total).toFixed(2)}<br>
-                    Rent From: ${new Date(item.rent_from).toLocaleDateString()}<br>
-                    Rent To: ${new Date(item.rent_to).toLocaleDateString()}
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>${item.product_name}</strong> ${statusBadge}<br>
+                            Quantity: ${item.quantity}<br>
+                            Price: ₹${parseFloat(item.item_total).toFixed(2)}<br>
+                            Rent From: ${new Date(item.rent_from).toLocaleDateString()}<br>
+                            Rent To: ${new Date(item.rent_to).toLocaleDateString()}
+                        </div>
+                        <div>
+                            <small class="text-muted">
+                                Store: ${item.store_name || order.store_name || 'N/A'}
+                            </small>
+                        </div>
+                    </div>
                 </li>
             `;
         });
-        detailsHtml += '</ul>';
+
+        detailsHtml += `
+            </ul>
+            <div class="mt-3 text-end">
+                <button class="btn btn-primary" onclick="downloadInvoice('${order.order_id}')">
+                    <i class="fas fa-download"></i> Download Invoice
+                </button>
+            </div>
+        `;
+
         $('#moreDetailsContent').html(detailsHtml);
         $('#moreDetailsModal').modal('show');
         
         updateProgressBar(order.status);
+    }
+
+    // Add this function to generate and download the invoice
+    function downloadInvoice(orderId) {
+        // Get the order details from the modal
+        const orderDetails = {
+            orderId: orderId,
+            storeName: $('#moreDetailsContent').find('.store-name').text(),
+            gstNumber: $('#moreDetailsContent').find('.gst-number').text(),
+            items: [],
+            total: $('#moreDetailsContent').find('p:contains("Total Price")').text().split('₹')[1]
+        };
+
+        // Collect all items and their statuses
+        $('#moreDetailsContent .list-group-item').each(function() {
+            const item = {
+                name: $(this).find('strong').text(),
+                status: $(this).find('.badge').text(),
+                quantity: $(this).text().match(/Quantity: (\d+)/)[1],
+                price: $(this).text().match(/Price: ₹([\d.]+)/)[1],
+                rentFrom: $(this).text().match(/Rent From: ([\d/]+)/)[1],
+                rentTo: $(this).text().match(/Rent To: ([\d/]+)/)[1],
+                storeName: $(this).find('.text-muted').text().replace('Store: ', '')
+            };
+            orderDetails.items.push(item);
+        });
+
+        // Send to server to generate PDF
+        $.ajax({
+            url: '/generate-invoice',
+            method: 'POST',
+            data: JSON.stringify(orderDetails),
+            contentType: 'application/json',
+            success: function(response) {
+                // Create a blob from the PDF data
+                const blob = new Blob([response], { type: 'application/pdf' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `invoice_${orderId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            },
+            error: function(xhr, status, error) {
+                showToast('Error', 'Failed to generate invoice', true);
+            }
+        });
     }
 
     function updateProgressBar(status) {

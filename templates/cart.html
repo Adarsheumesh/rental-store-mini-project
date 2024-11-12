@@ -321,11 +321,23 @@
                                 var rentTo = $row.find('.rent-to').val();
                                 var today = new Date().toISOString().split('T')[0];
                                 
+                                // Calculate max date (30 days from today)
+                                var maxDate = new Date();
+                                maxDate.setDate(maxDate.getDate() + 30);
+                                var maxDateStr = maxDate.toISOString().split('T')[0];
+                                
+                                // Set the max attribute for both date inputs
+                                $row.find('.rent-from, .rent-to').attr('max', maxDateStr);
+                                
                                 console.log(`Date changed for item ${cartItemId}: From ${rentFrom} To ${rentTo}`);
                                 
                                 if (cartItemId && rentFrom && rentTo) {
-                                    if (rentFrom < today || rentTo < today) {
+                                    if (rentFrom < today) {
                                         showPopup('Please select dates from today onwards');
+                                        return;
+                                    }
+                                    if (rentFrom > maxDateStr || rentTo > maxDateStr) {
+                                        showPopup('Maximum rental period is 30 days from today');
                                         return;
                                     }
                                     if (new Date(rentFrom) > new Date(rentTo)) {

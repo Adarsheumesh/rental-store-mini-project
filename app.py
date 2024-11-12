@@ -2606,13 +2606,37 @@ def producadd():
     email = session['email']
 
     try:
+        # Fetch user info
         user_info = db.child("users").child(user_id).get().val()
         if not user_info:
             raise ValueError("User information not found")
 
-        return render_template('/andshop/product-add.html', user=user_info, email=email)
+        # Fetch categories
+        categories = []
+        categories_ref = db.child("categories").get()
+        
+        # Debug prints
+        print("Fetching categories...")
+        print("Categories reference:", categories_ref)
+        
+        if categories_ref:
+            for category in categories_ref.each():
+                category_data = category.val()
+                if category_data and isinstance(category_data, dict):
+                    print(f"Processing category: {category_data}")
+                    categories.append(category_data)
+        
+        print(f"Total categories found: {len(categories)}")
+        
+        return render_template(
+            '/andshop/product-add.html',
+            user=user_info,
+            email=email,
+            categories=categories
+        )
     except Exception as e:
         app.logger.error(f"Error in producadd: {str(e)}")
+        print(f"Detailed error: {str(e)}")  # Additional debug print
         flash('An error occurred while loading the page. Please try again.', 'danger')
         return redirect(url_for('index'))
 @app.route('/user-list')
@@ -2871,6 +2895,7 @@ def update_product(product_id):
 
     user_info = session['user_info']
     print(f"Accessing edit-product route for product_id: {product_id}")
+    
     try:
         # Retrieve the existing product data
         product = db.child("products").child(product_id).get().val()
@@ -2880,6 +2905,20 @@ def update_product(product_id):
             print(f"Product with ID {product_id} not found in the database.")
             flash('Product not found.', 'danger')
             return redirect(url_for('product_list'))
+
+        # Fetch categories
+        categories = []
+        categories_ref = db.child("categories").get()
+        print("Fetching categories...")
+        
+        if categories_ref:
+            for category in categories_ref.each():
+                category_data = category.val()
+                if category_data and isinstance(category_data, dict):
+                    print(f"Processing category: {category_data}")
+                    categories.append(category_data)
+        
+        print(f"Total categories found: {len(categories)}")
 
         if request.method == 'POST':
             # Extract form data
@@ -2915,13 +2954,18 @@ def update_product(product_id):
             return redirect(url_for('product_list'))
 
         # Render the edit product page if the request method is GET
-        return render_template('andshop/edit_product.html', product=product, product_id=product_id, user_info=user_info)
+        return render_template(
+            'andshop/edit_product.html',
+            product=product,
+            product_id=product_id,
+            user_info=user_info,
+            categories=categories  # Pass categories to template
+        )
 
     except Exception as e:
         print(f"Exception caught: {str(e)}")
         flash(f"Failed to update product: {str(e)}", 'danger')
         return redirect(url_for('product_list'))
-
 # delete_product
 @app.route('/delete-product/<product_id>', methods=['POST'])
 def delete_product(product_id):
@@ -4101,6 +4145,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from io import BytesIO
+from reportlab.lib.enums import TA_CENTER
 from datetime import datetime
 
 @app.route('/download_order_pdf/<order_id>')
@@ -4120,11 +4165,7 @@ def download_order_pdf(order_id):
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
     
     elements = []
-
-    # Styles
     styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle(name='Center', alignment=1))
-    styles.add(ParagraphStyle(name='Right', alignment=2))
 
     # Header
     elements.append(Paragraph("INVOICE", styles['Title']))
@@ -4135,6 +4176,7 @@ def download_order_pdf(order_id):
     elements.append(Paragraph("123 Business Street, Xyz, India", styles['Normal']))
     elements.append(Paragraph("Phone: +91 1800 567 890", styles['Normal']))
     elements.append(Paragraph("Email: toolhive@gmail.com", styles['Normal']))
+    elements.append(Paragraph("GSTIN: 29AAAAA0000A1Z5", styles['Normal']))
     elements.append(Spacer(1, 0.25*inch))
 
     # Customer and Order Info
@@ -4142,7 +4184,7 @@ def download_order_pdf(order_id):
         ["Order ID:", order_id],
         ["Date:", order.get('created_at', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))],
         ["Customer:", user_name],
-        ["Email:", user_email],
+        ["Email:", user_email]
     ]
     table = Table(data, colWidths=[2*inch, 4*inch])
     table.setStyle(TableStyle([
@@ -4156,35 +4198,31 @@ def download_order_pdf(order_id):
     elements.append(Spacer(1, 0.25*inch))
 
     # Order Items
-    data = [["Item", "Store", "Quantity", "Product Price", "Rent From", "Rent To", "Days", "Total Price"]]
+    data = [["Item", "Store Name", "Quantity", "Price/Day", "Rent From", "Rent To", "Days", "Total"]]
     
     for item in order.get('items', []):
         product_id = item.get('product_id')
         product_data = db.child("products").child(product_id).get().val()
-        product_name = product_data.get('product_name', 'Unknown Product') if product_data else 'Unknown Product'
-        store_name = product_data.get('store_name', 'Unknown Store') if product_data else 'Unknown Store'
         
-        quantity = item.get('quantity', 0)
-        product_price = float(product_data.get('product_price', 0))  # Convert to float
-        total_price = float(item.get('item_total', 0))  # Convert to float
+        # Get store name directly from the item
+        store_name = item.get('store_name', 'Store Not Found')
         
         data.append([
-            product_name,
+            product_data.get('product_name', 'Product Not Found') if product_data else 'Product Not Found',
             store_name,
-            str(quantity),
-            f"₹{product_price:.2f}",
+            str(item.get('quantity', 0)),
+            f"₹{float(product_data.get('product_price', 0)):.2f}" if product_data else '₹0.00',
             item.get('rent_from', 'N/A'),
             item.get('rent_to', 'N/A'),
             str(item.get('rental_days', 0)),
-            f"₹{total_price:.2f}"
+            f"₹{float(item.get('item_total', 0)):.2f}"
         ])
-    
+
     # Add total row
-    total_price = float(order.get('order_total', 0))  # Convert to float
+    total_price = float(order.get('order_total', 0))
     data.append(["Total", "", "", "", "", "", "", f"₹{total_price:.2f}"])
 
-    # Adjust column widths to accommodate all information
-    table = Table(data, colWidths=[1.5*inch, 1*inch, 0.5*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.5*inch, 0.8*inch])
+    table = Table(data, colWidths=[1.2*inch, 1.2*inch, 0.5*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.5*inch, 0.8*inch])
     table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.grey),
         ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
@@ -4192,27 +4230,20 @@ def download_order_pdf(order_id):
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
         ('FONTSIZE', (0,0), (-1,0), 10),
         ('BOTTOMPADDING', (0,0), (-1,0), 12),
-        ('BACKGROUND', (0,1), (-1,-2), colors.beige),
-        ('TEXTCOLOR', (0,1), (-1,-1), colors.black),
-        ('ALIGN', (0,1), (1,-1), 'LEFT'),  # Left-align product names and store names
-        ('ALIGN', (2,1), (-1,-1), 'CENTER'),  # Center-align other columns
-        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
-        ('FONTSIZE', (0,1), (-1,-1), 8),
-        ('TOPPADDING', (0,1), (-1,-1), 6),
-        ('BOTTOMPADDING', (0,1), (-1,-1), 6),
-        ('GRID', (0,0), (-1,-1), 1, colors.black),
         ('BACKGROUND', (0,-1), (-1,-1), colors.grey),
         ('TEXTCOLOR', (0,-1), (-1,-1), colors.whitesmoke),
         ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
+        ('ALIGN', (0,1), (1,-1), 'LEFT'),
+        ('ALIGN', (2,1), (-1,-1), 'CENTER'),
+        ('GRID', (0,0), (-1,-1), 1, colors.black)
     ]))
     elements.append(table)
 
     # Footer
     elements.append(Spacer(1, 0.5*inch))
-    elements.append(Paragraph("Thank you for your business!", styles['Center']))
+    elements.append(Paragraph("Thank you for your business!", styles['Normal']))
 
     doc.build(elements)
-
     buffer.seek(0)
     return send_file(buffer, as_attachment=True, download_name=f'invoice_{order_id}.pdf', mimetype='application/pdf')
 from flask import request, render_template, abort, session, redirect, url_for

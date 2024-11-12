@@ -284,7 +284,7 @@
 								<div class="card-body">
 									<h2 class="mb-1">{{ total_revenue }}</h2>
 									<p>Daily Revenue</p>
-									<span class="mdi mdi-currency-usd"></span>
+									<span class="mdi mdi-currency-inr"></span>
 								</div>
 							</div>
 						</div>
@@ -346,7 +346,7 @@
 							<div class="card card-table-border-none card-default recent-orders" id="recent-orders">
 								<div class="card-header justify-content-between">
 									<h2>Recent Orders</h2>
-									<div class="date-range-report">
+									<div >
 										<span></span>
 									</div>
 								</div>
@@ -381,22 +381,7 @@
 												<td>
 													<span class="badge badge-{{ 'success' if order.status == 'Completed' else 'warning' }}">{{ order.status }}</span>
 												</td>
-												<td class="text-right">
-													<div class="dropdown show d-inline-block widget-dropdown">
-														<a class="dropdown-toggle icon-burger-mini" href="#"
-															role="button" id="dropdown-recent-order{{ loop.index }}"
-															data-bs-toggle="dropdown" aria-haspopup="true"
-															aria-expanded="false" data-display="static"></a>
-														<ul class="dropdown-menu dropdown-menu-right">
-															<li class="dropdown-item">
-																<a href="{{ url_for('order_details', order_id=order.order_id) }}">View</a>
-															</li>
-															<li class="dropdown-item">
-																<a href="#">Remove</a>
-															</li>
-														</ul>
-													</div>
-												</td>
+												
 											</tr>
 											{% endfor %}
 										</tbody>
