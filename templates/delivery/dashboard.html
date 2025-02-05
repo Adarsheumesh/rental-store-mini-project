@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Material Design Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css">
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-color: #4e73df;
+            --secondary-color: #858796;
+            --success-color: #1cc88a;
+            --info-color: #36b9cc;
+            --warning-color: #f6c23e;
+        }
+        
+        body {
+            background-color: #f8f9fc;
+            font-family: 'Nunito', sans-serif;
+        }
+
+        .sidebar {
+            height: 100vh;
+            background: linear-gradient(180deg, var(--primary-color) 0%, #224abe 100%);
+            color: white;
+            position: fixed;
+            padding-top: 20px;
+            transition: all 0.3s;
+        }
+
+        .sidebar .brand {
+            padding: 15px 25px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            padding: 12px 25px;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .sidebar a:hover {
+            background-color: rgba(255,255,255,0.1);
+            color: white;
+            padding-left: 30px;
+        }
+
+        .sidebar a.active {
+            background-color: rgba(255,255,255,0.1);
+            color: white;
+            border-left: 4px solid white;
+        }
+
+        .sidebar i {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 30px;
+            transition: all 0.3s;
+        }
+
+        .stat-card {
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            background: white;
+            transition: transform 0.3s;
+            border-left: 5px solid;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card.pending { border-color: var(--warning-color); }
+        .stat-card.active { border-color: var(--info-color); }
+        .stat-card.completed { border-color: var(--success-color); }
+        .stat-card.rating { border-color: var(--primary-color); }
+
+        .stat-card h2 {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #5a5c69;
+        }
+
+        .stat-card p {
+            color: var(--secondary-color);
+            margin-bottom: 0;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card i {
+            opacity: 0.3;
+            font-size: 3rem;
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .orders-table {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+
+        .orders-table .card-header {
+            background: white;
+            border-bottom: 1px solid #e3e6f0;
+            padding: 20px;
+        }
+
+        .orders-table .card-header h5 {
+            color: #5a5c69;
+            font-weight: 600;
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table th {
+            border-top: none;
+            color: var(--secondary-color);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .btn-action {
+            border-radius: 20px;
+            padding: 5px 15px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .badge {
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    </style>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-database.js"></script>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="brand">
+            <i class="mdi mdi-truck-delivery"></i>
+            <span>Delivery Portal</span>
+        </div>
+        <a href="{{ url_for('delivery_dashboard') }}" class="active">
+            <i class="mdi mdi-view-dashboard"></i>
+            <span>Dashboard</span>
+        </a>
+        <a href="{{ url_for('delivery_pending_orders') }}">
+            <i class="mdi mdi-clock-outline"></i>
+            <span>Pending Orders</span>
+        </a>
+        <a href="{{ url_for('delivery_active_orders') }}">
+            <i class="mdi mdi-truck-fast"></i>
+            <span>Active Deliveries</span>
+        </a>
+        <a href="{{ url_for('delivery_completed_orders') }}">
+            <i class="mdi mdi-check-circle"></i>
+            <span>Completed Orders</span>
+        </a>
+        <a href="{{ url_for('delivery_profile') }}">
+            <i class="mdi mdi-account"></i>
+            <span>Profile</span>
+        </a>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Stats Row -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="stat-card pending position-relative">
+                    <h2>{{ pending_count|default(5) }}</h2>
+                    <p>Pending Deliveries</p>
+                    <i class="mdi mdi-clock-outline text-warning"></i>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card active position-relative">
+                    <h2>{{ active_count|default(2) }}</h2>
+                    <p>Active Deliveries</p>
+                    <i class="mdi mdi-truck-delivery text-info"></i>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card completed position-relative">
+                    <h2>{{ completed_count|default(45) }}</h2>
+                    <p>Completed Today</p>
+                    <i class="mdi mdi-check-circle text-success"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orders Table -->
+        <div class="orders-table">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Current Deliveries</h5>
+                <button class="btn btn-primary btn-sm">View All</button>
+            </div>
+            <div class="card-body p-0">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th class="px-4">Order ID</th>
+                            <th>Store</th>
+                            <th>Rental Period</th>
+                            <th>Address</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersTableBody">
+                        <!-- Orders will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // Firebase configuration
+    const firebaseConfig = {
+        // Your Firebase config here
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // Function to format date
+    function formatDate(dateString) {
+        return new Date(dateString).toLocaleDateString();
+    }
+
+    // Function to format currency
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR'
+        }).format(amount);
+    }
+
+    // Function to get status badge class
+    function getStatusBadgeClass(status) {
+        switch(status.toLowerCase()) {
+            case 'paid':
+                return 'bg-warning';
+            case 'delivered':
+                return 'bg-success';
+            case 'in_transit':
+                return 'bg-info';
+            default:
+                return 'bg-secondary';
+        }
+    }
+
+    // Function to render orders
+    function renderOrders(orders) {
+        const tableBody = document.getElementById('ordersTableBody');
+        tableBody.innerHTML = '';
+
+        Object.entries(orders).forEach(([orderId, order]) => {
+            const row = `
+                <tr>
+                    <td class="px-4">#${order.order_id.slice(0, 8)}</td>
+                    <td>${order.store_name}</td>
+                    <td>${formatDate(order.rent_from)} - ${formatDate(order.rent_to)}</td>
+                    <td>${order.shipping_address}</td>
+                    <td>${formatCurrency(order.order_total)}</td>
+                    <td>
+                        <span class="badge ${getStatusBadgeClass(order.status)}">
+                            ${order.status}
+                        </span>
+                    </td>
+                    <td class="text-end pe-4">
+                        <button class="btn btn-primary btn-action" onclick="viewOrder('${orderId}')">View</button>
+                        ${order.status === 'paid' ? 
+                            `<button class="btn btn-success btn-action" onclick="startDelivery('${orderId}')">Start Delivery</button>` 
+                            : ''
+                        }
+                    </td>
+                </tr>
+            `;
+            tableBody.innerHTML += row;
+        });
+
+        // Update stats
+        updateStats(orders);
+    }
+
+    // Function to update stats
+    function updateStats(orders) {
+        const stats = Object.values(orders).reduce((acc, order) => {
+            switch(order.status.toLowerCase()) {
+                case 'paid':
+                    acc.pending++;
+                    break;
+                case 'in_transit':
+                    acc.active++;
+                    break;
+                case 'delivered':
+                    acc.completed++;
+                    break;
+            }
+            return acc;
+        }, { pending: 0, active: 0, completed: 0 });
+
+        document.querySelector('.stat-card.pending h2').textContent = stats.pending;
+        document.querySelector('.stat-card.active h2').textContent = stats.active;
+        document.querySelector('.stat-card.completed h2').textContent = stats.completed;
+    }
+
+    // Function to view order details
+    function viewOrder(orderId) {
+        // Implement view order functionality
+        console.log('Viewing order:', orderId);
+    }
+
+    // Function to start delivery
+    function startDelivery(orderId) {
+        // Update order status to in_transit
+        database.ref(`orders/${orderId}`).update({
+            status: 'in_transit',
+            updated_at: new Date().toISOString()
+        }).then(() => {
+            console.log('Delivery started for order:', orderId);
+        }).catch(error => {
+            console.error('Error starting delivery:', error);
+        });
+    }
+
+    // Listen for orders
+    database.ref('orders').on('value', (snapshot) => {
+        const orders = snapshot.val() || {};
+        renderOrders(orders);
+    });
+    </script>
+</body>
+</html> 

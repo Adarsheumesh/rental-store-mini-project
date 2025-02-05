@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Active Deliveries</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Material Design Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-color: #4e73df;
+            --secondary-color: #858796;
+            --success-color: #1cc88a;
+            --info-color: #36b9cc;
+            --warning-color: #f6c23e;
+            --danger-color: #e74a3b;
+            --light-color: #f8f9fc;
+            --dark-color: #5a5c69;
+            --border-radius: 10px;
+            --shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        body {
+            background-color: #f8f9fc;
+            font-family: 'Nunito', sans-serif;
+        }
+
+        .sidebar {
+            height: 100vh;
+            background: linear-gradient(180deg, var(--primary-color) 0%, #224abe 100%);
+            color: white;
+            position: fixed;
+            padding-top: 20px;
+            transition: all 0.3s;
+            width: 250px;
+        }
+
+        .sidebar .brand {
+            padding: 15px 25px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            padding: 12px 25px;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .sidebar a:hover {
+            background-color: rgba(255,255,255,0.1);
+            color: white;
+            padding-left: 30px;
+        }
+
+        .sidebar a.active {
+            background-color: rgba(255,255,255,0.1);
+            color: white;
+            border-left: 4px solid white;
+        }
+
+        .sidebar i {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+        }
+
+        .orders-table {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .table {
+            margin-bottom: 0;
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .table thead th {
+            background-color: #f8f9fc;
+            border-bottom: 2px solid #e3e6f0;
+            color: var(--primary-color);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            padding: 1rem;
+            white-space: nowrap;
+        }
+
+        .table tbody td {
+            padding: 1rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #f0f0f0;
+            color: #2d3748;
+        }
+
+        .table tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        .table tbody tr:hover {
+            background-color: #f8f9fc;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .btn-action {
+            padding: 0.5rem;
+            font-size: 1rem;
+            border-radius: 8px;
+            margin-left: 8px;
+            width: 38px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn-action i {
+            font-size: 1.2rem;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-block;
+            text-align: center;
+            min-width: 100px;
+            transition: all 0.3s ease;
+        }
+
+        .status-in-transit {
+            background-color: #cff4fc;
+            color: #055160;
+            border: 1px solid #b6effb;
+        }
+
+        .status-in-transit:hover {
+            background-color: #b6effb;
+        }
+
+        .order-id {
+            font-family: 'Roboto Mono', monospace;
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+
+        .shipping-address {
+            max-width: 200px;
+            line-height: 1.4;
+            color: #4a5568;
+        }
+
+        .amount {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .empty-state {
+            padding: 3rem;
+            text-align: center;
+            background: linear-gradient(to bottom, #f8f9fc, #ffffff);
+            border-radius: var(--border-radius);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            color: var(--secondary-color);
+            opacity: 0.5;
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-state h5 {
+            color: var(--secondary-color);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
+            color: #858796;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .table tbody tr {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="brand">
+            <h4 class="mb-0">Delivery Panel</h4>
+        </div>
+        <nav>
+            <a href="{{ url_for('delivery_dashboard') }}">
+                <i class="mdi mdi-view-dashboard"></i> 
+                <span>Dashboard</span>
+            </a>
+            <a href="{{ url_for('delivery_pending_orders') }}">
+                <i class="mdi mdi-clock-outline"></i> 
+                <span>Pending Orders</span>
+            </a>
+            <a href="{{ url_for('delivery_active_orders') }}" class="active">
+                <i class="mdi mdi-truck-delivery"></i> 
+                <span>Active Deliveries</span>
+            </a>
+            <a href="{{ url_for('delivery_profile') }}">
+                <i class="mdi mdi-account"></i> 
+                <span>Profile</span>
+            </a>
+            <a href="{{ url_for('logout') }}">
+                <i class="mdi mdi-logout"></i> 
+                <span>Logout</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0 text-gray-800">Active Deliveries</h1>
+            </div>
+
+            <div class="orders-table">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Store</th>
+                            <th>Rental Period</th>
+                            <th>Shipping Address</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Started At</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activeOrdersTableBody">
+                        <!-- Orders will be populated here via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <script>
+        // Initialize Firebase with your config
+        const firebaseConfig = {
+            apiKey: "AIzaSyB42nHmPcpj7BmOPPdO93lXqzA3PjjXZOc",
+            authDomain: "project-dbebd.firebaseapp.com",
+            projectId: "project-dbebd",
+            storageBucket: "project-dbebd.appspot.com",
+            messagingSenderId: "374516311348",
+            appId: "1:374516311348:web:d916facf6720a4e275f161",
+            databaseURL: "https://project-dbebd-default-rtdb.asia-southeast1.firebasedatabase.app/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Format date function
+        function formatDate(dateString) {
+            if (!dateString || dateString === 'N/A') return 'N/A';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            } catch (e) {
+                console.error('Error formatting date:', e);
+                return 'N/A';
+            }
+        }
+
+        // Format currency function
+        function formatCurrency(amount) {
+            if (!amount) return 'N/A';
+            try {
+                return new Intl.NumberFormat('en-IN', {
+                    style: 'currency',
+                    currency: 'INR'
+                }).format(amount);
+            } catch (e) {
+                console.error('Error formatting currency:', e);
+                return 'N/A';
+            }
+        }
+
+        // Fetch and render orders
+        function fetchAndRenderOrders() {
+            database.ref('orders').on('value', (snapshot) => {
+                const orders = snapshot.val() || {};
+                const activeOrders = {};
+                
+                Object.entries(orders).forEach(([orderId, order]) => {
+                    const items = order.items || [];
+                    const hasActiveItems = items.some(item => 
+                        item.status && item.status.toLowerCase() === 'in_transit'
+                    );
+                    
+                    if (hasActiveItems) {
+                        const activeItem = items.find(item => 
+                            item.status && item.status.toLowerCase() === 'in_transit'
+                        );
+                        
+                        activeOrders[orderId] = {
+                            id: orderId,
+                            order_id: order.order_id || orderId,
+                            store_name: activeItem.store_name || 'N/A',
+                            product_id: activeItem.product_id || 'N/A',
+                            rent_from: activeItem.rent_from || order.rent_from || 'N/A',
+                            rent_to: activeItem.rent_to || order.rent_to || 'N/A',
+                            shipping_address: order.shipping_address || 'N/A',
+                            shipping_address2: order.shipping_address2 || '',
+                            order_total: order.order_total || 0,
+                            status: activeItem.status || 'in_transit',
+                            delivery_started_at: order.delivery_started_at || '',
+                            updated_at: activeItem.ordered_at || order.updated_at || '',
+                            payment_intent_id: order.payment_intent_id || 'N/A',
+                            quantity: activeItem.quantity || 1
+                        };
+                    }
+                });
+                
+                console.log('Fetched active orders:', activeOrders);
+                renderActiveOrders(activeOrders);
+            }, (error) => {
+                console.error('Error fetching orders:', error);
+                showToast('Error loading orders. Please refresh the page.', 'error');
+            });
+        }
+
+        // Render active orders
+        function renderActiveOrders(orders) {
+            const tableBody = document.getElementById('activeOrdersTableBody');
+            tableBody.innerHTML = '';
+
+            if (!orders || Object.keys(orders).length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-5">
+                            <div class="empty-state">
+                                <i class="mdi mdi-truck-delivery text-secondary mb-3"></i>
+                                <h5 class="text-secondary mb-2">No Active Deliveries</h5>
+                                <p class="text-muted mb-0">There are no active deliveries at the moment.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            Object.values(orders).forEach(order => {
+                const row = `
+                    <tr>
+                        <td><span class="order-id">#${order.order_id.slice(0, 8)}</span></td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="mdi mdi-store me-2 text-primary"></i>
+                                <span>${order.store_name}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="mdi mdi-calendar-range me-2 text-info"></i>
+                                <span>${formatDate(order.rent_from)} - ${formatDate(order.rent_to)}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="shipping-address">
+                                <i class="mdi mdi-map-marker me-2 text-danger"></i>
+                                <span class="text-truncate" title="${order.shipping_address}${order.shipping_address2 ? ', ' + order.shipping_address2 : ''}">
+                                    ${order.shipping_address}
+                                    ${order.shipping_address2 ? `<br>${order.shipping_address2}` : ''}
+                                </span>
+                            </div>
+                        </td>
+                        <td><span class="amount">${formatCurrency(order.order_total)}</span></td>
+                        <td>
+                            <span class="status-badge status-in-transit">
+                                <i class="mdi mdi-truck-fast me-1"></i>
+                                In Transit
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="mdi mdi-clock-start me-2 text-success"></i>
+                                <span>${formatDate(order.delivery_started_at)}</span>
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-primary btn-action" 
+                                    onclick="viewOrderDetails('${order.id}')" 
+                                    title="View Details">
+                                <i class="mdi mdi-eye"></i>
+                            </button>
+                            <button class="btn btn-success btn-action" 
+                                    onclick="completeDelivery('${order.id}')" 
+                                    title="Complete Delivery">
+                                <i class="mdi mdi-check-circle"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        // View order details function
+        function viewOrderDetails(orderId) {
+            database.ref(`orders/${orderId}`).once('value')
+                .then((snapshot) => {
+                    const order = snapshot.val();
+                    if (order) {
+                        const activeItems = (order.items || [])
+                            .filter(item => item.status.toLowerCase() === 'in_transit')
+                            .map(item => `
+                                Product: ${item.product_id}
+                                Quantity: ${item.quantity}
+                                Rental Period: ${formatDate(item.rent_from)} - ${formatDate(item.rent_to)}
+                                Store: ${item.store_name}
+                            `).join('\n\n');
+
+                        const details = `
+                            Order ID: ${order.order_id}
+                            Total Amount: ${formatCurrency(order.order_total)}
+                            Shipping Address: ${order.shipping_address}
+                            ${order.shipping_address2 ? '\nAddress 2: ' + order.shipping_address2 : ''}
+                            Payment ID: ${order.payment_intent_id}
+                            Delivery Started: ${formatDate(order.delivery_started_at)}
+                            
+                            Active Items:
+                            ${activeItems}
+                        `;
+                        alert(details);
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error fetching order details:', error);
+                    showToast('Error fetching order details', 'error');
+                });
+        }
+
+        // Add this function to generate OTP
+        function generateOTP() {
+            return Math.floor(100000 + Math.random() * 900000);
+        }
+
+        // Update the completeDelivery function
+        function completeDelivery(orderId) {
+            database.ref(`orders/${orderId}`).once('value')
+                .then((snapshot) => {
+                    const order = snapshot.val();
+                    if (!order) throw new Error('Order not found');
+
+                    // Get the active item first
+                    const activeItem = order.items.find(item => item.status === 'in_transit');
+                    if (!activeItem) throw new Error('No active item found');
+
+                    const otp = generateOTP();
+                    const userId = order.user_id;
+
+                    // Get user details to send OTP
+                    return database.ref(`users/${userId}`).once('value')
+                        .then((userSnapshot) => {
+                            const user = userSnapshot.val();
+                            const userEmail = user.email;
+
+                            // Store OTP in the order
+                            return database.ref(`orders/${orderId}`).update({
+                                delivery_otp: otp,
+                                otp_generated_at: new Date().toISOString()
+                            }).then(() => {
+                                // Prepare delivery details
+                                const deliveryDetails = {
+                                    order_id: order.order_id,
+                                    store_name: activeItem.store_name,
+                                    shipping_address: order.shipping_address,
+                                    shipping_address2: order.shipping_address2,
+                                    otp: otp,
+                                    items: order.items
+                                        .filter(item => item.status === 'in_transit')
+                                        .map(item => ({
+                                            quantity: item.quantity,
+                                            rent_from: item.rent_from,
+                                            rent_to: item.rent_to,
+                                            store_name: item.store_name
+                                        }))
+                                };
+
+                                // Send OTP to user - Update the URL to include the full path
+                                return fetch('/delivery/send-delivery-otp', {  // Changed from /send-delivery-otp
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        email: userEmail,
+                                        delivery_details: deliveryDetails
+                                    })
+                                });
+                            });
+                        });
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show OTP verification modal
+                        verifyDeliveryOTP(orderId);
+                    } else {
+                        throw new Error('Failed to send OTP');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error in delivery process:', error);
+                    showToast('Error processing delivery. Please try again.', 'error');
+                });
+        }
+
+        // Add OTP verification function
+        function verifyDeliveryOTP(orderId) {
+            const enteredOTP = prompt('Please enter the OTP sent to the customer:');
+            if (!enteredOTP) return;
+
+            database.ref(`orders/${orderId}`).once('value')
+                .then((snapshot) => {
+                    const order = snapshot.val();
+                    if (!order) throw new Error('Order not found');
+
+                    if (order.delivery_otp.toString() === enteredOTP.trim()) {
+                        // Update the status of in_transit items to 'delivered'
+                        const updatedItems = (order.items || []).map(item => ({
+                            ...item,
+                            status: item.status.toLowerCase() === 'in_transit' ? 'delivered' : item.status
+                        }));
+
+                        // Update order in database
+                        return database.ref(`orders/${orderId}`).update({
+                            items: updatedItems,
+                            delivery_completed_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                            delivery_otp: null // Clear OTP after successful verification
+                        });
+                    } else {
+                        throw new Error('Invalid OTP');
+                    }
+                })
+                .then(() => {
+                    showToast('Delivery completed successfully!', 'success');
+                    // Refresh the orders list
+                    fetchAndRenderOrders();
+                })
+                .catch(error => {
+                    console.error('Error verifying OTP:', error);
+                    showToast(error.message === 'Invalid OTP' ? 'Invalid OTP. Please try again.' : 'Error completing delivery. Please try again.', 'error');
+                });
+        }
+
+        // Simple toast notification
+        function showToast(message, type = 'info') {
+            alert(message);
+        }
+
+        // Initial fetch when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, fetching orders');
+            fetchAndRenderOrders();
+        });
+    </script>
+</body>
+</html> 

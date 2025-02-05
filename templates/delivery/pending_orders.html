@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pending Orders</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Material Design Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css">
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-color: #4e73df;
+            --secondary-color: #858796;
+            --success-color: #1cc88a;
+            --info-color: #36b9cc;
+            --warning-color: #f6c23e;
+            --border-radius: 10px;
+            --shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        body {
+            background-color: #f8f9fc;
+            font-family: 'Nunito', sans-serif;
+        }
+
+        .sidebar {
+            height: 100vh;
+            background: linear-gradient(180deg, var(--primary-color) 0%, #224abe 100%);
+            color: white;
+            position: fixed;
+            padding-top: 20px;
+            transition: all 0.3s;
+        }
+
+        .sidebar .brand {
+            padding: 15px 25px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            padding: 12px 25px;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .sidebar a:hover {
+            background-color: rgba(255,255,255,0.1);
+            color: white;
+            padding-left: 30px;
+        }
+
+        .sidebar a.active {
+            background-color: rgba(255,255,255,0.1);
+            color: white;
+            border-left: 4px solid white;
+        }
+
+        .sidebar i {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+        }
+
+        .orders-table {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .table {
+            margin-bottom: 0;
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .table thead th {
+            background-color: #f8f9fc;
+            border-bottom: 2px solid #e3e6f0;
+            color: var(--primary-color);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            padding: 1rem;
+            white-space: nowrap;
+        }
+
+        .table tbody td {
+            padding: 1rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #f0f0f0;
+            color: #2d3748;
+        }
+
+        .table tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        .table tbody tr:hover {
+            background-color: #f8f9fc;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .btn-action {
+            padding: 0.5rem;
+            font-size: 1rem;
+            border-radius: 8px;
+            margin-left: 8px;
+            width: 38px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn-action i {
+            font-size: 1.2rem;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-block;
+            text-align: center;
+            min-width: 100px;
+            transition: all 0.3s ease;
+        }
+
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .status-pending:hover {
+            background-color: #ffeeba;
+        }
+
+        .order-id {
+            font-family: 'Roboto Mono', monospace;
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+
+        .shipping-address {
+            max-width: 200px;
+            line-height: 1.4;
+            color: #4a5568;
+        }
+
+        .amount {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .empty-state {
+            padding: 3rem;
+            text-align: center;
+            background: linear-gradient(to bottom, #f8f9fc, #ffffff);
+            border-radius: var(--border-radius);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            color: var(--secondary-color);
+            opacity: 0.5;
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-state h5 {
+            color: var(--secondary-color);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
+            color: #858796;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        /* Animation for new rows */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .table tbody tr {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" style="width: 250px;">
+        <div class="brand">
+            <h4 class="mb-0">Delivery Panel</h4>
+        </div>
+        <nav>
+            <a href="{{ url_for('delivery_dashboard') }}">
+                <i class="mdi mdi-view-dashboard"></i> 
+                <span>Dashboard</span>
+            </a>
+            <a href="{{ url_for('delivery_pending_orders') }}" class="active">
+                <i class="mdi mdi-clock-outline"></i> 
+                <span>Pending Orders</span>
+            </a>
+            <a href="#">
+                <i class="mdi mdi-truck-delivery"></i> 
+                <span>Active Deliveries</span>
+            </a>
+            <a href="#">
+                <i class="mdi mdi-check-circle"></i> 
+                <span>Completed</span>
+            </a>
+            <a href="{{ url_for('delivery_profile') }}">
+                <i class="mdi mdi-account"></i> 
+                <span>Profile</span>
+            </a>
+            <a href="{{ url_for('logout') }}">
+                <i class="mdi mdi-logout"></i> 
+                <span>Logout</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0 text-gray-800">Pending Orders</h1>
+            </div>
+
+            <div class="orders-table">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Store</th>
+                            <th>Rental Period</th>
+                            <th>Shipping Address</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingOrdersTableBody">
+                        <!-- Orders will be populated here via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <script>
+        // Initialize Firebase with your config
+        const firebaseConfig = {
+            apiKey: "AIzaSyB42nHmPcpj7BmOPPdO93lXqzA3PjjXZOc",
+            authDomain: "project-dbebd.firebaseapp.com",
+            projectId: "project-dbebd",
+            storageBucket: "project-dbebd.appspot.com",
+            messagingSenderId: "374516311348",
+            appId: "1:374516311348:web:d916facf6720a4e275f161",
+            databaseURL: "https://project-dbebd-default-rtdb.asia-southeast1.firebasedatabase.app/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Format date function
+        function formatDate(dateString) {
+            if (!dateString || dateString === 'N/A') return 'N/A';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            } catch (e) {
+                console.error('Error formatting date:', e);
+                return 'N/A';
+            }
+        }
+
+        // Format currency function
+        function formatCurrency(amount) {
+            if (!amount) return 'N/A';
+            try {
+                return new Intl.NumberFormat('en-IN', {
+                    style: 'currency',
+                    currency: 'INR'
+                }).format(amount);
+            } catch (e) {
+                console.error('Error formatting currency:', e);
+                return 'N/A';
+            }
+        }
+
+        // Fetch and render orders
+        function fetchAndRenderOrders() {
+            database.ref('orders').on('value', (snapshot) => {
+                const orders = snapshot.val() || {};
+                const pendingOrders = {};
+                
+                // Process orders
+                Object.entries(orders).forEach(([orderId, order]) => {
+                    const items = order.items || [];
+                    
+                    // Check for pending items
+                    const hasPendingItems = items.some(item => 
+                        item.status && item.status.toLowerCase() === 'ordered'
+                    );
+                    
+                    if (hasPendingItems) {
+                        // Get the first pending item
+                        const pendingItem = items.find(item => 
+                            item.status && item.status.toLowerCase() === 'ordered'
+                        );
+                        
+                        // Create order data
+                        pendingOrders[orderId] = {
+                            id: orderId,
+                            order_id: order.order_id || orderId,
+                            store_name: pendingItem.store_name || 'N/A',
+                            product_id: pendingItem.product_id || 'N/A',
+                            rent_from: pendingItem.rent_from || order.rent_from || 'N/A',
+                            rent_to: pendingItem.rent_to || order.rent_to || 'N/A',
+                            shipping_address: order.shipping_address || 'N/A',
+                            shipping_address2: order.shipping_address2 || '',
+                            order_total: order.order_total || 0,
+                            status: pendingItem.status || 'ordered',
+                            updated_at: pendingItem.ordered_at || order.updated_at || '',
+                            payment_intent_id: order.payment_intent_id || 'N/A',
+                            quantity: pendingItem.quantity || 1
+                        };
+                    }
+                });
+                
+                console.log('Fetched pending orders:', pendingOrders);
+                renderPendingOrders(pendingOrders);
+            }, (error) => {
+                console.error('Error fetching orders:', error);
+                showToast('Error loading orders. Please refresh the page.', 'error');
+            });
+        }
+
+        // Initial fetch when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, fetching orders');
+            fetchAndRenderOrders();
+        });
+
+        // Render pending orders
+        function renderPendingOrders(orders) {
+            const tableBody = document.getElementById('pendingOrdersTableBody');
+            tableBody.innerHTML = '';
+
+            console.log('Rendering orders:', orders);
+
+            if (!orders || Object.keys(orders).length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="empty-state">
+                                <i class="mdi mdi-package-variant text-secondary mb-3" style="font-size: 3rem;"></i>
+                                <h5 class="text-secondary mb-2">No Pending Orders</h5>
+                                <p class="text-muted mb-0">There are no pending orders to deliver at the moment.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Convert orders object to array and sort by updated_at
+            const ordersArray = Object.entries(orders)
+                .map(([id, order]) => ({ id, ...order }))
+                .sort((a, b) => {
+                    const dateA = new Date(a.updated_at || 0);
+                    const dateB = new Date(b.updated_at || 0);
+                    return dateB - dateA;
+                });
+
+            ordersArray.forEach(order => {
+                const row = `
+                    <tr>
+                        <td><span class="order-id">#${order.order_id.slice(0, 8)}</span></td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="mdi mdi-store me-2 text-primary"></i>
+                                <span>${order.store_name || 'N/A'}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="mdi mdi-calendar-range me-2 text-info"></i>
+                                <span>${formatDate(order.rent_from)} - ${formatDate(order.rent_to)}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="shipping-address">
+                                <i class="mdi mdi-map-marker me-2 text-danger"></i>
+                                <span class="text-truncate" title="${order.shipping_address}${order.shipping_address2 ? ', ' + order.shipping_address2 : ''}">
+                                    ${order.shipping_address}
+                                    ${order.shipping_address2 ? `<br>${order.shipping_address2}` : ''}
+                                </span>
+                            </div>
+                        </td>
+                        <td><span class="amount">${formatCurrency(order.order_total)}</span></td>
+                        <td>
+                            <span class="status-badge status-pending">
+                                <i class="mdi mdi-clock-outline me-1"></i>
+                                ${order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-primary btn-action" 
+                                    onclick="viewOrderDetails('${order.id}')" 
+                                    title="View Details">
+                                <i class="mdi mdi-eye"></i>
+                            </button>
+                            <button class="btn btn-success btn-action" 
+                                    onclick="startDelivery('${order.id}')" 
+                                    title="Start Delivery">
+                                <i class="mdi mdi-truck-delivery"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        // Start delivery function
+        function startDelivery(orderId) {
+            if (confirm('Are you sure you want to start this delivery?')) {
+                database.ref(`orders/${orderId}`).once('value')
+                    .then((snapshot) => {
+                        const order = snapshot.val();
+                        if (!order) throw new Error('Order not found');
+
+                        // Update the status of pending items to 'in_transit'
+                        const updatedItems = (order.items || []).map(item => ({
+                            ...item,
+                            status: item.status.toLowerCase() === 'ordered' ? 'in_transit' : item.status
+                        }));
+
+                        // Update order in database
+                        return database.ref(`orders/${orderId}`).update({
+                            items: updatedItems,
+                            delivery_started_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        });
+                    })
+                    .then(() => {
+                        showToast('Delivery started successfully!', 'success');
+                    })
+                    .catch(error => {
+                        console.error('Error starting delivery:', error);
+                        showToast('Error starting delivery. Please try again.', 'error');
+                    });
+            }
+        }
+
+        // View order details function
+        function viewOrderDetails(orderId) {
+            database.ref(`orders/${orderId}`).once('value')
+                .then((snapshot) => {
+                    const order = snapshot.val();
+                    if (order) {
+                        const pendingItems = (order.items || [])
+                            .filter(item => item.status.toLowerCase() === 'ordered')
+                            .map(item => `
+                                Product: ${item.product_id}
+                                Quantity: ${item.quantity}
+                                Rental Period: ${formatDate(item.rent_from)} - ${formatDate(item.rent_to)}
+                                Store: ${item.store_name}
+                            `).join('\n\n');
+
+                        const details = `
+                            Order ID: ${order.order_id}
+                            Total Amount: ${formatCurrency(order.order_total)}
+                            Shipping Address: ${order.shipping_address}
+                            ${order.shipping_address2 ? '\nAddress 2: ' + order.shipping_address2 : ''}
+                            Payment ID: ${order.payment_intent_id}
+                            
+                            Pending Items:
+                            ${pendingItems}
+                        `;
+                        alert(details); // You can replace this with a modal
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error fetching order details:', error);
+                    showToast('Error fetching order details', 'error');
+                });
+        }
+
+        // Simple toast notification
+        function showToast(message, type = 'info') {
+            // You can implement a proper toast notification here
+            alert(message);
+        }
+    </script>
+</body>
+</html> 
