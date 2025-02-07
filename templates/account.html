@@ -1138,59 +1138,12 @@ $(document).ready(function() {
                     `);
                     
                     showToast('Success', 'Return initiated successfully', false);
-                    
-                    setTimeout(() => {
-                        completeReturn(orderId, productId, button);
-                    }, 10000);
                 } else {
                     showToast('Error', 'Failed to initiate return: ' + response.message, true);
                 }
             },
             error: function(xhr, status, error) {
                 showToast('Error', 'An error occurred while initiating return', true);
-            }
-        });
-    }
-
-    function completeReturn(orderId, productId, button) {
-        const completedAt = new Date().toISOString();
-        const data = {
-            order_id: orderId,
-            product_id: productId,
-            returns: {
-                status: 'returned',
-                completed_at: completedAt
-            }
-        };
-
-        $.ajax({
-            url: '/update-item-status',
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(data),
-            success: function(response) {
-                if (response.success) {
-                    // Update the status cell to show returned status and date
-                    const statusCell = $(`#status-cell-${orderId}-${productId}`);
-                    statusCell.html(`
-                        <span class="badge bg-success">Returned</span><br>
-                        <small>Returned on: ${new Date(completedAt).toLocaleDateString()}</small>
-                    `);
-
-                    button.replaceWith(`
-                        <a href="${response.invoice_url}" 
-                           class="btn btn-outline-secondary btn-sm download-invoice" 
-                           target="_blank">
-                            <i class="fa fa-download"></i> Download Invoice
-                        </a>
-                    `);
-                    showToast('Success', 'Return completed successfully', false);
-                } else {
-                    showToast('Error', 'Failed to complete return: ' + response.message, true);
-                }
-            },
-            error: function(xhr, status, error) {
-                showToast('Error', 'An error occurred while completing return', true);
             }
         });
     }

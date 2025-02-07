@@ -4686,9 +4686,9 @@ def delivery_completed_orders():
                 
                 # Check if items is a list and has elements
                 if isinstance(items, list) and len(items) > 0:
-                    # Check if all items are delivered
+                    # Check for items with status 'delivered' or 'returned'
                     for item in items:
-                        if item.get('status') == 'delivered':
+                        if item.get('status') in ['delivered', 'returned']:
                             # Create order data
                             order_data = {
                                 'order_id': order.get('order_id'),
@@ -4700,17 +4700,165 @@ def delivery_completed_orders():
                                 'shipping_address2': order.get('shipping_address2', ''),
                                 'order_total': order.get('order_total', 0),
                                 'status': item.get('status'),
-                                'delivery_completed_at': order.get('delivery_completed_at', 'N/A')
+                                'delivery_completed_at': order.get('delivery_completed_at', 'N/A'),
+                                'return_completed_at': item.get('return_completed_at', 'N/A')
                             }
                             completed_orders[order_id] = order_data
 
+        app.logger.debug(f"Fetched completed orders: {completed_orders}")
         return render_template('delivery/completed_orders.html', 
-                             user=user_info,
-                             completed_orders=completed_orders)
+                          user=user_info,
+                          completed_orders=completed_orders)
 
     except Exception as e:
         print(f"Error in completed_orders: {str(e)}")
         flash(f'Error: {str(e)}', 'error')
         return redirect(url_for('delivery_dashboard'))
+
+@app.route('/delivery/pending-returns')
+def delivery_pending_returns():
+    if 'user_id' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
+    
+    user_info = session.get('user_info', {})
+    if user_info.get('user_type') != 'delivery_agent':
+        flash('Unauthorized access.', 'error')
+        return redirect(url_for('login'))
+        
+    return render_template('delivery/pending_returns.html', user=user_info)
+
+@app.route('/delivery/active-returns')
+def delivery_active_returns():
+    if 'user_id' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
+    
+    try:
+        user_info = session.get('user_info', {})
+        if user_info.get('user_type') != 'delivery_agent':
+            flash('Unauthorized access.', 'error')
+            return redirect(url_for('login'))
+
+        # Fetch all orders
+        orders = db.child("orders").get().val()
+        active_returns = {}
+        
+        if orders:
+            for order_id, order in orders.items():
+                # Get items from the order
+                items = order.get('items', [])
+                
+                # Check if any item has status 'Pickup is on the way'
+                has_active_returns = any(
+                    item.get('status', '') == 'Pickup is on the way'
+                    for item in items
+                )
+                
+                if has_active_returns:
+                    # Get the first active return item
+                    active_item = next(
+                        item for item in items 
+                        if item.get('status', '') == 'Pickup is on the way'
+                    )
+                    
+                    # Create order data with item details
+                    order_data = {
+                        'id': order_id,
+                        'order_id': order.get('order_id', order_id),
+                        'store_name': active_item.get('store_name', 'N/A'),
+                        'product_id': active_item.get('product_id', 'N/A'),
+                        'rent_from': active_item.get('rent_from', order.get('rent_from', 'N/A')),
+                        'rent_to': active_item.get('rent_to', order.get('rent_to', 'N/A')),
+                        'shipping_address': order.get('shipping_address', 'N/A'),
+                        'shipping_address2': order.get('shipping_address2', ''),
+                        'order_total': active_item.get('item_total', 0),
+                        'status': active_item.get('status', 'Pickup is on the way'),
+                        'return_pickup_started_at': order.get('return_pickup_started_at', ''),
+                        'quantity': active_item.get('quantity', 1)
+                    }
+                    
+                    active_returns[order_id] = order_data
+        
+        app.logger.debug(f"Fetched active returns: {active_returns}")
+        
+        return render_template('delivery/active_returns.html', 
+                            user=user_info,
+                            active_returns=active_returns)
+                            
+    except Exception as e:
+        app.logger.error(f"Error in active returns: {str(e)}")
+        flash(f'Error: {str(e)}', 'error')
+        return redirect(url_for('delivery_dashboard'))
+
+@app.route('/delivery/complete-return', methods=['POST'])
+def complete_return_delivery():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Please log in'}), 401
+        
+    try:
+        data = request.get_json()
+        order_id = data.get('orderId')
+        product_id = data.get('productId')
+        store_name = data.get('storeName')
+        condition = data.get('condition')
+        notes = data.get('notes')
+        current_time = datetime.now().isoformat()
+        
+        if not all([order_id, product_id, condition]):
+            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+            
+        # Get the order
+        order_ref = db.child("orders").child(order_id)
+        order = order_ref.get().val()
+        
+        if not order:
+            return jsonify({'success': False, 'message': 'Order not found'}), 404
+
+        # Create product condition entry
+        condition_data = {
+            'product_id': product_id,
+            'store_name': store_name,
+            'condition': condition,
+            'notes': notes,
+            'recorded_at': current_time,
+            'order_id': order_id,
+            'recorded_by': session.get('user_id')
+        }
+        
+        # Add to product_conditions table
+        db.child("product_conditions").push(condition_data)
+        app.logger.debug(f"Added condition record: {condition_data}")
+
+        # Get items array
+        items = order.get('items', [])
+        if isinstance(items, dict):
+            items = [items]
+
+        # Update status and return time in items
+        for i, item in enumerate(items):
+            if (item.get('product_id') == product_id and 
+                item.get('store_name') == store_name):
+                # Update status and return time
+                item_path = f"orders/{order_id}/items/{i}"
+                db.update({
+                    f"{item_path}/status": "returned",
+                    f"{item_path}/return_completed_at": current_time
+                })
+                app.logger.debug(f"Updated item status and return time at path: {item_path}")
+                break
+        
+        app.logger.debug("Return completed successfully")
+        return jsonify({
+            'success': True,
+            'message': 'Return completed successfully'
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error completing return: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
 if __name__ == '__main__':
     app.run(debug=True)

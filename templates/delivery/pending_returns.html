@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pending Orders</title>
+    <title>Pending Returns</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Material Design Icons -->
@@ -77,29 +77,15 @@
             padding: 30px;
         }
 
-        .orders-table {
+        .returns-table {
             background: white;
             border-radius: var(--border-radius);
             box-shadow: var(--shadow);
             margin-top: 20px;
         }
 
-        .orders-table .card-header {
-            background: white;
-            border-bottom: 1px solid #e3e6f0;
-            padding: 20px;
-        }
-
-        .orders-table .card-header h5 {
-            color: #5a5c69;
-            font-weight: 600;
-        }
-
         .table {
             margin-bottom: 0;
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
         }
 
         .table thead th {
@@ -113,20 +99,6 @@
         .table tbody td {
             padding: 15px;
             vertical-align: middle;
-        }
-
-        .table tbody tr {
-            transition: all 0.3s ease;
-        }
-
-        .table tbody tr:hover {
-            background-color: #f8f9fc;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .table tbody tr:last-child td {
-            border-bottom: none;
         }
 
         .btn-action {
@@ -147,78 +119,40 @@
             margin: 0;
         }
 
-        .status-badge {
+        .badge {
             padding: 6px 12px;
+            font-weight: 500;
+        }
+
+        .store-info {
+            background: var(--light-color);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+        }
+
+        .store-info h5 {
+            color: var(--dark-color);
+            margin-bottom: 10px;
+        }
+
+        .status-badge {
+            padding: 8px 15px;
             border-radius: 20px;
             font-size: 0.85rem;
-            font-weight: 500;
-            display: inline-block;
-            text-align: center;
-            min-width: 100px;
-            transition: all 0.3s ease;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
         }
 
         .status-pending {
-            background-color: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeeba;
+            background-color: rgba(var(--warning-color-rgb), 0.1);
+            color: var(--warning-color);
         }
 
-        .status-pending:hover {
-            background-color: #ffeeba;
-        }
-
-        .order-id {
-            font-family: 'Roboto Mono', monospace;
-            font-weight: 500;
-            color: var(--primary-color);
-        }
-
-        .shipping-address {
-            max-width: 200px;
-            line-height: 1.4;
-            color: #4a5568;
-        }
-
-        .amount {
-            font-weight: 600;
-            color: #2d3748;
-        }
-
-        .empty-state {
-            padding: 3rem;
-            text-align: center;
-            background: linear-gradient(to bottom, #f8f9fc, #ffffff);
-            border-radius: var(--border-radius);
-        }
-
-        .empty-state i {
-            font-size: 4rem;
-            color: var(--secondary-color);
-            opacity: 0.5;
-            margin-bottom: 1.5rem;
-        }
-
-        .empty-state h5 {
-            color: var(--secondary-color);
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        .empty-state p {
-            color: #858796;
-            max-width: 400px;
-            margin: 0 auto;
-        }
-
-        /* Animation for new rows */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .table tbody tr {
-            animation: fadeIn 0.3s ease-out forwards;
+        .status-transit {
+            background-color: rgba(var(--info-color-rgb), 0.1);
+            color: var(--info-color);
         }
     </style>
 </head>
@@ -233,11 +167,11 @@
                 <i class="mdi mdi-view-dashboard"></i> 
                 <span>Dashboard</span>
             </a>
-            <a href="{{ url_for('delivery_pending_orders') }}" class="active">
+            <a href="{{ url_for('delivery_pending_orders') }}">
                 <i class="mdi mdi-clock-outline"></i> 
                 <span>Pending Orders</span>
             </a>
-            <a href="{{ url_for('delivery_pending_returns') }}">
+            <a href="{{ url_for('delivery_pending_returns') }}" class="active">
                 <i class="mdi mdi-keyboard-return"></i> 
                 <span>Pending Returns</span>
             </a>
@@ -267,28 +201,31 @@
     <!-- Main Content -->
     <div class="main-content">
         <div class="page-header">
-            <h1 class="page-title">Pending Orders</h1>
+            <h1 class="page-title">Pending Returns</h1>
         </div>
-        <div class="orders-table">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Current Orders</h5>
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0 text-gray-800">Pending Returns</h1>
             </div>
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Order ID</th>
-                        <th>Store</th>
-                        <th>Rental Period</th>
-                        <th>Shipping Address</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="pendingOrdersTableBody">
-                    <!-- Orders will be populated here via JavaScript -->
-                </tbody>
-            </table>
+
+            <div class="orders-table">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Store</th>
+                            <th>Rental Period</th>
+                            <th>Shipping Address</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingReturnsTableBody">
+                        <!-- Returns will be populated here via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -312,7 +249,7 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // Format date function
+        // Reuse the same helper functions
         function formatDate(dateString) {
             if (!dateString || dateString === 'N/A') return 'N/A';
             try {
@@ -328,7 +265,6 @@
             }
         }
 
-        // Format currency function
         function formatCurrency(amount) {
             if (!amount) return 'N/A';
             try {
@@ -342,75 +278,62 @@
             }
         }
 
-        // Fetch and render orders
-        function fetchAndRenderOrders() {
+        // Fetch and render returns
+        function fetchAndRenderReturns() {
             database.ref('orders').on('value', (snapshot) => {
                 const orders = snapshot.val() || {};
-                const pendingOrders = {};
+                const pendingReturns = {};
                 
                 // Process orders
                 Object.entries(orders).forEach(([orderId, order]) => {
                     const items = order.items || [];
                     
-                    // Check for pending items
-                    const hasPendingItems = items.some(item => 
-                        item.status && item.status.toLowerCase() === 'ordered'
+                    // Check for return_initiated items
+                    const hasReturnInitiatedItems = items.some(item => 
+                        item.status && item.status.toLowerCase() === 'return_initiated'
                     );
                     
-                    if (hasPendingItems) {
-                        // Get the first pending item
-                        const pendingItem = items.find(item => 
-                            item.status && item.status.toLowerCase() === 'ordered'
+                    if (hasReturnInitiatedItems) {
+                        // Get the first return_initiated item
+                        const returnItem = items.find(item => 
+                            item.status && item.status.toLowerCase() === 'return_initiated'
                         );
                         
-                        // Create order data
-                        pendingOrders[orderId] = {
+                        pendingReturns[orderId] = {
                             id: orderId,
                             order_id: order.order_id || orderId,
-                            store_name: pendingItem.store_name || 'N/A',
-                            product_id: pendingItem.product_id || 'N/A',
-                            rent_from: pendingItem.rent_from || order.rent_from || 'N/A',
-                            rent_to: pendingItem.rent_to || order.rent_to || 'N/A',
+                            store_name: returnItem.store_name || 'N/A',
+                            product_id: returnItem.product_id || 'N/A',
+                            rent_from: returnItem.rent_from || order.rent_from || 'N/A',
+                            rent_to: returnItem.rent_to || order.rent_to || 'N/A',
                             shipping_address: order.shipping_address || 'N/A',
                             shipping_address2: order.shipping_address2 || '',
                             order_total: order.order_total || 0,
-                            status: pendingItem.status || 'ordered',
-                            updated_at: pendingItem.ordered_at || order.updated_at || '',
-                            payment_intent_id: order.payment_intent_id || 'N/A',
-                            quantity: pendingItem.quantity || 1
+                            status: returnItem.status || 'return_initiated',
+                            updated_at: returnItem.return_initiated_at || order.updated_at || '',
+                            quantity: returnItem.quantity || 1
                         };
                     }
                 });
                 
-                console.log('Fetched pending orders:', pendingOrders);
-                renderPendingOrders(pendingOrders);
-            }, (error) => {
-                console.error('Error fetching orders:', error);
-                showToast('Error loading orders. Please refresh the page.', 'error');
+                console.log('Fetched pending returns:', pendingReturns);
+                renderPendingReturns(pendingReturns);
             });
         }
 
-        // Initial fetch when page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM loaded, fetching orders');
-            fetchAndRenderOrders();
-        });
-
-        // Render pending orders
-        function renderPendingOrders(orders) {
-            const tableBody = document.getElementById('pendingOrdersTableBody');
+        // Render pending returns
+        function renderPendingReturns(returns) {
+            const tableBody = document.getElementById('pendingReturnsTableBody');
             tableBody.innerHTML = '';
 
-            console.log('Rendering orders:', orders);
-
-            if (!orders || Object.keys(orders).length === 0) {
+            if (!returns || Object.keys(returns).length === 0) {
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="7" class="text-center py-5">
                             <div class="empty-state">
-                                <i class="mdi mdi-package-variant text-secondary mb-3" style="font-size: 3rem;"></i>
-                                <h5 class="text-secondary mb-2">No Pending Orders</h5>
-                                <p class="text-muted mb-0">There are no pending orders to deliver at the moment.</p>
+                                <i class="mdi mdi-keyboard-return text-secondary mb-3" style="font-size: 3rem;"></i>
+                                <h5 class="text-secondary mb-2">No Pending Returns</h5>
+                                <p class="text-muted mb-0">There are no pending returns to process at the moment.</p>
                             </div>
                         </td>
                     </tr>
@@ -418,58 +341,53 @@
                 return;
             }
 
-            // Convert orders object to array and sort by updated_at
-            const ordersArray = Object.entries(orders)
-                .map(([id, order]) => ({ id, ...order }))
-                .sort((a, b) => {
-                    const dateA = new Date(a.updated_at || 0);
-                    const dateB = new Date(b.updated_at || 0);
-                    return dateB - dateA;
-                });
+            // Sort returns by updated_at
+            const returnsArray = Object.entries(returns)
+                .map(([id, return_order]) => ({ id, ...return_order }))
+                .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
 
-            ordersArray.forEach(order => {
+            returnsArray.forEach(return_order => {
                 const row = `
                     <tr>
-                        <td><span class="order-id">#${order.order_id.slice(0, 8)}</span></td>
+                        <td><span class="order-id">#${return_order.order_id.slice(0, 8)}</span></td>
                         <td>
                             <div class="d-flex align-items-center">
                                 <i class="mdi mdi-store me-2 text-primary"></i>
-                                <span>${order.store_name || 'N/A'}</span>
+                                <span>${return_order.store_name}</span>
                             </div>
                         </td>
                         <td>
                             <div class="d-flex align-items-center">
                                 <i class="mdi mdi-calendar-range me-2 text-info"></i>
-                                <span>${formatDate(order.rent_from)} - ${formatDate(order.rent_to)}</span>
+                                <span>${formatDate(return_order.rent_from)} - ${formatDate(return_order.rent_to)}</span>
                             </div>
                         </td>
                         <td>
                             <div class="shipping-address">
                                 <i class="mdi mdi-map-marker me-2 text-danger"></i>
-                                <span class="text-truncate" title="${order.shipping_address}${order.shipping_address2 ? ', ' + order.shipping_address2 : ''}">
-                                    ${order.shipping_address}
-                                    ${order.shipping_address2 ? `<br>${order.shipping_address2}` : ''}
-                                </span>
+                                <span>${return_order.shipping_address}${return_order.shipping_address2 ? '<br>' + return_order.shipping_address2 : ''}</span>
                             </div>
                         </td>
-                        <td><span class="amount">${formatCurrency(order.order_total)}</span></td>
+                        <td><span class="amount">${formatCurrency(return_order.order_total)}</span></td>
                         <td>
-                            <span class="status-badge status-pending">
-                                <i class="mdi mdi-clock-outline me-1"></i>
-                                ${order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                            <span class="status-badge ${return_order.status === 'Pickup is on the way' ? 'status-transit' : 'status-pending'}">
+                                <i class="mdi ${return_order.status === 'Pickup is on the way' ? 'mdi-truck-delivery' : 'mdi-keyboard-return'} me-1"></i>
+                                ${return_order.status === 'Pickup is on the way' ? 'Pickup is on the way' : 'Return Initiated'}
                             </span>
                         </td>
                         <td class="text-end">
                             <button class="btn btn-primary btn-action" 
-                                    onclick="viewOrderDetails('${order.id}')" 
+                                    onclick="viewReturnDetails('${return_order.id}')" 
                                     title="View Details">
                                 <i class="mdi mdi-eye"></i>
                             </button>
-                            <button class="btn btn-success btn-action" 
-                                    onclick="startDelivery('${order.id}')" 
-                                    title="Start Delivery">
-                                <i class="mdi mdi-truck-delivery"></i>
-                            </button>
+                            ${return_order.status !== 'Pickup is on the way' ? `
+                                <button class="btn btn-success btn-action" 
+                                        onclick="startReturn('${return_order.id}')" 
+                                        title="Start Return Pickup">
+                                    <i class="mdi mdi-truck-delivery"></i>
+                                </button>
+                            ` : ''}
                         </td>
                     </tr>
                 `;
@@ -477,45 +395,45 @@
             });
         }
 
-        // Start delivery function
-        function startDelivery(orderId) {
-            if (confirm('Are you sure you want to start this delivery?')) {
+        // Start return pickup function
+        function startReturn(orderId) {
+            if (confirm('Are you sure you want to start this return pickup?')) {
                 database.ref(`orders/${orderId}`).once('value')
                     .then((snapshot) => {
                         const order = snapshot.val();
                         if (!order) throw new Error('Order not found');
 
-                        // Update the status of pending items to 'in_transit'
+                        // Update the status directly without creating status_display
                         const updatedItems = (order.items || []).map(item => ({
                             ...item,
-                            status: item.status.toLowerCase() === 'ordered' ? 'in_transit' : item.status
+                            status: item.status.toLowerCase() === 'return_initiated' ? 'Pickup is on the way' : item.status
                         }));
 
                         // Update order in database
                         return database.ref(`orders/${orderId}`).update({
                             items: updatedItems,
-                            delivery_started_at: new Date().toISOString(),
+                            return_pickup_started_at: new Date().toISOString(),
                             updated_at: new Date().toISOString()
                         });
                     })
                     .then(() => {
-                        showToast('Delivery started successfully!', 'success');
+                        showToast('Return pickup started successfully!', 'success');
                     })
                     .catch(error => {
-                        console.error('Error starting delivery:', error);
-                        showToast('Error starting delivery. Please try again.', 'error');
+                        console.error('Error starting return pickup:', error);
+                        showToast('Error starting return pickup. Please try again.', 'error');
                     });
             }
         }
 
-        // View order details function
-        function viewOrderDetails(orderId) {
+        // View return details function
+        function viewReturnDetails(orderId) {
             database.ref(`orders/${orderId}`).once('value')
                 .then((snapshot) => {
                     const order = snapshot.val();
                     if (order) {
-                        const pendingItems = (order.items || [])
-                            .filter(item => item.status.toLowerCase() === 'ordered')
+                        const returnItems = (order.items || [])
+                            .filter(item => item.status.toLowerCase() === 'return_initiated')
                             .map(item => `
                                 Product: ${item.product_id}
                                 Quantity: ${item.quantity}
@@ -528,25 +446,26 @@
                             Total Amount: ${formatCurrency(order.order_total)}
                             Shipping Address: ${order.shipping_address}
                             ${order.shipping_address2 ? '\nAddress 2: ' + order.shipping_address2 : ''}
-                            Payment ID: ${order.payment_intent_id}
                             
-                            Pending Items:
-                            ${pendingItems}
+                            Return Items:
+                            ${returnItems}
                         `;
                         alert(details); // You can replace this with a modal
                     }
                 })
                 .catch((error) => {
-                    console.error('Error fetching order details:', error);
-                    showToast('Error fetching order details', 'error');
+                    console.error('Error fetching return details:', error);
+                    showToast('Error fetching return details', 'error');
                 });
         }
 
         // Simple toast notification
         function showToast(message, type = 'info') {
-            // You can implement a proper toast notification here
-            alert(message);
+            alert(message); // You can implement a proper toast notification here
         }
+
+        // Initial fetch when page loads
+        document.addEventListener('DOMContentLoaded', fetchAndRenderReturns);
     </script>
 </body>
 </html> 

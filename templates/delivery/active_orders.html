@@ -38,6 +38,7 @@
             padding-top: 20px;
             transition: all 0.3s;
             width: 250px;
+            z-index: 100;
         }
 
         .sidebar .brand {
@@ -46,35 +47,36 @@
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
 
-        .sidebar a {
+        .sidebar nav a {
             color: rgba(255,255,255,0.8);
             text-decoration: none;
             padding: 12px 25px;
             display: flex;
             align-items: center;
             transition: all 0.3s;
+            border-radius: 5px;
+            margin: 0 10px 5px;
         }
 
-        .sidebar a:hover {
+        .sidebar nav a:hover {
             background-color: rgba(255,255,255,0.1);
             color: white;
-            padding-left: 30px;
         }
 
-        .sidebar a.active {
+        .sidebar nav a.active {
             background-color: rgba(255,255,255,0.1);
             color: white;
-            border-left: 4px solid white;
+            font-weight: 600;
         }
 
-        .sidebar i {
+        .sidebar nav a i {
             margin-right: 10px;
             font-size: 1.2rem;
         }
 
         .main-content {
             margin-left: 250px;
-            padding: 20px;
+            padding: 30px;
         }
 
         .orders-table {
@@ -237,9 +239,21 @@
                 <i class="mdi mdi-clock-outline"></i> 
                 <span>Pending Orders</span>
             </a>
+            <a href="{{ url_for('delivery_pending_returns') }}">
+                <i class="mdi mdi-keyboard-return"></i> 
+                <span>Pending Returns</span>
+            </a>
             <a href="{{ url_for('delivery_active_orders') }}" class="active">
-                <i class="mdi mdi-truck-delivery"></i> 
+                <i class="mdi mdi-truck-fast"></i> 
                 <span>Active Deliveries</span>
+            </a>
+            <a href="{{ url_for('delivery_active_returns') }}">
+                <i class="mdi mdi-truck-delivery-outline"></i> 
+                <span>Active Returns</span>
+            </a>
+            <a href="{{ url_for('delivery_completed_orders') }}">
+                <i class="mdi mdi-check-circle"></i> 
+                <span>Completed Orders</span>
             </a>
             <a href="{{ url_for('delivery_profile') }}">
                 <i class="mdi mdi-account"></i> 
@@ -251,7 +265,6 @@
             </a>
         </nav>
     </div>
-
     <!-- Main Content -->
     <div class="main-content">
         <div class="container-fluid">
@@ -260,23 +273,28 @@
             </div>
 
             <div class="orders-table">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>Order ID</th>
-                            <th>Store</th>
-                            <th>Rental Period</th>
-                            <th>Shipping Address</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                            <th>Started At</th>
-                            <th class="text-end">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="activeOrdersTableBody">
-                        <!-- Orders will be populated here via JavaScript -->
-                    </tbody>
-                </table>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Current Deliveries</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Store</th>
+                                <th>Rental Period</th>
+                                <th>Shipping Address</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Started At</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activeOrdersTableBody">
+                            <!-- Orders will be populated here via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

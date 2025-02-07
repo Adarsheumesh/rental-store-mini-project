@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Active Returns</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Material Design Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4e73df;
+            --secondary-color: #858796;
+            --success-color: #1cc88a;
+            --info-color: #36b9cc;
+            --warning-color: #f6c23e;
+            --danger-color: #e74a3b;
+            --light-color: #f8f9fc;
+            --dark-color: #5a5c69;
+            --border-radius: 10px;
+            --shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        body {
+            background-color: #f8f9fc;
+            font-family: 'Nunito', sans-serif;
+        }
+
+        .sidebar {
+            height: 100vh;
+            background: linear-gradient(180deg, var(--primary-color) 0%, #224abe 100%);
+            color: white;
+            position: fixed;
+            padding-top: 20px;
+            transition: all 0.3s;
+            width: 250px;
+            z-index: 100;
+        }
+
+        .sidebar .brand {
+            padding: 15px 25px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar nav a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            padding: 12px 25px;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s;
+            border-radius: 5px;
+            margin: 0 10px 5px;
+        }
+
+        .sidebar nav a:hover {
+            background-color: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .sidebar nav a.active {
+            background-color: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .sidebar nav a i {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 30px;
+        }
+
+        .orders-table {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-top: 30px;
+        }
+
+        .table thead th {
+            background-color: var(--light-color);
+            border-bottom: 2px solid #e3e6f0;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        .btn-action {
+            padding: 5px 10px;
+            font-size: 0.875rem;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-block;
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .status-pickup {
+            background-color: var(--info-color);
+            color: white;
+        }
+
+        .empty-state {
+            padding: 3rem;
+            text-align: center;
+            background: linear-gradient(to bottom, var(--light-color), #ffffff);
+            border-radius: var(--border-radius);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            color: var(--secondary-color);
+            opacity: 0.5;
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-state h5 {
+            color: var(--secondary-color);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
+            color: #858796;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .table tbody tr {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="brand">
+            <h4 class="mb-0">Delivery Panel</h4>
+        </div>
+        <nav>
+            <a href="{{ url_for('delivery_dashboard') }}">
+                <i class="mdi mdi-view-dashboard"></i> 
+                <span>Dashboard</span>
+            </a>
+            <a href="{{ url_for('delivery_pending_orders') }}">
+                <i class="mdi mdi-clock-outline"></i> 
+                <span>Pending Orders</span>
+            </a>
+            <a href="{{ url_for('delivery_pending_returns') }}">
+                <i class="mdi mdi-keyboard-return"></i> 
+                <span>Pending Returns</span>
+            </a>
+            <a href="{{ url_for('delivery_active_orders') }}">
+                <i class="mdi mdi-truck-fast"></i> 
+                <span>Active Deliveries</span>
+            </a>
+            <a href="{{ url_for('delivery_active_returns') }}" class="active">
+                <i class="mdi mdi-truck-delivery-outline"></i> 
+                <span>Active Returns</span>
+            </a>
+            <a href="{{ url_for('delivery_completed_orders') }}">
+                <i class="mdi mdi-check-circle"></i> 
+                <span>Completed Orders</span>
+            </a>
+            <a href="{{ url_for('delivery_profile') }}">
+                <i class="mdi mdi-account"></i> 
+                <span>Profile</span>
+            </a>
+            <a href="{{ url_for('logout') }}">
+                <i class="mdi mdi-logout"></i> 
+                <span>Logout</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0 text-gray-800">Active Returns</h1>
+        </div>
+
+        <div class="orders-table">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Current Return Pickups</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th class="px-4">Order ID</th>
+                            <th>Store</th>
+                            <th>Rental Period</th>
+                            <th>Pickup Address</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activeReturnsTableBody">
+                        {% if active_returns %}
+                            {% for order_id, return_order in active_returns.items() %}
+                                <tr data-order-id="{{ return_order.id }}" 
+                                    data-product-id="{{ return_order.product_id }}"
+                                    data-store-name="{{ return_order.store_name }}">
+                                    <td><span class="order-id">#{{ return_order.order_id[:8] }}</span></td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="mdi mdi-store me-2 text-primary"></i>
+                                            <span>{{ return_order.store_name }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="mdi mdi-calendar-range me-2 text-info"></i>
+                                            <span>{{ return_order.rent_from }} - {{ return_order.rent_to }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="shipping-address">
+                                            <i class="mdi mdi-map-marker me-2 text-danger"></i>
+                                            <span>{{ return_order.shipping_address }}
+                                            {% if return_order.shipping_address2 %}
+                                                <br>{{ return_order.shipping_address2 }}
+                                            {% endif %}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td><span class="amount">₹{{ return_order.order_total }}</span></td>
+                                    <td>
+                                        <span class="status-badge status-pickup">
+                                            <i class="mdi mdi-truck-fast me-1"></i>
+                                            {{ return_order.status }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-primary btn-action" 
+                                                onclick="viewReturnDetails('{{ return_order.id }}')" 
+                                                title="View Details">
+                                            <i class="mdi mdi-eye"></i>
+                                        </button>
+                                        <button class="btn btn-success btn-action" 
+                                                onclick="completeReturn('{{ return_order.id }}')" 
+                                                title="Complete Return">
+                                            <i class="mdi mdi-check-circle"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-5">
+                                    <div class="empty-state">
+                                        <i class="mdi mdi-truck-delivery text-secondary mb-3"></i>
+                                        <h5 class="text-secondary mb-2">No Active Returns</h5>
+                                        <p class="text-muted mb-0">There are no active returns at the moment.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const returns = {{ active_returns | tojson | safe }};
+            renderActiveReturns(returns);
+        });
+
+        // Helper function to format date
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        // Helper function to format currency
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR'
+            }).format(amount);
+        }
+
+        // Render active returns
+        function renderActiveReturns(returns) {
+            const tableBody = document.getElementById('activeReturnsTableBody');
+            console.log('Rendering returns:', returns);
+            console.log('Found table body:', tableBody);
+            
+            if (!tableBody) {
+                console.error('Table body element not found!');
+                return;
+            }
+            
+            tableBody.innerHTML = '';
+
+            if (!returns || Object.keys(returns).length === 0) {
+                console.log('Rendering empty state');
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="empty-state">
+                                <i class="mdi mdi-truck-delivery text-secondary mb-3"></i>
+                                <h5 class="text-secondary mb-2">No Active Returns</h5>
+                                <p class="text-muted mb-0">There are no active returns at the moment.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            Object.values(returns).forEach(return_order => {
+                console.log('Rendering return order:', return_order);
+                const row = `
+                    <tr data-order-id="${return_order.id}" 
+                        data-product-id="${return_order.product_id}"
+                        data-store-name="${return_order.store_name}">
+                        <td><span class="order-id">#${return_order.order_id.slice(0, 8)}</span></td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="mdi mdi-store me-2 text-primary"></i>
+                                <span>${return_order.store_name}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="mdi mdi-calendar-range me-2 text-info"></i>
+                                <span>${formatDate(return_order.rent_from)} - ${formatDate(return_order.rent_to)}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="shipping-address">
+                                <i class="mdi mdi-map-marker me-2 text-danger"></i>
+                                <span>${return_order.shipping_address}${return_order.shipping_address2 ? '<br>' + return_order.shipping_address2 : ''}</span>
+                            </div>
+                        </td>
+                        <td><span class="amount">${formatCurrency(return_order.order_total)}</span></td>
+                        <td>
+                            <span class="status-badge status-in-transit">
+                                <i class="mdi mdi-truck-fast me-1"></i>
+                                ${return_order.status}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-primary btn-action" 
+                                    onclick="viewReturnDetails('${return_order.id}')" 
+                                    title="View Details">
+                                <i class="mdi mdi-eye"></i>
+                            </button>
+                            <button class="btn btn-success btn-action" 
+                                    onclick="completeReturn('${return_order.id}')" 
+                                    title="Complete Return">
+                                <i class="mdi mdi-check-circle"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        // View return details function
+        function viewReturnDetails(orderId) {
+            database.ref(`orders/${orderId}`).once('value')
+                .then((snapshot) => {
+                    const order = snapshot.val();
+                    if (order) {
+                        const returnItems = order.items
+                            .filter(item => item.status === 'Pickup is on the way')
+                            .map(item => `
+                                Product: ${item.product_id}
+                                Quantity: ${item.quantity}
+                                Rental Period: ${formatDate(item.rent_from)} - ${formatDate(item.rent_to)}
+                                Store: ${item.store_name}
+                                Amount: ${formatCurrency(item.item_total)}
+                            `).join('\n\n');
+
+                        const details = `
+                            Order ID: ${order.order_id}
+                            Pickup Address: ${order.shipping_address}
+                            ${order.shipping_address2 ? '\nAddress 2: ' + order.shipping_address2 : ''}
+                            Return Started: ${formatDate(order.return_pickup_started_at)}
+                            
+                            Return Items:
+                            ${returnItems}
+                        `;
+                        alert(details);
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error fetching return details:', error);
+                    showToast('Error fetching return details', 'error');
+                });
+        }
+
+        // Update the completeReturn function
+        function completeReturn(orderId) {
+            const row = document.querySelector(`tr[data-order-id="${orderId}"]`);
+            if (!row) {
+                console.error('Row not found for order:', orderId);
+                return;
+            }
+
+            // Get data from row attributes
+            const productId = row.getAttribute('data-product-id');
+            const storeName = row.getAttribute('data-store-name');
+
+            // Set the values in the modal
+            document.getElementById('returnOrderId').value = orderId;
+            document.getElementById('returnProductId').value = productId;
+            document.getElementById('returnStoreName').value = storeName;
+            
+            // Update store details text
+            document.getElementById('storeDetailsText').textContent = 
+                `Store: ${storeName} (Product ID: ${productId})`;
+
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('productConditionModal'));
+            modal.show();
+        }
+
+        // Add new function to handle the return submission
+        function submitReturn() {
+            const orderId = document.getElementById('returnOrderId').value;
+            const productId = document.getElementById('returnProductId').value;
+            const storeName = document.getElementById('returnStoreName').value;
+            const condition = document.getElementById('productCondition').value;
+            const notes = document.getElementById('conditionNotes').value;
+
+            if (!condition) {
+                showToast('Please select a product condition', 'error');
+                return;
+            }
+
+            // Send the data to your server
+            fetch('/delivery/complete-return', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    orderId: orderId,
+                    productId: productId,
+                    storeName: storeName,
+                    condition: condition,
+                    notes: notes
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Return completed successfully!', 'success');
+                    // Close the modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('productConditionModal'));
+                    modal.hide();
+                    // Refresh the page
+                    location.reload();
+                } else {
+                    showToast(data.message || 'Error completing return', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Error completing return. Please try again.', 'error');
+            });
+        }
+
+        // Helper function to show toast messages
+        function showToast(message, type = 'info') {
+            console.log(`${type}: ${message}`);
+            alert(message);
+        }
+    </script>
+
+    <!-- Add this modal HTML before the closing body tag -->
+    <div class="modal fade" id="productConditionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Complete Return</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="returnConditionForm">
+                        <input type="hidden" id="returnOrderId">
+                        <input type="hidden" id="returnProductId">
+                        <input type="hidden" id="returnStoreName">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Store Details</label>
+                            <p id="storeDetailsText" class="form-text"></p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="productCondition" class="form-label">Product Condition</label>
+                            <select class="form-select" id="productCondition" required>
+                                <option value="">Select condition...</option>
+                                <option value="excellent">Excellent - Like New</option>
+                                <option value="good">Good - Minor Wear</option>
+                                <option value="fair">Fair - Visible Wear</option>
+                                <option value="poor">Poor - Significant Damage</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="conditionNotes" class="form-label">Additional Notes</label>
+                            <textarea class="form-control" id="conditionNotes" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitReturn()">Complete Return</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

@@ -8,12 +8,20 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Material Design Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.5.95/css/materialdesignicons.min.css">
-    <!-- Custom CSS -->
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary-color: #4e73df;
             --secondary-color: #858796;
             --success-color: #1cc88a;
+            --info-color: #36b9cc;
+            --warning-color: #f6c23e;
+            --danger-color: #e74a3b;
+            --light-color: #f8f9fc;
+            --dark-color: #5a5c69;
+            --border-radius: 10px;
+            --shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
         
         body {
@@ -28,6 +36,8 @@
             position: fixed;
             padding-top: 20px;
             transition: all 0.3s;
+            width: 250px;
+            z-index: 100;
         }
 
         .sidebar .brand {
@@ -36,28 +46,28 @@
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
 
-        .sidebar a {
+        .sidebar nav a {
             color: rgba(255,255,255,0.8);
             text-decoration: none;
             padding: 12px 25px;
             display: flex;
             align-items: center;
             transition: all 0.3s;
+            border-radius: 5px;
+            margin: 0 10px 5px;
         }
 
-        .sidebar a:hover {
+        .sidebar nav a:hover {
             background-color: rgba(255,255,255,0.1);
             color: white;
-            padding-left: 30px;
         }
 
-        .sidebar a.active {
+        .sidebar nav a.active {
             background-color: rgba(255,255,255,0.1);
             color: white;
-            border-left: 4px solid white;
         }
 
-        .sidebar i {
+        .sidebar nav a i {
             margin-right: 10px;
             font-size: 1.2rem;
         }
@@ -65,224 +75,215 @@
         .main-content {
             margin-left: 250px;
             padding: 30px;
-            transition: all 0.3s;
-        }
-
-        .order-card {
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-            margin-bottom: 25px;
-            transition: all 0.3s ease;
-            border: none;
-            background: white;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .order-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 100%;
-            width: 5px;
-            background: var(--success-color);
-        }
-
-        .order-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        }
-
-        .card-title {
-            color: #2c3e50;
-            font-weight: 700;
-            font-size: 1.2rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .card-text {
-            color: #596275;
-            line-height: 1.8;
-        }
-
-        .badge {
-            padding: 8px 15px;
-            border-radius: 25px;
-            font-weight: 600;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: 0 2px 5px rgba(28, 200, 138, 0.2);
-        }
-
-        .info-label {
-            font-weight: 600;
-            color: #2c3e50;
-            margin-right: 8px;
-        }
-
-        .info-value {
-            color: #596275;
-        }
-
-        .completion-time {
-            background: #f8f9fc;
-            padding: 10px 15px;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            color: #596275;
-            display: inline-block;
-            margin-top: 10px;
-        }
-
-        .price-tag {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--success-color);
         }
 
         .page-header {
-            background: white;
-            padding: 20px 30px;
-            border-radius: 15px;
             margin-bottom: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
 
         .page-title {
-            color: #2c3e50;
-            font-weight: 700;
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--dark-color);
             margin: 0;
         }
 
-        .delivery-stats {
+        .order-card {
             background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+
+        .order-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .order-header {
             padding: 15px 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            text-align: center;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .stats-number {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--success-color);
+        .order-id {
+            font-weight: 600;
+            color: var(--dark-color);
         }
 
-        .stats-label {
-            color: #596275;
+        .order-date {
+            color: var(--secondary-color);
             font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+        }
+
+        .order-body {
+            padding: 20px;
+        }
+
+        .order-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+
+        .info-group {
+            color: var(--secondary-color);
+        }
+
+        .info-group .label {
+            font-size: 0.875rem;
+            margin-bottom: 5px;
+        }
+
+        .info-group .value {
+            color: var(--dark-color);
+            font-weight: 500;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            font-weight: 500;
+        }
+
+        .alert {
+            border-radius: var(--border-radius);
+            display: flex;
+            align-items: center;
+        }
+
+        .alert i {
+            font-size: 1.2rem;
+            margin-right: 10px;
         }
     </style>
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <div class="sidebar col-md-3 col-lg-2 d-md-block">
-                <div class="brand">
-                    <i class="mdi mdi-truck-delivery"></i>
-                    <span>Delivery Portal</span>
-                </div>
-                <a href="{{ url_for('delivery_dashboard') }}">
-                    <i class="mdi mdi-view-dashboard"></i>
-                    <span>Dashboard</span>
-                </a>
-                <a href="{{ url_for('delivery_pending_orders') }}">
-                    <i class="mdi mdi-clock-outline"></i>
-                    <span>Pending Orders</span>
-                </a>
-                <a href="{{ url_for('delivery_active_orders') }}">
-                    <i class="mdi mdi-truck-fast"></i>
-                    <span>Active Deliveries</span>
-                </a>
-                <a href="{{ url_for('delivery_completed_orders') }}" class="active">
-                    <i class="mdi mdi-check-circle"></i>
-                    <span>Completed Orders</span>
-                </a>
-                <a href="{{ url_for('delivery_profile') }}">
-                    <i class="mdi mdi-account"></i>
-                    <span>Profile</span>
-                </a>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="brand">
+            <h4 class="mb-0">Delivery Panel</h4>
+        </div>
+        <nav>
+            <a href="{{ url_for('delivery_dashboard') }}">
+                <i class="mdi mdi-view-dashboard"></i> 
+                <span>Dashboard</span>
+            </a>
+            <a href="{{ url_for('delivery_pending_orders') }}">
+                <i class="mdi mdi-clock-outline"></i> 
+                <span>Pending Orders</span>
+            </a>
+            <a href="{{ url_for('delivery_pending_returns') }}">
+                <i class="mdi mdi-keyboard-return"></i> 
+                <span>Pending Returns</span>
+            </a>
+            <a href="{{ url_for('delivery_active_orders') }}">
+                <i class="mdi mdi-truck-fast"></i> 
+                <span>Active Deliveries</span>
+            </a>
+            <a href="{{ url_for('delivery_active_returns') }}">
+                <i class="mdi mdi-truck-delivery-outline"></i> 
+                <span>Active Returns</span>
+            </a>
+            <a href="{{ url_for('delivery_completed_orders') }}" class="active">
+                <i class="mdi mdi-check-circle"></i> 
+                <span>Completed Orders</span>
+            </a>
+            <a href="{{ url_for('delivery_profile') }}">
+                <i class="mdi mdi-account"></i> 
+                <span>Profile</span>
+            </a>
+            <a href="{{ url_for('logout') }}">
+                <i class="mdi mdi-logout"></i> 
+                <span>Logout</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">Completed Orders</h1>
+        </div>
+
+        {% if completed_orders %}
+            <div class="delivery-stats">
+                <div class="stats-number">{{ completed_orders|length }}</div>
+                <div class="stats-label">Total Completed Deliveries</div>
             </div>
 
-            <!-- Main Content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-                <div class="page-header">
-                    <h1 class="page-title">Completed Deliveries</h1>
-                </div>
-
-                {% if completed_orders %}
-                    <div class="delivery-stats">
-                        <div class="stats-number">{{ completed_orders|length }}</div>
-                        <div class="stats-label">Total Completed Deliveries</div>
-                    </div>
-
-                    {% for order_id, order in completed_orders.items() %}
-                        <div class="card order-card">
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <h5 class="card-title">
-                                            <i class="mdi mdi-package-variant me-2"></i>
-                                            Order #{{ order.order_id[:8] }}...
-                                        </h5>
-                                        <p class="card-text">
-                                            <div class="mb-2">
-                                                <span class="info-label"><i class="mdi mdi-store me-1"></i>Store:</span>
-                                                <span class="info-value">{{ order.store_name }}</span>
-                                            </div>
-                                            <div class="mb-2">
-                                                <span class="info-label"><i class="mdi mdi-cube-outline me-1"></i>Quantity:</span>
-                                                <span class="info-value">{{ order.quantity }}</span>
-                                            </div>
-                                            <div class="mb-2">
-                                                <span class="info-label"><i class="mdi mdi-calendar-range me-1"></i>Rental Period:</span>
-                                                <span class="info-value">{{ order.rent_from }} to {{ order.rent_to }}</span>
-                                            </div>
-                                            <div>
-                                                <span class="info-label"><i class="mdi mdi-map-marker me-1"></i>Shipping Address:</span>
-                                                <span class="info-value">
-                                                    {{ order.shipping_address }}
-                                                    {% if order.shipping_address2 %}
-                                                        <br>{{ order.shipping_address2 }}
-                                                    {% endif %}
-                                                </span>
-                                            </div>
-                                        </p>
+            {% for order_id, order in completed_orders.items() %}
+                <div class="card order-card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5 class="card-title">
+                                    <i class="mdi mdi-package-variant me-2"></i>
+                                    Order #{{ order.order_id[:8] }}...
+                                </h5>
+                                <p class="card-text">
+                                    <div class="mb-2">
+                                        <span class="info-label"><i class="mdi mdi-store me-1"></i>Store:</span>
+                                        <span class="info-value">{{ order.store_name }}</span>
                                     </div>
-                                    <div class="col-md-6 text-end">
-                                        <div class="price-tag mb-3">₹{{ order.order_total }}</div>
-                                        <span class="badge bg-success mb-3">
-                                            <i class="mdi mdi-check-circle me-1"></i>
-                                            {{ order.status }}
-                                        </span>
-                                        <div class="completion-time">
-                                            <i class="mdi mdi-clock-check me-1"></i>
-                                            Completed At:
-                                            {% if order.delivery_completed_at and order.delivery_completed_at != 'N/A' %}
-                                                {{ order.delivery_completed_at.split('T')[0] }}
-                                                {{ order.delivery_completed_at.split('T')[1].split('.')[0] }}
-                                            {% else %}
-                                                N/A
+                                    <div class="mb-2">
+                                        <span class="info-label"><i class="mdi mdi-cube-outline me-1"></i>Quantity:</span>
+                                        <span class="info-value">{{ order.quantity }}</span>
+                                    </div>
+                                    <div class="mb-2">
+                                        <span class="info-label"><i class="mdi mdi-calendar-range me-1"></i>Rental Period:</span>
+                                        <span class="info-value">{{ order.rent_from }} to {{ order.rent_to }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="info-label"><i class="mdi mdi-map-marker me-1"></i>Shipping Address:</span>
+                                        <span class="info-value">
+                                            {{ order.shipping_address }}
+                                            {% if order.shipping_address2 %}
+                                                <br>{{ order.shipping_address2 }}
                                             {% endif %}
-                                        </div>
+                                        </span>
                                     </div>
+                                </p>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <div class="price-tag mb-3">₹{{ order.order_total }}</div>
+                                <span class="badge {% if order.status == 'returned' %}bg-danger{% else %}bg-success{% endif %} mb-3">
+                                    <i class="mdi mdi-check-circle me-1"></i>
+                                    {{ order.status }}
+                                </span>
+                                <div class="completion-time">
+                                    <i class="mdi mdi-clock-check me-1"></i>
+                                    {% if order.status == 'returned' %}
+                                        Returned At:
+                                        {% if order.return_completed_at and order.return_completed_at != 'N/A' %}
+                                            {{ order.return_completed_at.split('T')[0] }}
+                                            {{ order.return_completed_at.split('T')[1].split('.')[0] }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    {% else %}
+                                        Delivered At:
+                                        {% if order.delivery_completed_at and order.delivery_completed_at != 'N/A' %}
+                                            {{ order.delivery_completed_at.split('T')[0] }}
+                                            {{ order.delivery_completed_at.split('T')[1].split('.')[0] }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="alert alert-info shadow-sm" role="alert">
-                        <i class="mdi mdi-information me-2"></i>
-                        No completed deliveries found.
                     </div>
-                {% endif %}
-            </main>
-        </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info shadow-sm" role="alert">
+                <i class="mdi mdi-information me-2"></i>
+                No completed deliveries found.
+            </div>
+        {% endif %}
     </div>
 
     <!-- Bootstrap JS -->
