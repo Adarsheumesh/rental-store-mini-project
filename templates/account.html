@@ -264,9 +264,15 @@
                                             </div>
                                         </div>
                                         <div class="form-group row">
-                                            <label for="l-name" class="col-lg-3 col-md-4 col-form-label">Address</label>
+                                            <label for="l-name" class="col-lg-3 col-md-4 col-form-label">District</label>
                                             <div class="col-lg-6 col-md-8">
                                                 <label>{{ user_info.district }} </label>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label for="address" class="col-lg-3 col-md-4 col-form-label">Address</label>
+                                            <div class="col-lg-6 col-md-8">
+                                                <label style="white-space: pre-line;">{{ user_info.address }}</label>
                                             </div>
                                         </div>
                                         <div class="form-group row">
@@ -311,7 +317,7 @@
                                                             <br>
                                                             Quantity: <span id="item-quantity-{{ order.get('order_id', '') }}-{{ item.get('product_id', '') }}">{{ item.get('quantity', 1) }}</span>
                                                         </td>
-                                                        <td>₹{{ "%.2f"|format(item.get('item_total', 0)) }}</td>
+                                                        <td>₹{{ "%.2f"|format(item.get('total_price', 0)) }}</td>
                                                         <td id="status-cell-{{ order.get('order_id', '') }}-{{ item.get('product_id', '') }}">
                                                             {% if order.get('items')|length > 1 %}
                                                                 {% if item.get('status') == 'cancelled' %}
@@ -479,10 +485,33 @@
                                             </div>
                                         </div>
                                         <div class="form-group row">
-                                            <label for="l-name" class="col-lg-3 col-md-4 col-form-label">Address</label>
+                                            <label for="l-name" class="col-lg-3 col-md-4 col-form-label">District</label>
                                             <div class="col-lg-6 col-md-8">
-                                                <input type="text" class="form-control" id="l-name" name="district" value="{{ user_info.district }}" required oninput="validateDistrict()">
+                                                <select class="form-control" id="l-name" name="district" required onchange="validateDistrict()">
+                                                    <option value="">Select your district</option>
+                                                    <option value="Alappuzha" {% if user_info.district == 'Alappuzha' %}selected{% endif %}>Alappuzha</option>
+                                                    <option value="Ernakulam" {% if user_info.district == 'Ernakulam' %}selected{% endif %}>Ernakulam</option>
+                                                    <option value="Idukki" {% if user_info.district == 'Idukki' %}selected{% endif %}>Idukki</option>
+                                                    <option value="Kannur" {% if user_info.district == 'Kannur' %}selected{% endif %}>Kannur</option>
+                                                    <option value="Kasaragod" {% if user_info.district == 'Kasaragod' %}selected{% endif %}>Kasaragod</option>
+                                                    <option value="Kollam" {% if user_info.district == 'Kollam' %}selected{% endif %}>Kollam</option>
+                                                    <option value="Kottayam" {% if user_info.district == 'Kottayam' %}selected{% endif %}>Kottayam</option>
+                                                    <option value="Kozhikode" {% if user_info.district == 'Kozhikode' %}selected{% endif %}>Kozhikode</option>
+                                                    <option value="Malappuram" {% if user_info.district == 'Malappuram' %}selected{% endif %}>Malappuram</option>
+                                                    <option value="Palakkad" {% if user_info.district == 'Palakkad' %}selected{% endif %}>Palakkad</option>
+                                                    <option value="Pathanamthitta" {% if user_info.district == 'Pathanamthitta' %}selected{% endif %}>Pathanamthitta</option>
+                                                    <option value="Thiruvananthapuram" {% if user_info.district == 'Thiruvananthapuram' %}selected{% endif %}>Thiruvananthapuram</option>
+                                                    <option value="Thrissur" {% if user_info.district == 'Thrissur' %}selected{% endif %}>Thrissur</option>
+                                                    <option value="Wayanad" {% if user_info.district == 'Wayanad' %}selected{% endif %}>Wayanad</option>
+                                                </select>
                                                 <div id="districtError" style="color: red;"></div>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label for="address" class="col-lg-3 col-md-4 col-form-label">Address</label>
+                                            <div class="col-lg-6 col-md-8">
+                                                <textarea class="form-control" id="address" name="address" rows="3" required oninput="validateAddress()">{{ user_info.address }}</textarea>
+                                                <div id="addressError" style="color: red;"></div>
                                             </div>
                                         </div>
                                         <div class="form-group row">
@@ -561,6 +590,39 @@
             document.getElementById('phoneError').innerText = '';
             return true;
         }
+    }
+
+    function validateAddress() {
+        const address = document.getElementById('address');
+        const addressError = document.getElementById('addressError');
+        const addressValue = address.value.trim();
+        
+        // Regular expression to allow only letters, numbers, spaces, commas, periods, and newlines
+        const validAddressPattern = /^[a-zA-Z0-9\s,.'"\n]+$/;
+        
+        if (!addressValue) {
+            addressError.textContent = 'Please enter your address';
+            return false;
+        } else if (addressValue.length < 10) {
+            addressError.textContent = 'Address should be at least 10 characters long';
+            return false;
+        } else if (!validAddressPattern.test(addressValue)) {
+            addressError.textContent = 'Address can only contain letters, numbers, spaces, commas, and periods';
+            address.value = addressValue.replace(/[^a-zA-Z0-9\s,.'"\n]/g, '');
+            return false;
+        } else {
+            addressError.textContent = '';
+            return true;
+        }
+    }
+
+    function validateForm() {
+        const isNameValid = validateName();
+        const isDistrictValid = validateDistrict();
+        const isPhoneValid = validatePhone();
+        const isAddressValid = validateAddress();
+        
+        return isNameValid && isDistrictValid && isPhoneValid && isAddressValid;
     }
 </script>
                     
@@ -1388,7 +1450,7 @@ $(document).ready(function() {
         const orderTime = new Date(button.data('order-time'));
         const now = new Date();
         const timeSinceOrder = now - orderTime;
-        const cancelWindowMs = 10 * 60 * 1000; // 10 minutes in milliseconds
+        const cancelWindowMs = 10 * 60 * 1000;
         
         if (timeSinceOrder <= cancelWindowMs) {
             // Start countdown

@@ -24,6 +24,7 @@ import pdfkit  # You'll need to install this: pip install pdfkit
 import io
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
+import google.generativeai as genai
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -36,6 +37,13 @@ os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 app = Flask(__name__)
 
 from mlprice import get_all_product_suggestions, get_products
+
+# Configure Gemini API
+GOOGLE_API_KEY = 'AIzaSyBiPsei3KY2ftDpKr58k-Jy62IN4rNuH_c'  # Replace with your actual API key
+genai.configure(api_key=GOOGLE_API_KEY)
+
+# Initialize Gemini model
+model = genai.GenerativeModel('gemini-pro')
 
 @app.route('/analysis')
 def analysis():
@@ -680,6 +688,11 @@ def home():
         return render_template('index.html', email=email, user_info=user_info)
     return render_template('index.html')
 
+def is_valid_address(address):
+    # Regular expression to allow only letters, numbers, spaces, commas, periods, and newlines
+    regex = r'^[a-zA-Z0-9\s,.\n]+$'
+    return re.match(regex, address)
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if 'email' in session and 'user_info' in session:
@@ -691,6 +704,7 @@ def register():
         name = request.form.get('name')
         phone = request.form.get('phone')
         district = request.form.get('district')
+        address = request.form.get('address')  # Get address from form
         user_type = request.form.get('user_type')  # Get user type from form
         status = "active"    # Default status
         registration_date = datetime.now().date().strftime("%Y-%m-%d")  # Get current date
@@ -715,6 +729,10 @@ def register():
             flash('District cannot contain numbers or special characters.', 'danger')
             return render_template('register.html')
 
+        if not is_valid_address(address):  # Validate address
+            flash('Address can only contain letters, numbers, spaces, commas, and periods', 'danger')
+            return render_template('register.html')
+
         try:
             # Create user in Firebase Auth
             user = auth.create_user_with_email_and_password(email, password)
@@ -726,6 +744,7 @@ def register():
                 "name": name,
                 "phone": phone,
                 "district": district,
+                "address": address,  # Add address to user data
                 "email": email,
                 "user_type": user_type,  # Save user type
                 "status": status,  # Default status
@@ -1257,6 +1276,7 @@ def update_account():
         name = request.form.get('name')
         phone = request.form.get('phone')
         district = request.form.get('district')
+        address = request.form.get('address')  # Get address from form
 
         if not is_valid_name(name):
             flash('Name cannot contain numbers or special characters.', 'danger')
@@ -1267,13 +1287,18 @@ def update_account():
             return render_template('account.html', email=email, user_info=user_info)
 
         if not is_valid_district(district):
-            flash('District cannot contain numbers or special characters.', 'danger')
+            flash('Please select a valid district.', 'danger')
+            return render_template('account.html', email=email, user_info=user_info)
+
+        if not is_valid_address(address):  # Add address validation
+            flash('Address can only contain letters, numbers, spaces, commas, and periods.', 'danger')
             return render_template('account.html', email=email, user_info=user_info)
 
         update_data = {
             "name": name,
             "phone": phone,
-            "district": district
+            "district": district,
+            "address": address  # Add address to update data
         }
 
         # Additional fields for vendors
@@ -1308,8 +1333,16 @@ def update_account():
                 return redirect(url_for('account'))
         except Exception as e:
             flash(f"Failed to update account: {str(e)}", 'danger')
+            return render_template('account.html', email=email, user_info=user_info)
 
     return render_template('account.html', email=email, user_info=user_info)
+
+def is_valid_address(address):
+    if not address or len(address.strip()) < 10:
+        return False
+    # Regular expression to allow only letters, numbers, spaces, commas, periods, and newlines
+    regex = r'^[a-zA-Z0-9\s,.\n]+$'
+    return bool(re.match(regex, address))
 
 # Vendor-start
 @app.route('/product-add')
@@ -2236,66 +2269,68 @@ from decimal import Decimal, InvalidOperation
 
 @app.route('/create-payment', methods=['POST'])
 def create_payment():
+    if 'user_id' not in session:
+        return jsonify({'error': 'User not logged in'}), 403
+
     try:
-        # Extract form data
+        user_id = session['user_id']
+        
+        # Get shipping information
+        use_different_shipping = request.form.get('use_different_shipping') == 'true'
+        shipping_address = request.form.get('shipping_address')
+        shipping_district = request.form.get('shipping_district')  # Changed from shipping_address2
+        
+        # Get cart items and create order items list
+        order_items = []
         product_ids = request.form.getlist('product_ids[]')
         quantities = request.form.getlist('quantities[]')
-        rent_from = request.form.getlist('rent_from[]')
-        rent_to = request.form.getlist('rent_to[]')
+        rent_from_dates = request.form.getlist('rent_from[]')
+        rent_to_dates = request.form.getlist('rent_to[]')
         rental_days = request.form.getlist('rental_days[]')
         item_totals = request.form.getlist('item_totals[]')
+        
+        for i in range(len(product_ids)):
+            order_items.append({
+                'product_id': product_ids[i],
+                'quantity': int(quantities[i]),
+                'rent_from': rent_from_dates[i],
+                'rent_to': rent_to_dates[i],
+                'rental_days': int(rental_days[i]),
+                'total_price': float(item_totals[i])
+            })
+        
         order_total = float(request.form.get('order_total', 0))
-        use_different_shipping = request.form.get('use_different_shipping') == 'on'
-        shipping_address = request.form.get('shipping_address')
-        shipping_address2 = request.form.get('shipping_address2')
-
-        # Prepare order items
-        order_items = [
-            {
-                'product_id': pid,
-                'quantity': int(qty),
-                'rent_from': rf,
-                'rent_to': rt,
-                'rental_days': int(rd),
-                'item_total': float(it)
-            }
-            for pid, qty, rf, rt, rd, it in zip(product_ids, quantities, rent_from, rent_to, rental_days, item_totals)
-        ]
-
+        
         # Create order in database
-        user_id = session.get('user_id')
-        order_id = create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2)
-
-        # Process payment (implement your payment logic here)
+        order_id = create_order_in_database(
+            user_id, 
+            order_items, 
+            order_total, 
+            use_different_shipping, 
+            shipping_address, 
+            shipping_district  # Changed from shipping_address2
+        )
+        
+        # Process payment
         payment_success, payment_intent_id = process_payment(order_total)
-
+        
         if payment_success:
-            app.logger.info(f"Payment successful for order {order_id}. Updating order status.")
-            # Update order status to 'paid'
+            # Update order status
             update_order_status(order_id, 'paid', payment_intent_id)
             
-            # Clear the user's cart
+            # Clear cart after successful payment
             clear_cart(user_id)
             
             return jsonify({
                 'success': True,
-                'message': 'Payment successful',
                 'redirect_url': url_for('payment_success', order_id=order_id)
             })
         else:
-            app.logger.warning(f"Payment failed for order {order_id}")
-            return jsonify({
-                'success': False,
-                'message': 'Payment failed'
-            }), 400
-
+            return jsonify({'error': 'Payment failed'}), 400
+            
     except Exception as e:
         app.logger.error(f"Error in create_payment: {str(e)}")
-        app.logger.error(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'message': 'An error occurred during payment processing'
-        }), 500
+        return jsonify({'error': str(e)}), 500
 
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -2629,11 +2664,11 @@ def update_items_status_to_delivered(order_name):
     except Exception as e:
         app.logger.error(f"Error updating order status: {str(e)}")
 
-def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
+def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_district):
     try:
         order_id = str(uuid.uuid4())  # Generate a unique order ID
         
-        # Set initial status for each item only if status doesn't exist
+        # Set initial status for each item
         for item in order_items:
             product_id = item.get('product_id')
             product_details = get_product_details(product_id)
@@ -2649,7 +2684,7 @@ def create_order_in_database(user_id, order_items, order_total, use_different_sh
             'order_total': order_total,
             'use_different_shipping': use_different_shipping,
             'shipping_address': shipping_address,
-            'shipping_address2': shipping_address2,
+            'shipping_district': shipping_district,  # Add shipping district
             'status': 'pending',
             'created_at': datetime.now().isoformat()
         }
@@ -2658,7 +2693,7 @@ def create_order_in_database(user_id, order_items, order_total, use_different_sh
         
         # Create and start the timer for status update
         status_timer = Timer(600, update_items_status_to_delivered, args=[new_order['name']])
-        status_timer.daemon = True  # Make it a daemon thread
+        status_timer.daemon = True
         status_timer.start()
         
         return order_id
@@ -4860,5 +4895,40 @@ def complete_return_delivery():
             'success': False,
             'message': str(e)
         }), 500
+
+@app.route('/get_ai_response', methods=['POST'])
+def get_ai_response():
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '')
+
+        # Create a context/prompt for the AI
+        context = """You are a helpful customer service agent for ToolHive, a tool rental website. 
+        Be concise and friendly in your responses. Focus on:
+        - Tool rentals and availability
+        - Pricing and payment options
+        - Delivery and return policies
+        - General customer support
+        Keep responses under 100 words."""
+
+        # Combine context and user message
+        prompt = f"{context}\n\nUser: {user_message}\nAssistant:"
+
+        # Get response from Gemini
+        response = model.generate_content(prompt)
+        ai_response = response.text
+
+        return jsonify({
+            'success': True,
+            'response': ai_response
+        })
+
+    except Exception as e:
+        app.logger.error(f"Error getting AI response: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 if __name__ == '__main__':
     app.run(debug=True)

@@ -81,105 +81,59 @@
 
         .orders-table {
             background: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
-            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             margin-top: 20px;
+            overflow: hidden;
         }
 
         .table {
             margin-bottom: 0;
             width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
         }
 
         .table thead th {
             background-color: #f8f9fc;
-            border-bottom: 2px solid #e3e6f0;
-            color: var(--primary-color);
+            padding: 16px;
+            font-size: 14px;
             font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
-            padding: 1rem;
-            white-space: nowrap;
+            color: #4a5568;
+            border-bottom: 1px solid #e2e8f0;
         }
 
         .table tbody td {
-            padding: 1rem;
+            padding: 16px;
             vertical-align: middle;
-            border-bottom: 1px solid #f0f0f0;
-            color: #2d3748;
-        }
-
-        .table tbody tr {
-            transition: all 0.3s ease;
-        }
-
-        .table tbody tr:hover {
-            background-color: #f8f9fc;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .table tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        .btn-action {
-            padding: 0.5rem;
-            font-size: 1rem;
-            border-radius: 8px;
-            margin-left: 8px;
-            width: 38px;
-            height: 38px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-            border: none;
-        }
-
-        .btn-action:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .btn-action i {
-            font-size: 1.2rem;
-        }
-
-        .status-badge {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            display: inline-block;
-            text-align: center;
-            min-width: 100px;
-            transition: all 0.3s ease;
-        }
-
-        .status-in-transit {
-            background-color: #cff4fc;
-            color: #055160;
-            border: 1px solid #b6effb;
-        }
-
-        .status-in-transit:hover {
-            background-color: #b6effb;
+            border-bottom: 1px solid #e2e8f0;
         }
 
         .order-id {
-            font-family: 'Roboto Mono', monospace;
+            color: #4299e1;
             font-weight: 500;
-            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .store-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .store-icon {
+            color: #4a5568;
+        }
+
+        .rental-period {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #4a5568;
         }
 
         .shipping-address {
-            max-width: 200px;
-            line-height: 1.4;
+            display: flex;
+            align-items: center;
+            gap: 8px;
             color: #4a5568;
         }
 
@@ -188,39 +142,99 @@
             color: #2d3748;
         }
 
-        .empty-state {
-            padding: 3rem;
-            text-align: center;
-            background: linear-gradient(to bottom, #f8f9fc, #ffffff);
-            border-radius: var(--border-radius);
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: 500;
         }
 
-        .empty-state i {
-            font-size: 4rem;
-            color: var(--secondary-color);
-            opacity: 0.5;
-            margin-bottom: 1.5rem;
+        .status-in-transit {
+            background-color: #ebf8ff;
+            color: #2b6cb0;
         }
 
-        .empty-state h5 {
-            color: var(--secondary-color);
+        .btn-action {
+            padding: 8px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-view {
+            background-color: #4299e1;
+            color: white;
+        }
+
+        .btn-complete {
+            background-color: #48bb78;
+            color: white;
+        }
+
+        .btn-action:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        /* Header styling */
+        .section-header {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 20px;
             font-weight: 600;
-            margin-bottom: 0.5rem;
+            color: #2d3748;
+            margin: 0;
         }
 
-        .empty-state p {
-            color: #858796;
-            max-width: 400px;
-            margin: 0 auto;
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal.fade .modal-dialog {
+            transition: transform 0.2s ease-out;
+            transform: scale(0.95);
+        }
+
+        .modal.show .modal-dialog {
+            transform: scale(1);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .table tbody tr {
-            animation: fadeIn 0.3s ease-out forwards;
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
     </style>
 </head>
@@ -267,35 +281,84 @@
     </div>
     <!-- Main Content -->
     <div class="main-content">
-        <div class="container-fluid">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h3 mb-0 text-gray-800">Active Deliveries</h1>
-            </div>
+        <div class="section-header">
+            <h2 class="section-title">Current Orders</h2>
+        </div>
 
-            <div class="orders-table">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Current Deliveries</h5>
+        <div class="orders-table">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Store</th>
+                        <th>Rental Period</th>
+                        <th>Shipping Address</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="activeOrdersTableBody">
+                    <!-- Orders will be populated here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add these modal templates at the end of the body but before scripts -->
+    <!-- Order Details Modal -->
+    <div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Order Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="card-body p-0">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Order ID</th>
-                                <th>Store</th>
-                                <th>Rental Period</th>
-                                <th>Shipping Address</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                                <th>Started At</th>
-                                <th class="text-end">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="activeOrdersTableBody">
-                            <!-- Orders will be populated here via JavaScript -->
-                        </tbody>
-                    </table>
+                <div class="modal-body">
+                    <div id="orderDetailsLoading" class="loading-spinner">
+                        <div class="spinner"></div>
+                    </div>
+                    <div id="orderDetailsContent" class="d-none">
+                        <!-- Order details will be populated here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- OTP Verification Modal -->
+    <div class="modal fade" id="otpVerificationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Verify Delivery OTP</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="otpInput">Enter OTP sent to customer:</label>
+                        <input type="text" class="form-control" id="otpInput" placeholder="Enter 6-digit OTP">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="verifyOtpBtn">Verify OTP</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="toastNotification" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body"></div>
         </div>
     </div>
 
@@ -318,6 +381,9 @@
         };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+
+        // Add this at the start of your script section
+        const AGENT_DISTRICT = "{{ user.district }}"; // Get agent's district from Flask template
 
         // Format date function
         function formatDate(dateString) {
@@ -355,13 +421,22 @@
                 const orders = snapshot.val() || {};
                 const activeOrders = {};
                 
+                // Process orders
                 Object.entries(orders).forEach(([orderId, order]) => {
+                    // Check if order's shipping district matches agent's district
+                    if (order.shipping_district !== AGENT_DISTRICT) {
+                        return; // Skip orders from other districts
+                    }
+
                     const items = order.items || [];
-                    const hasActiveItems = items.some(item => 
+                    
+                    // Check for in_transit items
+                    const hasInTransitItems = items.some(item => 
                         item.status && item.status.toLowerCase() === 'in_transit'
                     );
                     
-                    if (hasActiveItems) {
+                    if (hasInTransitItems) {
+                        // Get the first in_transit item
                         const activeItem = items.find(item => 
                             item.status && item.status.toLowerCase() === 'in_transit'
                         );
@@ -374,18 +449,18 @@
                             rent_from: activeItem.rent_from || order.rent_from || 'N/A',
                             rent_to: activeItem.rent_to || order.rent_to || 'N/A',
                             shipping_address: order.shipping_address || 'N/A',
-                            shipping_address2: order.shipping_address2 || '',
+                            shipping_district: order.shipping_district || 'N/A',
                             order_total: order.order_total || 0,
                             status: activeItem.status || 'in_transit',
-                            delivery_started_at: order.delivery_started_at || '',
-                            updated_at: activeItem.ordered_at || order.updated_at || '',
+                            updated_at: activeItem.delivery_started_at || order.updated_at || '',
                             payment_intent_id: order.payment_intent_id || 'N/A',
-                            quantity: activeItem.quantity || 1
+                            quantity: activeItem.quantity || 1,
+                            delivery_started_at: order.delivery_started_at || ''
                         };
                     }
                 });
                 
-                console.log('Fetched active orders:', activeOrders);
+                console.log('Fetched active orders for district:', AGENT_DISTRICT, activeOrders);
                 renderActiveOrders(activeOrders);
             }, (error) => {
                 console.error('Error fetching orders:', error);
@@ -401,12 +476,8 @@
             if (!orders || Object.keys(orders).length === 0) {
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="8" class="text-center py-5">
-                            <div class="empty-state">
-                                <i class="mdi mdi-truck-delivery text-secondary mb-3"></i>
-                                <h5 class="text-secondary mb-2">No Active Deliveries</h5>
-                                <p class="text-muted mb-0">There are no active deliveries at the moment.</p>
-                            </div>
+                        <td colspan="7" class="text-center py-4">
+                            <p class="text-gray-500">No active deliveries at the moment.</p>
                         </td>
                     </tr>
                 `;
@@ -416,52 +487,45 @@
             Object.values(orders).forEach(order => {
                 const row = `
                     <tr>
-                        <td><span class="order-id">#${order.order_id.slice(0, 8)}</span></td>
                         <td>
-                            <div class="d-flex align-items-center">
-                                <i class="mdi mdi-store me-2 text-primary"></i>
-                                <span>${order.store_name}</span>
+                            <span class="order-id">#${order.order_id.slice(0, 8)}</span>
+                        </td>
+                        <td>
+                            <div class="store-name">
+                                <i class="mdi mdi-store store-icon"></i>
+                                ${order.store_name}
                             </div>
                         </td>
                         <td>
-                            <div class="d-flex align-items-center">
-                                <i class="mdi mdi-calendar-range me-2 text-info"></i>
-                                <span>${formatDate(order.rent_from)} - ${formatDate(order.rent_to)}</span>
+                            <div class="rental-period">
+                                <i class="mdi mdi-calendar"></i>
+                                ${formatDate(order.rent_from)} - ${formatDate(order.rent_to)}
                             </div>
                         </td>
                         <td>
                             <div class="shipping-address">
-                                <i class="mdi mdi-map-marker me-2 text-danger"></i>
-                                <span class="text-truncate" title="${order.shipping_address}${order.shipping_address2 ? ', ' + order.shipping_address2 : ''}">
-                                    ${order.shipping_address}
-                                    ${order.shipping_address2 ? `<br>${order.shipping_address2}` : ''}
-                                </span>
+                                <i class="mdi mdi-map-marker"></i>
+                                ${order.shipping_address}
                             </div>
                         </td>
-                        <td><span class="amount">${formatCurrency(order.order_total)}</span></td>
+                        <td>
+                            <span class="amount">₹${order.order_total.toFixed(2)}</span>
+                        </td>
                         <td>
                             <span class="status-badge status-in-transit">
-                                <i class="mdi mdi-truck-fast me-1"></i>
+                                <i class="mdi mdi-truck-fast"></i>
                                 In Transit
                             </span>
                         </td>
                         <td>
-                            <div class="d-flex align-items-center">
-                                <i class="mdi mdi-clock-start me-2 text-success"></i>
-                                <span>${formatDate(order.delivery_started_at)}</span>
+                            <div class="actions">
+                                <button class="btn-action btn-view" onclick="viewOrderDetails('${order.id}')">
+                                    <i class="mdi mdi-eye"></i>
+                                </button>
+                                <button class="btn-action btn-complete" onclick="completeDelivery('${order.id}')">
+                                    <i class="mdi mdi-check"></i>
+                                </button>
                             </div>
-                        </td>
-                        <td class="text-end">
-                            <button class="btn btn-primary btn-action" 
-                                    onclick="viewOrderDetails('${order.id}')" 
-                                    title="View Details">
-                                <i class="mdi mdi-eye"></i>
-                            </button>
-                            <button class="btn btn-success btn-action" 
-                                    onclick="completeDelivery('${order.id}')" 
-                                    title="Complete Delivery">
-                                <i class="mdi mdi-check-circle"></i>
-                            </button>
                         </td>
                     </tr>
                 `;
@@ -469,37 +533,60 @@
             });
         }
 
-        // View order details function
+        // Update the view order details function
         function viewOrderDetails(orderId) {
+            const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+            const loadingElement = document.getElementById('orderDetailsLoading');
+            const contentElement = document.getElementById('orderDetailsContent');
+            
+            // Show modal with loading spinner
+            loadingElement.classList.remove('d-none');
+            contentElement.classList.add('d-none');
+            modal.show();
+
             database.ref(`orders/${orderId}`).once('value')
                 .then((snapshot) => {
                     const order = snapshot.val();
                     if (order) {
-                        const activeItems = (order.items || [])
+                        const pendingItems = (order.items || [])
                             .filter(item => item.status.toLowerCase() === 'in_transit')
                             .map(item => `
-                                Product: ${item.product_id}
-                                Quantity: ${item.quantity}
-                                Rental Period: ${formatDate(item.rent_from)} - ${formatDate(item.rent_to)}
-                                Store: ${item.store_name}
-                            `).join('\n\n');
+                                <div class="mb-3">
+                                    <strong>Product:</strong> ${item.product_id}<br>
+                                    <strong>Quantity:</strong> ${item.quantity}<br>
+                                    <strong>Rental Period:</strong> ${formatDate(item.rent_from)} - ${formatDate(item.rent_to)}<br>
+                                    <strong>Store:</strong> ${item.store_name}
+                                </div>
+                            `).join('');
 
-                        const details = `
-                            Order ID: ${order.order_id}
-                            Total Amount: ${formatCurrency(order.order_total)}
-                            Shipping Address: ${order.shipping_address}
-                            ${order.shipping_address2 ? '\nAddress 2: ' + order.shipping_address2 : ''}
-                            Payment ID: ${order.payment_intent_id}
-                            Delivery Started: ${formatDate(order.delivery_started_at)}
-                            
-                            Active Items:
-                            ${activeItems}
+                        const detailsHtml = `
+                            <div class="mb-3">
+                                <strong>Order ID:</strong> ${order.order_id}<br>
+                                <strong>Total Amount:</strong> ${formatCurrency(order.order_total)}<br>
+                                <strong>Shipping Address:</strong> ${order.shipping_address}<br>
+                                ${order.shipping_district ? `<strong>District:</strong> ${order.shipping_district}<br>` : ''}
+                                <strong>Payment ID:</strong> ${order.payment_intent_id}
+                            </div>
+                            <h6 class="mt-4 mb-3">Active Items:</h6>
+                            ${pendingItems}
                         `;
-                        alert(details);
+
+                        // Hide loading spinner and show content with animation
+                        loadingElement.classList.add('d-none');
+                        contentElement.classList.remove('d-none');
+                        contentElement.classList.add('fade-in');
+                        contentElement.innerHTML = detailsHtml;
                     }
                 })
                 .catch((error) => {
                     console.error('Error fetching order details:', error);
+                    loadingElement.classList.add('d-none');
+                    contentElement.classList.remove('d-none');
+                    contentElement.innerHTML = `
+                        <div class="alert alert-danger">
+                            Error loading order details. Please try again.
+                        </div>
+                    `;
                     showToast('Error fetching order details', 'error');
                 });
         }
@@ -580,48 +667,67 @@
                 });
         }
 
-        // Add OTP verification function
+        // Update the verify delivery OTP function
         function verifyDeliveryOTP(orderId) {
-            const enteredOTP = prompt('Please enter the OTP sent to the customer:');
-            if (!enteredOTP) return;
+            const modal = new bootstrap.Modal(document.getElementById('otpVerificationModal'));
+            modal.show();
 
-            database.ref(`orders/${orderId}`).once('value')
-                .then((snapshot) => {
-                    const order = snapshot.val();
-                    if (!order) throw new Error('Order not found');
+            document.getElementById('verifyOtpBtn').onclick = function() {
+                const enteredOTP = document.getElementById('otpInput').value.trim();
+                if (!enteredOTP) return;
 
-                    if (order.delivery_otp.toString() === enteredOTP.trim()) {
-                        // Update the status of in_transit items to 'delivered'
-                        const updatedItems = (order.items || []).map(item => ({
-                            ...item,
-                            status: item.status.toLowerCase() === 'in_transit' ? 'delivered' : item.status
-                        }));
+                database.ref(`orders/${orderId}`).once('value')
+                    .then((snapshot) => {
+                        const order = snapshot.val();
+                        if (!order) throw new Error('Order not found');
 
-                        // Update order in database
-                        return database.ref(`orders/${orderId}`).update({
-                            items: updatedItems,
-                            delivery_completed_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString(),
-                            delivery_otp: null // Clear OTP after successful verification
-                        });
-                    } else {
-                        throw new Error('Invalid OTP');
-                    }
-                })
-                .then(() => {
-                    showToast('Delivery completed successfully!', 'success');
-                    // Refresh the orders list
-                    fetchAndRenderOrders();
-                })
-                .catch(error => {
-                    console.error('Error verifying OTP:', error);
-                    showToast(error.message === 'Invalid OTP' ? 'Invalid OTP. Please try again.' : 'Error completing delivery. Please try again.', 'error');
-                });
+                        if (order.delivery_otp.toString() === enteredOTP) {
+                            const updatedItems = (order.items || []).map(item => ({
+                                ...item,
+                                status: item.status.toLowerCase() === 'in_transit' ? 'delivered' : item.status
+                            }));
+
+                            return database.ref(`orders/${orderId}`).update({
+                                items: updatedItems,
+                                delivery_completed_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString(),
+                                delivery_otp: null
+                            });
+                        } else {
+                            throw new Error('Invalid OTP');
+                        }
+                    })
+                    .then(() => {
+                        modal.hide();
+                        showToast('Delivery completed successfully!', 'success');
+                        fetchAndRenderOrders();
+                    })
+                    .catch(error => {
+                        console.error('Error verifying OTP:', error);
+                        showToast(error.message === 'Invalid OTP' ? 'Invalid OTP. Please try again.' : 'Error completing delivery. Please try again.', 'error');
+                    });
+            };
         }
 
-        // Simple toast notification
+        // Update the toast notification function
         function showToast(message, type = 'info') {
-            alert(message);
+            const toast = document.getElementById('toastNotification');
+            const toastBody = toast.querySelector('.toast-body');
+            
+            toast.classList.remove('bg-success', 'bg-danger', 'bg-info');
+            switch(type) {
+                case 'success':
+                    toast.classList.add('bg-success', 'text-white');
+                    break;
+                case 'error':
+                    toast.classList.add('bg-danger', 'text-white');
+                    break;
+                default:
+                    toast.classList.add('bg-info', 'text-white');
+            }
+            
+            toastBody.textContent = message;
+            new bootstrap.Toast(toast).show();
         }
 
         // Initial fetch when page loads

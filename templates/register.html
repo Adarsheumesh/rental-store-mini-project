@@ -95,17 +95,41 @@
     
 
     function validateDistrict() {
-        const districtInput = document.getElementById('district');
-        const regex = /^[A-Za-z\s]+$/;
-    
-        // Ensure only alphabetic characters are in the input
-        districtInput.value = districtInput.value.replace(/[^A-Za-z\s]/g, '');
-    
-        if (!regex.test(districtInput.value) || districtInput.value.trim() === '') {
-            document.getElementById('districtError').innerText = 'District cannot contain numbers or special characters.';
+        const district = document.getElementById('district');
+        const districtError = document.getElementById('districtError');
+        
+        if (!district.value) {
+            districtError.textContent = 'Please select your district';
             return false;
         } else {
-            document.getElementById('districtError').innerText = '';
+            districtError.textContent = '';
+            return true;
+        }
+    }
+
+    function validateAddress() {
+        const address = document.getElementById('address');
+        const addressError = document.getElementById('addressError');
+        const addressValue = address.value.trim();
+        
+        // Regular expression to allow only letters, numbers, spaces, commas, periods, and newlines
+        const validAddressPattern = /^[a-zA-Z0-9\s,.'"\n]+$/;
+        
+        if (!addressValue) {
+            addressError.textContent = 'Please enter your address';
+            return false;
+        } else if (addressValue.length < 5) {
+            addressError.textContent = 'Address should be at least 5 characters long';
+            return false;
+        } else if (!validAddressPattern.test(addressValue)) {
+            addressError.textContent = 'Address can only contain letters, numbers, spaces, commas, and periods';
+            
+            // Remove invalid characters as they're typed
+            address.value = addressValue.replace(/[^a-zA-Z0-9\s,.'"\n]/g, '');
+            
+            return false;
+        } else {
+            addressError.textContent = '';
             return true;
         }
     }
@@ -116,7 +140,8 @@
         const phoneValid = validatePhone();
         const nameValid = validateName();
         const districtValid = validateDistrict();
-        return emailValid && passwordValid && phoneValid && nameValid && districtValid;
+        const addressValid = validateAddress();
+        return emailValid && passwordValid && phoneValid && nameValid && districtValid && addressValid;
     }
 
     function validateEmail() {
@@ -418,10 +443,33 @@
                                         </div>
 
                                         <div class="form-group mb-3">
-                                            <label class="form-label" for="district">Address <span class="text-danger">*</span></label>
-                                            <input type="text" name="district" maxlength="20" class="form-control rounded-pill" 
-                                                   id="district" placeholder="Enter your address" required oninput="validateDistrict()">
+                                            <label class="form-label" for="district">District <span class="text-danger">*</span></label>
+                                            <select name="district" class="form-control rounded-pill" id="district" required onchange="validateDistrict()">
+                                                <option value="">Select your district</option>
+                                                <option value="Alappuzha">Alappuzha</option>
+                                                <option value="Ernakulam">Ernakulam</option>
+                                                <option value="Idukki">Idukki</option>
+                                                <option value="Kannur">Kannur</option>
+                                                <option value="Kasaragod">Kasaragod</option>
+                                                <option value="Kollam">Kollam</option>
+                                                <option value="Kottayam">Kottayam</option>
+                                                <option value="Kozhikode">Kozhikode</option>
+                                                <option value="Malappuram">Malappuram</option>
+                                                <option value="Palakkad">Palakkad</option>
+                                                <option value="Pathanamthitta">Pathanamthitta</option>
+                                                <option value="Thiruvananthapuram">Thiruvananthapuram</option>
+                                                <option value="Thrissur">Thrissur</option>
+                                                <option value="Wayanad">Wayanad</option>
+                                            </select>
                                             <span id="districtError" class="text-danger small"></span>
+                                        </div>
+
+                                        <div class="form-group mb-3">
+                                            <label class="form-label" for="address">Address <span class="text-danger">*</span></label>
+                                            <textarea name="address" class="form-control rounded" id="address" 
+                                                      placeholder="Enter your complete address (only letters, numbers, spaces, commas, and periods allowed)" 
+                                                      required rows="3" maxlength="200" oninput="validateAddress()"></textarea>
+                                            <span id="addressError" class="text-danger small"></span>
                                         </div>
                                     </div>
                                 </div>

@@ -49,13 +49,13 @@
                                 <div class="row">
                                     <div class="col-md-12">
                                         <div class="checkout-form-list">
-                                            <label>Address <span class="required" >*</span></label>
-                                            <input type="text" name="address" value="{{ user_details.district|default('') }}" placeholder="Street address" required readonly />
+                                            <label>District <span class="required" >*</span></label>
+                                            <input type="text" name="district" value="{{ user_details.district|default('') }}" placeholder="Street address" required readonly />
                                         </div>
                                     </div>
                                     <div class="col-md-12">
                                         <div class="checkout-form-list mtb-30">
-                                            <input type="text" name="address2" value="{{ user_details.address2|default('') }}" placeholder="Apartment, suite, unit etc. (optional)"  required readonly />
+                                            <input type="text" name="address" value="{{ user_details.address|default('') }}" placeholder="Apartment, suite, unit etc. (optional)"  required readonly />
                                         </div>
                                     </div>
                                 </div>
@@ -70,13 +70,32 @@
                                         <div class="row">
                                             <div class="col-md-12">
                                                 <div class="checkout-form-list mb-30">
-                                                    <label>Shipping Address <span class="required">*</span></label>
-                                                    <input type="text" name="shipping_address" id="shipping_address" placeholder="Street address" />
+                                                    <label>Shipping District <span class="required">*</span></label>
+                                                    <select name="shipping_district" id="shipping_district" class="form-control">
+                                                        <option value="">Select your district</option>
+                                                        <option value="Alappuzha">Alappuzha</option>
+                                                        <option value="Ernakulam">Ernakulam</option>
+                                                        <option value="Idukki">Idukki</option>
+                                                        <option value="Kannur">Kannur</option>
+                                                        <option value="Kasaragod">Kasaragod</option>
+                                                        <option value="Kollam">Kollam</option>
+                                                        <option value="Kottayam">Kottayam</option>
+                                                        <option value="Kozhikode">Kozhikode</option>
+                                                        <option value="Malappuram">Malappuram</option>
+                                                        <option value="Palakkad">Palakkad</option>
+                                                        <option value="Pathanamthitta">Pathanamthitta</option>
+                                                        <option value="Thiruvananthapuram">Thiruvananthapuram</option>
+                                                        <option value="Thrissur">Thrissur</option>
+                                                        <option value="Wayanad">Wayanad</option>
+                                                    </select>
                                                 </div>
                                             </div>
                                             <div class="col-md-12">
                                                 <div class="checkout-form-list mb-30">
-                                                    <input type="text" name="shipping_address2" id="shipping_address2" placeholder="Apartment, suite, unit etc. (optional)" />
+                                                    <label>Shipping Address <span class="required">*</span></label>
+                                                    <textarea name="shipping_address" id="shipping_address" 
+                                                            class="form-control" rows="3" 
+                                                            placeholder="Street address, apartment, etc."></textarea>
                                                 </div>
                                             </div>
                                         </div>
@@ -216,18 +235,16 @@
 
             formData.append('order_total', '{{ total_price|default(0) }}');
 
-            // Add shipping address to formData
+            // Add shipping information to formData
             var shipBox = document.getElementById('ship-box');
-            var shippingAddressInput = document.getElementById('shipping_address');
-            var shippingAddress2Input = document.getElementById('shipping_address2');
             if (shipBox.checked) {
                 formData.set('use_different_shipping', 'true');
-                formData.set('shipping_address', shippingAddressInput.value);
-                formData.set('shipping_address2', shippingAddress2Input.value);
+                formData.set('shipping_district', document.getElementById('shipping_district').value);
+                formData.set('shipping_address', document.getElementById('shipping_address').value);
             } else {
                 formData.set('use_different_shipping', 'false');
+                formData.set('shipping_district', formData.get('district'));
                 formData.set('shipping_address', formData.get('address'));
-                formData.set('shipping_address2', formData.get('address2'));
             }
 
             // Send form data to server
@@ -280,17 +297,19 @@
     document.addEventListener('DOMContentLoaded', function() {
         var shipBox = document.getElementById('ship-box');
         var shipBoxInfo = document.getElementById('ship-box-info');
+        var shippingDistrictInput = document.getElementById('shipping_district');
         var shippingAddressInput = document.getElementById('shipping_address');
-        var shippingAddress2Input = document.getElementById('shipping_address2');
 
         shipBox.addEventListener('change', function() {
             shipBoxInfo.style.display = this.checked ? 'block' : 'none';
             if (this.checked) {
+                shippingDistrictInput.setAttribute('required', '');
                 shippingAddressInput.setAttribute('required', '');
             } else {
+                shippingDistrictInput.removeAttribute('required');
                 shippingAddressInput.removeAttribute('required');
+                shippingDistrictInput.value = '';
                 shippingAddressInput.value = '';
-                shippingAddress2Input.value = '';
             }
         });
     });

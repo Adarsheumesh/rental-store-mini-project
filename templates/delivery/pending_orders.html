@@ -312,6 +312,9 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
+        // Add this at the start of your script section
+        const AGENT_DISTRICT = "{{ user.district }}"; // Get agent's district from Flask template
+
         // Format date function
         function formatDate(dateString) {
             if (!dateString || dateString === 'N/A') return 'N/A';
@@ -352,37 +355,36 @@
                 Object.entries(orders).forEach(([orderId, order]) => {
                     const items = order.items || [];
                     
-                    // Check for pending items
-                    const hasPendingItems = items.some(item => 
-                        item.status && item.status.toLowerCase() === 'ordered'
-                    );
-                    
-                    if (hasPendingItems) {
-                        // Get the first pending item
-                        const pendingItem = items.find(item => 
-                            item.status && item.status.toLowerCase() === 'ordered'
-                        );
-                        
-                        // Create order data
-                        pendingOrders[orderId] = {
-                            id: orderId,
-                            order_id: order.order_id || orderId,
-                            store_name: pendingItem.store_name || 'N/A',
-                            product_id: pendingItem.product_id || 'N/A',
-                            rent_from: pendingItem.rent_from || order.rent_from || 'N/A',
-                            rent_to: pendingItem.rent_to || order.rent_to || 'N/A',
-                            shipping_address: order.shipping_address || 'N/A',
-                            shipping_address2: order.shipping_address2 || '',
-                            order_total: order.order_total || 0,
-                            status: pendingItem.status || 'ordered',
-                            updated_at: pendingItem.ordered_at || order.updated_at || '',
-                            payment_intent_id: order.payment_intent_id || 'N/A',
-                            quantity: pendingItem.quantity || 1
-                        };
-                    }
+                    // Process each item in the order
+                    items.forEach(item => {
+                        // Check if item is pending and shipping district matches agent's district
+                        if (item.status && 
+                            item.status.toLowerCase() === 'ordered' && 
+                            order.shipping_district === AGENT_DISTRICT) {
+                            
+                            // If this order hasn't been added yet, add it with this item
+                            if (!pendingOrders[orderId]) {
+                                pendingOrders[orderId] = {
+                                    id: orderId,
+                                    order_id: order.order_id || orderId,
+                                    store_name: item.store_name || 'N/A',
+                                    product_id: item.product_id || 'N/A',
+                                    rent_from: item.rent_from || order.rent_from || 'N/A',
+                                    rent_to: item.rent_to || order.rent_to || 'N/A',
+                                    shipping_address: order.shipping_address || 'N/A',
+                                    shipping_district: order.shipping_district || 'N/A',
+                                    order_total: order.order_total || 0,
+                                    status: item.status || 'ordered',
+                                    updated_at: item.ordered_at || order.updated_at || '',
+                                    payment_intent_id: order.payment_intent_id || 'N/A',
+                                    quantity: item.quantity || 1
+                                };
+                            }
+                        }
+                    });
                 });
                 
-                console.log('Fetched pending orders:', pendingOrders);
+                console.log('Fetched pending orders for district:', AGENT_DISTRICT, pendingOrders);
                 renderPendingOrders(pendingOrders);
             }, (error) => {
                 console.error('Error fetching orders:', error);
