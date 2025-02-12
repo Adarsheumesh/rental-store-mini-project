@@ -1155,35 +1155,71 @@ def get_product_details(product_id):
 
 @app.route('/get-order-details')
 def get_order_details():
-    order_id = request.args.get('order_id')
-    user_id = session.get('user_id')
-    
     try:
+        order_id = request.args.get('order_id')
+        if not order_id:
+            return jsonify({'success': False, 'error': 'Order ID is required'}), 400
+
+        # Get order details
         order = db.child("orders").child(order_id).get().val()
-        if order and order.get('user_id') == user_id:
-            # Fetch product details for each item in the order
-            for item in order.get('items', []):
-                product_id = item.get('product_id')
-                if product_id:
-                    product = get_product_details(product_id)
+        if not order:
+            return jsonify({'success': False, 'error': 'Order not found'}), 404
+
+        # Convert items to list if it's a dictionary
+        items = order.get('items', [])
+        if isinstance(items, dict):
+            items = [items]
+
+        processed_items = []
+        for item in items:
+            # Get product details
+            product_id = item.get('product_id')
+            if product_id:
+                product = db.child("products").child(product_id).get().val()
+                if product:
                     item['product_name'] = product.get('product_name', 'Unknown Product')
-                    item['image_url'] = product.get('product_image', '')
-                    # The total_price and other details should already be in the item data
-            
-            return jsonify({
-                'success': True,
-                'order': order
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'message': 'Order not found or unauthorized'
-            }), 404
+                    item['product_image'] = product.get('product_image', '')
+                    item['store_name'] = product.get('store_name', 'N/A')
+
+            # Ensure all required dates are present
+            processed_item = {
+                'product_id': product_id,
+                'product_name': item.get('product_name', 'Unknown Product'),
+                'product_image': item.get('product_image', ''),
+                'store_name': item.get('store_name', 'N/A'),
+                'quantity': item.get('quantity', 1),
+                'item_total': item.get('item_total', 0),
+                'status': item.get('status', 'ordered'),
+                'ordered_at': item.get('ordered_at', order.get('created_at')),
+                'in_transit_at': item.get('in_transit_at'),
+                'out_for_delivery_at': item.get('out_for_delivery_at'),
+                'delivered_at': item.get('delivered_at'),
+                'return_initiated_at': item.get('return_initiated_at'),
+                'return_completed_at': item.get('return_completed_at'),
+                'rent_from': item.get('rent_from'),
+                'rent_to': item.get('rent_to')
+            }
+            processed_items.append(processed_item)
+
+        order_data = {
+            'order_id': order_id,
+            'created_at': order.get('created_at'),
+            'items': processed_items,
+            'order_total': order.get('order_total'),
+            'shipping_address': order.get('shipping_address'),
+            'payment_intent_id': order.get('payment_intent_id'),
+            'store_name': order.get('store_name', 'N/A'),
+            'gst_number': order.get('gst_number', 'GSTIN29AAAAA0000A1Z5')
+        }
+        
+        app.logger.debug(f"Processed order data: {order_data}")  # Debug log
+        return jsonify({'success': True, 'order': order_data})
+        
     except Exception as e:
-        print(f"Error fetching order details: {str(e)}")
+        app.logger.error(f"Error getting order details: {str(e)}")
         return jsonify({
-            'success': False,
-            'message': 'Error fetching order details'
+            'success': False, 
+            'error': f'Failed to fetch order details: {str(e)}'
         }), 500
 
 def get_product_details(product_id):
@@ -3502,41 +3538,76 @@ scheduler.start()
 
 @app.route('/initiate-return', methods=['POST'])
 def initiate_return():
+    app.logger.info("=== Starting initiate_return ===")
+    
     if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'User not logged in'}), 403
-
-    data = request.json
-    order_id = data.get('order_id')
-    product_id = data.get('product_id')
+        return jsonify({'success': False, 'error': 'Please login to continue'})
 
     try:
-        # Get the order details
-        order = db.child("orders").child(order_id).get().val()
-        if not order:
-            return jsonify({'success': False, 'message': 'Order not found'}), 404
+        data = request.get_json()
+        order_id = data.get('order_id')
+        app.logger.info(f"Processing return for order ID: {order_id}")
 
-        # If product_id is not provided, get it from the order
-        if not product_id and order.get('items'):
-            product_id = order['items'][0].get('product_id')
+        if not order_id:
+            return jsonify({'success': False, 'error': 'Order ID is required'})
 
-        if not product_id:
-            app.logger.warning(f"Product ID not found for order: {order_id}")
-            return jsonify({'success': False, 'message': 'Product ID not found'}), 400
+        # Direct reference to the order in Firebase
+        order_ref = db.child("orders").child(order_id)
+        
+        # Get current order data
+        order_data = order_ref.get().val()
+        app.logger.info(f"Found order data: {order_data}")
 
-        # Update the order status
-        db.child("orders").child(order_id).child('returns').update({
-            'status': 'return_initiated',
-            'initiated_at': datetime.now().isoformat(),
-            'product_id': product_id
-        })
+        if not order_data:
+            return jsonify({'success': False, 'error': 'Order not found'})
 
-        # Schedule the return completion after 10 seconds
-        scheduler.add_job(complete_return, 'date', run_date=datetime.now() + timedelta(seconds=10), args=[order_id, product_id])
+        # Get the items array
+        items = order_data.get('items', [])
+        if not items:
+            return jsonify({'success': False, 'error': 'No items found in order'})
 
-        return jsonify({'success': True, 'message': 'Return initiated successfully'})
+        current_time = datetime.now().isoformat()
+        
+        # Direct update to Firebase for the first item
+        try:
+            # Update the first item's status directly
+            db.child("orders").child(order_id).child("items").child("0").update({
+                "status": "return_initiated",
+                "return_initiated_at": current_time
+            })
+            
+            # Update the order's timestamp
+            db.child("orders").child(order_id).update({
+                "updated_at": current_time
+            })
+
+            # Verify the update
+            updated_order = order_ref.get().val()
+            app.logger.info(f"Updated order data: {updated_order}")
+
+            if updated_order and updated_order.get('items', [])[0].get('status') == 'return_initiated':
+                app.logger.info("Status updated successfully")
+                return jsonify({
+                    'success': True,
+                    'message': 'Return initiated successfully'
+                })
+            else:
+                raise Exception("Failed to verify status update")
+
+        except Exception as e:
+            app.logger.error(f"Error updating Firebase: {str(e)}")
+            return jsonify({
+                'success': False,
+                'error': f'Failed to update status: {str(e)}'
+            })
+
     except Exception as e:
-        app.logger.error(f"Error initiating return: {str(e)}")
-        return jsonify({'success': False, 'message': 'An error occurred while initiating the return'}), 500
+        app.logger.error(f"Error in initiate_return: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        })
 
 @app.route('/get-return-status/<order_id>')
 def get_return_status(order_id):
