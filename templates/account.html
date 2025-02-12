@@ -1112,24 +1112,37 @@ $(document).ready(function() {
     </div>
 </div>
 
-<!-- Cancel Order Confirmation Modal -->
-<div class="modal fade" id="cancelOrderModal" tabindex="-1" role="dialog" aria-labelledby="cancelOrderModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+<!-- Cancel Order Modal -->
+<div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel" aria-hidden="true" data-bs-backdrop="false">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="cancelOrderModalLabel">Cancel Order</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to cancel this order?</p>
-                <p><strong>Order ID:</strong> <span id="cancelOrderId"></span></p>
-                <p><strong>Product:</strong> <span id="cancelProductName"></span></p>
+                <!-- Loading Spinner -->
+                <div id="cancelOrderLoading" class="text-center py-4 d-none">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+
+                <!-- Error Alert -->
+                <div id="cancelOrderError" class="alert alert-danger d-none" role="alert">
+                    Failed to process cancellation. Please try again.
+                </div>
+
+                <!-- Cancel Content -->
+                <div id="cancelOrderContent">
+                    <p>Are you sure you want to cancel this order?</p>
+                    <p><strong>Order ID:</strong> <span id="cancelOrderId"></span></p>
+                    <p><strong>Product:</strong> <span id="cancelProductName"></span></p>
+                </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">No, Keep Order</button>
-                <button type="button" class="btn btn-danger" id="confirmCancelOrder">Yes, Cancel Order</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, Keep Order</button>
+                <button type="button" class="btn btn-danger" id="confirmCancel">Yes, Cancel Order</button>
             </div>
         </div>
     </div>
@@ -1173,7 +1186,91 @@ $(document).ready(function() {
     <p>Your refund will be processed within 48 hours.</p>
 </div>
 
+<!-- Add Toast Container -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto" id="toastTitle">Notification</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+        </div>
+    </div>
+</div>
+
 <script>
+// Add showToast function
+function showToast(title, message, isError = false) {
+    const toast = document.getElementById('liveToast');
+    const toastInstance = new bootstrap.Toast(toast);
+    
+    // Set toast content
+    document.getElementById('toastTitle').textContent = title;
+    document.getElementById('toastMessage').textContent = message;
+    
+    // Set toast class based on type
+    toast.classList.remove('bg-danger', 'text-white', 'bg-success');
+    if (isError) {
+        toast.classList.add('bg-danger', 'text-white');
+    } else {
+        toast.classList.add('bg-success', 'text-white');
+    }
+    
+    // Show toast
+    toastInstance.show();
+}
+
+// Update the success handling in your existing script
+$(document).ready(function() {
+    // ... existing modal initialization code ...
+
+    // Confirm cancel button handler
+    $('#confirmCancel').on('click', function() {
+        const orderId = $('#cancelOrderId').text();
+        const button = $(this);
+        
+        // Show loading state
+        $('#cancelOrderContent').addClass('d-none');
+        $('#cancelOrderLoading').removeClass('d-none');
+        $('#cancelOrderError').addClass('d-none');
+        button.prop('disabled', true);
+
+        // Send cancel request
+        $.ajax({
+            url: '/cancel-order',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ order_id: orderId }),
+            success: function(response) {
+                console.log('Cancel response:', response);
+                if (response.success) {
+                    cancelOrderModal.hide();
+                    showToast('Success', 'Order cancelled successfully');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    $('#cancelOrderLoading').addClass('d-none');
+                    $('#cancelOrderError').removeClass('d-none')
+                        .text(response.error || 'Failed to cancel order');
+                    $('#cancelOrderContent').removeClass('d-none');
+                    showToast('Error', response.error || 'Failed to cancel order', true);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Cancel error:', error);
+                $('#cancelOrderLoading').addClass('d-none');
+                $('#cancelOrderError').removeClass('d-none');
+                $('#cancelOrderContent').removeClass('d-none');
+                showToast('Error', 'Failed to cancel order. Please try again.', true);
+            },
+            complete: function() {
+                button.prop('disabled', false);
+            }
+        });
+    });
+
+    // ... rest of your existing code ...
+});
+
 $(document).ready(function() {
     // Initialize the modal
     const moreDetailsModal = new bootstrap.Modal(document.getElementById('moreDetailsModal'), {
@@ -1448,39 +1545,57 @@ $(document).ready(function() {
         }
     });
 
-    $('#confirmCancelOrder').on('click', function() {
+    $('#confirmCancel').on('click', function() {
         const orderId = $('#cancelOrderId').text();
-        cancelOrder(orderId);
-    });
+        const button = $(this);
+        
+        // Show loading state
+        $('#cancelOrderContent').addClass('d-none');
+        $('#cancelOrderLoading').removeClass('d-none');
+        $('#cancelOrderError').addClass('d-none');
+        button.prop('disabled', true);
 
-    function cancelOrder(orderId) {
+        // Send cancel request
         $.ajax({
             url: '/cancel-order',
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({ order_id: orderId }),
             success: function(response) {
+                console.log('Cancel response:', response);
                 if (response.success) {
-                    showToast('Success', 'Order cancelled successfully', false);
-                    updateOrderStatus(orderId, 'Cancelled');
-                    // Immediately hide buttons without waiting for updateCancelButton
-                    $(`#cancel-button-${orderId}`).hide();
-                    $(`#download-invoice-${orderId}`).hide();
-                    $(`#return-button-${orderId}`).hide();
-                    // Stop the cancel button timer
-                    clearTimeout(window[`cancelTimer_${orderId}`]);
+                    cancelOrderModal.hide();
+                    showToast('Success', 'Order cancelled successfully');
+                    setTimeout(() => location.reload(), 1500);
                 } else {
-                    showToast('Error', 'Failed to cancel order: ' + response.message, true);
+                    $('#cancelOrderLoading').addClass('d-none');
+                    $('#cancelOrderError').removeClass('d-none')
+                        .text(response.error || 'Failed to cancel order');
+                    $('#cancelOrderContent').removeClass('d-none');
+                    showToast('Error', response.error || 'Failed to cancel order', true);
                 }
-                $('#cancelOrderModal').modal('hide');
             },
             error: function(xhr, status, error) {
-                console.error('Error:', error);
-                showToast('Error', 'An error occurred while cancelling the order', true);
-                $('#cancelOrderModal').modal('hide');
+                console.error('Cancel error:', error);
+                $('#cancelOrderLoading').addClass('d-none');
+                $('#cancelOrderError').removeClass('d-none');
+                $('#cancelOrderContent').removeClass('d-none');
+                showToast('Error', 'Failed to cancel order. Please try again.', true);
+            },
+            complete: function() {
+                button.prop('disabled', false);
             }
         });
-    }
+    });
+
+    // Reset modal on close
+    $('#cancelOrderModal').on('hidden.bs.modal', function() {
+        $('#cancelOrderContent').removeClass('d-none');
+        $('#cancelOrderLoading').addClass('d-none');
+        $('#cancelOrderError').addClass('d-none');
+        $('#cancelOrderId').text('');
+        $('#cancelProductName').text('');
+    });
 
     // Add this to your existing JavaScript
     $(document).ready(function() {
