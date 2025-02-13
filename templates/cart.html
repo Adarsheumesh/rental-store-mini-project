@@ -125,9 +125,9 @@
                                         <th class="product-name">Product</th>
                                         <th class="product-price">Price</th>
                                         <th class="product-quantity">Quantity</th>
-                                        <th class="product-subtotal">Total</th>
                                         <th class="product-rent-from">Rent From</th>
                                         <th class="product-rent-to">Rent To</th>
+                                        <th class="product-subtotal">Total</th>
                                         <th class="product-remove">Remove</th>
                                     </tr>
                                 </thead>
@@ -147,13 +147,13 @@
                                                     <button type="button" onclick="incrementQuantity('{{ item.product_id }}')">+</button>
                                                 </div>
                                             </td>
-                                            <td class="product-subtotal"><span id="total_{{ item.product_id }}">{{ item.total_price }}</span></td>
                                             <td class="product-rent-from">
                                                 <input type="date" class="rent-from" value="{{ item.rent_from }}" data-cart-item-id="{{ item.cart_item_id }}" min="">
                                             </td>
                                             <td class="product-rent-to">
                                                 <input type="date" class="rent-to" value="{{ item.rent_to }}" data-cart-item-id="{{ item.cart_item_id }}" min="">
                                             </td>
+                                            <td class="product-subtotal"><span id="total_{{ item.product_id }}">{{ item.total_price }}</span></td>
                                             <td class="product-remove">
                                                 <button class="remove-from-cart" data-cart-item-id="{{ item.cart_item_id }}">
                                                     <i class="fa fa-times" aria-hidden="true"></i>
@@ -693,5 +693,115 @@
         });
     });
     </script>
+
+    <!-- Date Validation Functions -->
+    <script>
+    function validateDates() {
+        const today = new Date().toISOString().split('T')[0];
+        const maxDate = new Date();
+        maxDate.setDate(maxDate.getDate() + 30);
+        const maxDateStr = maxDate.toISOString().split('T')[0];
+
+        // Set min/max dates for all date inputs
+        $('.rent-from, .rent-to').each(function() {
+            $(this).attr({
+                'min': today,
+                'max': maxDateStr
+            });
+
+            // Add change event listener
+            $(this).on('change', function() {
+                const $row = $(this).closest('tr');
+                const rentFrom = $row.find('.rent-from').val();
+                const rentTo = $row.find('.rent-to').val();
+
+                if (rentFrom && rentTo) {
+                    // Validate date range
+                    if (rentFrom > rentTo) {
+                        showPopup('End date must be after start date');
+                        $(this).val('');
+                        return false;
+                    }
+                    
+                    // Validate rental period
+                    const daysDiff = (new Date(rentTo) - new Date(rentFrom)) / (1000 * 60 * 60 * 24);
+                    if (daysDiff > 30) {
+                        showPopup('Maximum rental period is 30 days');
+                        $(this).val('');
+                        return false;
+                    }
+                }
+            });
+        });
+    }
+
+    // Add this to your document ready function
+    $(document).ready(function() {
+        validateDates();
+    });
+    </script>
+
+    <script>
+    $(document).ready(function() {
+        // Initially disable all quantity controls
+        disableQuantityControls();
+
+        // Event listener for date inputs
+        $('.rent-from, .rent-to').on('change', function() {
+            const $row = $(this).closest('tr');
+            const rentFrom = $row.find('.rent-from').val();
+            const rentTo = $row.find('.rent-to').val();
+
+            // Enable/disable quantity controls based on date selection
+            if (rentFrom && rentTo) {
+                enableQuantityControls($row);
+            } else {
+                disableQuantityControls($row);
+            }
+        });
+    });
+
+    function disableQuantityControls(row = null) {
+        const $elements = row ? row.find('.quantity, .qty-btn') : $('.quantity, .qty-btn');
+        $elements.prop('disabled', true).addClass('disabled');
+        
+        // Add visual feedback
+        $elements.closest('.quantity-wrapper').addClass('dates-required');
+        if (!row) {
+            // Add message when initially loading
+            $('.quantity-wrapper').append('<small class="text-muted">Select dates first</small>');
+        }
+    }
+
+    function enableQuantityControls($row) {
+        const $controls = $row.find('.quantity, .qty-btn');
+        $controls.prop('disabled', false).removeClass('disabled');
+        $controls.closest('.quantity-wrapper').removeClass('dates-required');
+        $row.find('.quantity-wrapper small').remove();
+    }
+    </script>
+
+    <style>
+    .quantity-wrapper.dates-required {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .quantity-wrapper small {
+        display: block;
+        color: #6c757d;
+        font-size: 12px;
+        margin-top: 4px;
+    }
+
+    .qty-btn.disabled {
+        background-color: #e9ecef;
+        cursor: not-allowed;
+    }
+
+    .quantity:disabled {
+        background-color: #e9ecef;
+    }
+    </style>
 </body>
 </html>

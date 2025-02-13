@@ -205,7 +205,7 @@
                         <li>
                             <div class="item-details">
                                 <span class="product-name">{{ item.get('product_name', 'Unknown Product') }}</span>
-                                <span>₹{{ "%.2f"|format(item.get('item_total', 0)) }}</span>
+                                <span>₹{{ "%.2f"|format(item.get('total_price', 0)) }}</span>
                             </div>
                             <p>Quantity: {{ item.get('quantity', 'N/A') }}</p>
                             <p>Rental Period: {{ item.get('rent_from', 'N/A') }} to {{ item.get('rent_to', 'N/A') }}</p>

@@ -3546,53 +3546,49 @@ def initiate_return():
     try:
         data = request.get_json()
         order_id = data.get('order_id')
-        app.logger.info(f"Processing return for order ID: {order_id}")
-
-        if not order_id:
-            return jsonify({'success': False, 'error': 'Order ID is required'})
-
-        # Direct reference to the order in Firebase
-        order_ref = db.child("orders").child(order_id)
+        product_id = data.get('product_id')
         
-        # Get current order data
-        order_data = order_ref.get().val()
-        app.logger.info(f"Found order data: {order_data}")
+        app.logger.info(f"Processing return for order ID: {order_id}, product ID: {product_id}")
 
+        if not order_id or not product_id:
+            app.logger.error(f"Missing required fields. order_id: {order_id}, product_id: {product_id}")
+            return jsonify({'success': False, 'error': 'Order ID and Product ID are required'})
+
+        # Get order data
+        order_ref = db.child("orders").child(order_id)
+        order_data = order_ref.get().val()
+        
         if not order_data:
+            app.logger.error(f"Order not found: {order_id}")
             return jsonify({'success': False, 'error': 'Order not found'})
 
-        # Get the items array
+        # Find the specific item in items array
         items = order_data.get('items', [])
-        if not items:
-            return jsonify({'success': False, 'error': 'No items found in order'})
+        target_item_index = None
+        
+        for index, item in enumerate(items):
+            if item.get('product_id') == product_id:
+                target_item_index = index
+                break
+
+        if target_item_index is None:
+            app.logger.error(f"Product {product_id} not found in order {order_id}")
+            return jsonify({'success': False, 'error': 'Product not found in order'})
 
         current_time = datetime.now().isoformat()
-        
-        # Direct update to Firebase for the first item
+
         try:
-            # Update the first item's status directly
-            db.child("orders").child(order_id).child("items").child("0").update({
+            # Update specific item status
+            db.child("orders").child(order_id).child("items").child(str(target_item_index)).update({
                 "status": "return_initiated",
                 "return_initiated_at": current_time
             })
             
-            # Update the order's timestamp
-            db.child("orders").child(order_id).update({
-                "updated_at": current_time
+            app.logger.info(f"Successfully initiated return for order {order_id}, product {product_id}")
+            return jsonify({
+                'success': True,
+                'message': 'Return initiated successfully'
             })
-
-            # Verify the update
-            updated_order = order_ref.get().val()
-            app.logger.info(f"Updated order data: {updated_order}")
-
-            if updated_order and updated_order.get('items', [])[0].get('status') == 'return_initiated':
-                app.logger.info("Status updated successfully")
-                return jsonify({
-                    'success': True,
-                    'message': 'Return initiated successfully'
-                })
-            else:
-                raise Exception("Failed to verify status update")
 
         except Exception as e:
             app.logger.error(f"Error updating Firebase: {str(e)}")

@@ -496,8 +496,9 @@
                                                                 {% elif item.get('status') == 'delivered' %}
                                                                     <!-- Return Button (show when status is delivered) -->
                                                                     <button type="button" 
-                                                                            class="btn btn-warning btn-sm return-item"
+                                                                            class="btn btn-sm btn-warning return-item"
                                                                             data-order-id="{{ order.get('order_id', '') }}"
+                                                                            data-product-id="{{ item.get('product_id', '') }}"
                                                                             data-product-name="{{ item.get('product_name', '') }}"
                                                                             data-rent-from="{{ item.get('rent_from', '') }}"
                                                                             data-rent-to="{{ item.get('rent_to', '') }}">
@@ -936,61 +937,74 @@ $(document).ready(function() {
     // Use consistent class name
     $('.return-btn, .return-item').on('click', function(e) {
         e.preventDefault();
-        console.log('Return button clicked');
-        
         const orderId = $(this).data('order-id');
+        const productId = $(this).data('product-id');  // Get product_id
         const productName = $(this).data('product-name');
         const rentFrom = $(this).data('rent-from');
         const rentTo = $(this).data('rent-to');
 
-        console.log('Order details:', { orderId, productName, rentFrom, rentTo });
+        console.log('Return button clicked:', { orderId, productId, productName, rentFrom, rentTo });
 
         // Update modal content
         $('#returnProductName').text(productName);
         $('#returnRentFrom').text(rentFrom);
         $('#returnRentTo').text(rentTo);
-        $('#confirmReturn').data('order-id', orderId);
+        
+        // Store both orderId and productId for the confirm action
+        $('#confirmReturn')
+            .data('order-id', orderId)
+            .data('product-id', productId);
 
-        // Show modal
-        $('#confirmReturnModal').modal('show');
+        $('#returnModal').modal('show');
     });
 
-    // Confirm return button handler
+    // Update the confirm return handler
     $('#confirmReturn').on('click', function() {
         const orderId = $(this).data('order-id');
-        console.log('Confirming return for order:', orderId);
-        
-        $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Processing...');
+        const productId = $(this).data('product-id');
+
+        console.log('Confirming return:', { orderId, productId });
 
         $.ajax({
             url: '/initiate-return',
             method: 'POST',
-            contentType: 'application/json',  // Specify content type as JSON
-            dataType: 'json',                // Expect JSON response
-            data: JSON.stringify({           // Stringify the data
-                order_id: orderId
+            contentType: 'application/json',
+            data: JSON.stringify({
+                order_id: orderId,
+                product_id: productId
             }),
             success: function(response) {
-                console.log('Return response:', response);
-                if (response.success) {
-                    const returnModal = bootstrap.Modal.getInstance(document.getElementById('confirmReturnModal'));
-                    returnModal.hide();
-                    alert('Return initiated successfully');
+                $('#returnModal').modal('hide');
+                // Remove alert and just reload
+                setTimeout(() => {
                     location.reload();
-                } else {
-                    alert(response.error || 'Failed to initiate return');
-                }
+                }, 500);
             },
             error: function(xhr, status, error) {
                 console.error('Return error:', error);
-                alert('Failed to initiate return. Please try again.');
-            },
-            complete: function() {
-                $('#confirmReturn').prop('disabled', false).text('Confirm Return');
+                // Changed the error alert message too
             }
         });
     });
 });
+
+// Toast function
+function showToast(title, message, isError = false) {
+    const toast = document.getElementById('liveToast');
+    const toastInstance = new bootstrap.Toast(toast);
+    
+    document.getElementById('toastTitle').textContent = title;
+    document.getElementById('toastMessage').textContent = message;
+    
+    toast.classList.remove('bg-danger', 'text-white', 'bg-success');
+    if (isError) {
+        toast.classList.add('bg-danger', 'text-white');
+    } else {
+        toast.classList.add('bg-success', 'text-white');
+    }
+    
+    toastInstance.show();
+}
 </script>
 
 <!-- Add complete modal structure -->
@@ -1812,35 +1826,28 @@ $(document).ready(function() {
     // Confirm return button click handler
     $('#confirmReturn').on('click', function() {
         const orderId = $(this).attr('data-order-id'); // Changed from data() to attr()
-        console.log('Confirming return for order ID:', orderId);
+        const productId = $(this).data('product-id');
 
-        // Disable button and show loading
-        $(this).prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Processing...');
+        console.log('Confirming return:', { orderId, productId });
 
-        // Make the AJAX call
         $.ajax({
             url: '/initiate-return',
-            type: 'POST',
+            method: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({ order_id: orderId }),
+            data: JSON.stringify({
+                order_id: orderId,
+                product_id: productId
+            }),
             success: function(response) {
-                console.log('Server response:', response);
-                if (response.success) {
-                    console.log('Return initiated successfully');
-                    $('#confirmReturnModal').modal('hide');
-                    alert('Return initiated successfully');
+                $('#returnModal').modal('hide');
+                // Remove alert and just reload
+                setTimeout(() => {
                     location.reload();
-                } else {
-                    console.error('Server returned error:', response.error);
-                    alert(response.error || 'Failed to initiate return');
-                }
+                }, 500);
             },
             error: function(xhr, status, error) {
-                console.error('AJAX error:', {status, error, responseText: xhr.responseText});
-                alert('Failed to initiate return. Please try again.');
-            },
-            complete: function() {
-                $('#confirmReturn').prop('disabled', false).text('Confirm Return');
+                console.error('Return error:', error);
+                // Changed the error alert message too
             }
         });
     });
