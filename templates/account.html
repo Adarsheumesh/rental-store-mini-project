@@ -272,6 +272,76 @@
             box-shadow: 0 0 15px rgba(0,0,0,0.1);
         }
     </style>
+
+    <!-- Add this CSS in the head section -->
+    <style>
+        .timeline-events {
+            position: relative;
+            padding: 20px 0;
+        }
+
+        .timeline-events::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e0e0e0;
+        }
+
+        .timeline-event {
+            position: relative;
+            padding-left: 45px;
+            margin-bottom: 20px;
+        }
+
+        .timeline-icon {
+            position: absolute;
+            left: 0;
+            width: 32px;
+            height: 32px;
+            background: #fff;
+            border: 2px solid #007bff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+        }
+
+        .timeline-content {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 4px;
+        }
+
+        .timeline-date {
+            font-size: 0.875rem;
+            color: #666;
+        }
+
+        .timeline-label {
+            font-weight: 500;
+        }
+
+        #returnDetailsModal .modal-content {
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+
+        #returnDetailsModal .modal-body {
+            padding: 20px;
+        }
+
+        #returnDetailsModal h6 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        #returnDetailsModal .badge {
+            padding: 0.5em 0.75em;
+        }
+    </style>
 </head>
 
 <body>
@@ -360,8 +430,8 @@
                         <ul class="nav flex-column dashboard-list" role="tablist">
                             <li><a class="active" data-bs-toggle="tab" href="#account-details">Account details</a></li>
                             <li><a data-bs-toggle="tab" href="#orders">Orders</a></li>
-                            
-                            
+                            <!-- Add new Returns tab -->
+                            <li><a data-bs-toggle="tab" href="#returns">Returns</a></li>
                             <li><a data-bs-toggle="tab" href='#edit-account-details'>Edit Account details</a></li>
                             <li><a href="/logout">logout</a></li>
                         </ul>
@@ -583,6 +653,7 @@
                                 </div>
                             </div>
                             
+                            
                           
                             <div id="edit-account-details" class="tab-pane fade">
                                 <h3>Edit Account details </h3>
@@ -649,6 +720,71 @@
                                     {% endif %}
                                     {% endwith %}
 
+                                </div>
+                            </div>
+                            
+                            <!-- New Returns tab content -->
+                            <div id="returns" class="tab-pane fade">
+                                <h3>Returns</h3>
+                                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                    <table class="table">
+                                        <thead style="position: sticky; top: 0; background-color: white; z-index: 1;">
+                                            <tr>
+                                                <th>Product</th>
+                                                <th>Details</th>
+                                                <th>Price</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for order in orders %}
+                                                {% for item in order.get('items', []) %}
+                                                    {% if item.get('status') == 'returned' %}
+                                                        <tr>
+                                                            <td>
+                                                                <img src="{{ item.get('image_url', url_for('static', filename='img/default-product.jpg')) }}" 
+                                                                     alt="{{ item.get('product_name', 'Product') }}" 
+                                                                     width="50" height="50">
+                                                            </td>
+                                                            <td>
+                                                                <strong>{{ item.get('product_name', 'Unknown Product') }}</strong><br>
+                                                                Order ID: {{ order.get('order_id', 'N/A') }}<br>
+                                                                {% if item.get('color') %}Color: {{ item.get('color') }}{% endif %}
+                                                                {% if item.get('size') %}Size: {{ item.get('size') }}{% endif %}
+                                                                <br>
+                                                                Quantity: {{ item.get('quantity', 1) }}
+                                                            </td>
+                                                            <td>₹{{ "%.2f"|format(item.get('total_price', 0)) }}</td>
+                                                            <td>
+                                                                <span class="badge bg-success">Returned</span><br>
+                                                                <small>Return Date: {{ item.get('return_completed_at', 'N/A') }}</small><br>
+                                                                <small>Rental Period: {{ item.get('rent_from', 'N/A') }} to {{ item.get('rent_to', 'N/A') }}</small>
+                                                            </td>
+                                                            <td>
+                                                                <div class="d-flex flex-column gap-2">
+                                                                    <button class="btn btn-outline-primary btn-sm view-return-details" 
+                                                                            data-order-id="{{ order.get('order_id', '') }}"
+                                                                            data-product-id="{{ item.get('product_id', '') }}">
+                                                                        <i class="fa fa-eye"></i> View Details
+                                                                    </button>
+                                                                    <a href="{{ url_for('download_order_pdf', order_id=order.get('order_id', '')) }}" 
+                                                                       class="btn btn-outline-secondary btn-sm download-invoice" 
+                                                                       target="_blank">
+                                                                            <i class="fa fa-download"></i> Download Invoice
+                                                                        </a>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% else %}
+                                                <tr>
+                                                    <td colspan="5" class="text-center">No returned items found.</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
@@ -2001,6 +2137,154 @@ function getStatusBadgeColor(status) {
     };
     return colors[status?.toLowerCase()] || 'secondary';
 }
+</script>
+
+<!-- Add this modal structure at the bottom of the body -->
+<div class="modal fade" id="returnDetailsModal" tabindex="-1" aria-labelledby="returnDetailsModalLabel" aria-hidden="true" data-bs-backdrop="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="returnDetailsModalLabel">Return Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="product-info mb-4">
+                            <h6 class="border-bottom pb-2">Product Information</h6>
+                            <p><strong>Product Name:</strong> <span id="modalProductName"></span></p>
+                            <p><strong>Order ID:</strong> <span id="modalOrderId"></span></p>
+                            <p><strong>Quantity:</strong> <span id="modalQuantity"></span></p>
+                            <p><strong>Price:</strong> ₹<span id="modalPrice"></span></p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="return-info mb-4">
+                            <h6 class="border-bottom pb-2">Return Information</h6>
+                            <p><strong>Return Date:</strong> <span id="modalReturnDate"></span></p>
+                            <p><strong>Rental Period:</strong> <span id="modalRentalPeriod"></span></p>
+                            <p><strong>Return Status:</strong> <span id="modalReturnStatus"></span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="timeline mb-4">
+                            <h6 class="border-bottom pb-2">Return Timeline</h6>
+                            <div class="return-timeline" id="modalTimeline">
+                                <!-- Timeline will be populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add this script at the bottom of the file -->
+<script>
+$(document).ready(function() {
+    $('.view-return-details').on('click', function() {
+        const orderId = $(this).data('order-id');
+        const productId = $(this).data('product-id');
+        
+        // Find the corresponding order and item
+        const orderItem = findOrderItem(orderId, productId);
+        if (orderItem) {
+            populateReturnModal(orderItem);
+        }
+        
+        // Show the modal
+        const returnModal = new bootstrap.Modal(document.getElementById('returnDetailsModal'));
+        returnModal.show();
+    });
+
+    function findOrderItem(orderId, productId) {
+        for (const order of {{ orders|tojson|safe }}) {
+            if (order.order_id === orderId) {
+                for (const item of order.items) {
+                    if (item.product_id === productId) {
+                        return { ...item, order_id: orderId };
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    function populateReturnModal(item) {
+        // Populate product information
+        $('#modalProductName').text(item.product_name || 'N/A');
+        $('#modalOrderId').text(item.order_id || 'N/A');
+        $('#modalQuantity').text(item.quantity || 'N/A');
+        $('#modalPrice').text(item.total_price ? item.total_price.toFixed(2) : 'N/A');
+        $('#modalReturnDate').text(item.return_completed_at || 'N/A');
+        $('#modalRentalPeriod').text(
+            `${item.rent_from || 'N/A'} to ${item.rent_to || 'N/A'}`
+        );
+        $('#modalReturnStatus').html(
+            '<span class="badge bg-success">Returned</span>'
+        );
+
+        // Update download invoice link
+        $('#modalDownloadInvoice').attr(
+            'href', 
+            `/download-order-pdf/${item.order_id}`
+        );
+
+        // Populate timeline
+        const timeline = buildTimeline(item);
+        $('#modalTimeline').html(timeline);
+    }
+
+    function buildTimeline(item) {
+        const events = [
+            { 
+                date: item.created_at,
+                label: 'Order Placed',
+                icon: 'fa-shopping-cart'
+            },
+            {
+                date: item.delivered_at,
+                label: 'Delivered',
+                icon: 'fa-truck'
+            },
+            {
+                date: item.return_initiated_at,
+                label: 'Return Initiated',
+                icon: 'fa-undo'
+            },
+            {
+                date: item.return_completed_at,
+                label: 'Return Completed',
+                icon: 'fa-check-circle'
+            }
+        ];
+
+        let timelineHtml = '<div class="timeline-events">';
+        events.forEach(event => {
+            if (event.date) {
+                timelineHtml += `
+                    <div class="timeline-event">
+                        <div class="timeline-icon">
+                            <i class="fa ${event.icon}"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-date">${event.date}</div>
+                            <div class="timeline-label">${event.label}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        timelineHtml += '</div>';
+        return timelineHtml;
+    }
+});
 </script>
                      
 </body>
