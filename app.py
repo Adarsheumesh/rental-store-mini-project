@@ -25,6 +25,8 @@ import io
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 import google.generativeai as genai
+from dotenv import load_dotenv
+from blockchain.init_blockchain import init_blockchain
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -44,6 +46,13 @@ genai.configure(api_key=GOOGLE_API_KEY)
 
 # Initialize Gemini model
 model = genai.GenerativeModel('gemini-pro')
+
+# Initialize blockchain before starting the app
+try:
+    init_blockchain()
+except Exception as e:
+    app.logger.error(f"Failed to initialize blockchain: {str(e)}")
+    raise
 
 @app.route('/analysis')
 def analysis():
@@ -71,13 +80,13 @@ app.secret_key = 'turbolegion6282'
 
 # Firebase configuration
 config = {
-    "apiKey": "AIzaSyB42nHmPcpj7BmOPPdO93lXqzA3PjjXZOc",
-    "authDomain": "project-dbebd.firebaseapp.com",
+    "apiKey": os.getenv('FIREBASE_API_KEY'),
+    "authDomain": os.getenv('FIREBASE_AUTH_DOMAIN'),
+    "databaseURL": os.getenv('FIREBASE_DATABASE_URL'),
+    "storageBucket": os.getenv('FIREBASE_STORAGE_BUCKET'),
     "projectId": "project-dbebd",
-    "storageBucket": "project-dbebd.appspot.com",
     "messagingSenderId": "374516311348",
-    "appId": "1:374516311348:web:d916facf6720a4e275f161",
-    "databaseURL": "https://project-dbebd-default-rtdb.asia-southeast1.firebasedatabase.app/"
+    "appId": "1:374516311348:web:d916facf6720a4e275f161"
 }
 
 firebase = pyrebase.initialize_app(config)
@@ -201,59 +210,68 @@ def resend_verification():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if 'email' in session and 'user_info' in session:
-        return redirect(url_for('index'))
-
     if request.method == 'POST':
-        email = request.form.get('email').lower()
-        password = request.form.get('password')
-
-        if not is_valid_email(email):
-            flash('Invalid email address.', 'danger')
-            return render_template('login.html')
-
-        if not is_valid_password(password):
-            flash('Invalid password format.', 'danger')
-            return render_template('login.html')
-
         try:
+            email = request.form['email']
+            password = request.form['password']
+
+            # Authenticate with Firebase
             user = auth.sign_in_with_email_and_password(email, password)
-        except Exception as e:
-            error_message = str(e)
-            if "INVALID_PASSWORD" in error_message:
-                flash('Incorrect password. Please try again.', 'danger')
-            elif "EMAIL_NOT_FOUND" in error_message:
-                flash('Email not found. Please check your email or register.', 'danger')
-            else:
-                flash(f'Login error: {error_message}', 'danger')
-            return render_template('login.html')
+            
+            # Get user info from Firebase
+            user_info = auth.get_account_info(user['idToken'])
+            user_id = user_info['users'][0]['localId']
 
-        user_id = user['localId']
+            # Get all users and find the matching one by firebase_uid
+            all_users = db.child("users").get().val()
+            user_data = None
+            user_key = None
 
-        if not auth.get_account_info(user['idToken'])['users'][0]['emailVerified']:
-            flash('Email not verified. Please check your email for the verification link.', 'danger')
-            return render_template('login.html')
+            for key, data in all_users.items():
+                if data.get('firebase_uid') == user_id or data.get('email') == email:
+                    user_data = data
+                    user_key = key
+                    break
 
-        session['user_id'] = user_id  # Store user_id in session
-        user_data = db.child("users").child(user_id).get().val()
+            if not user_data:
+                flash('User data not found', 'error')
+                return redirect(url_for('login'))
 
-        if user_data:
+            # Store user data in session
+            session['user_id'] = user_key  # Store the database key
             session['email'] = email
+            session['idToken'] = user['idToken']
             session['user_info'] = user_data
 
+            # Get user type from user_data
+            user_type = user_data.get('user_type')
+            app.logger.debug(f"User type: {user_type}")  # Debug log
+
             # Redirect based on user type
-            if user_data.get('user_type') == 'Admin':
+            if user_type == 'Admin':
+                flash('Welcome Admin!', 'success')
                 return redirect(url_for('admin_dashboard'))
-            elif user_data.get('user_type') == 'vendor':
+            elif user_type == 'vendor':
+                flash('Welcome Vendor!', 'success')
                 return redirect(url_for('vendor_dashboard'))
-            elif user_data.get('user_type') == 'delivery_agent':
-                 return redirect(url_for('delivery_dashboard')) 
-            else:
+            elif user_type == 'delivery_agent':
+                flash('Welcome Delivery Agent!', 'success')
+                return redirect(url_for('delivery_dashboard'))
+            else:  # customer
+                flash('Welcome to ToolHive!', 'success')
                 return redirect(url_for('index'))
-        else:
-            print("No user data found for email:", email)
-            flash('User data not found.', 'danger')
-            return render_template('login.html')
+
+        except Exception as e:
+            app.logger.error(f"Login error: {str(e)}")
+            if "INVALID_PASSWORD" in str(e):
+                flash('Invalid password', 'error')
+            elif "EMAIL_NOT_FOUND" in str(e):
+                flash('Email not found', 'error')
+            else:
+                flash('Login failed. Please try again.', 'error')
+            return redirect(url_for('login'))
+
+    return render_template('login.html')
 
 @app.route('/login/google')
 def google_login():
@@ -343,26 +361,46 @@ def google_callback():
 
 @app.route('/admin_dashboard')
 def admin_dashboard():
-    if 'user_id' not in session or 'email' not in session:
-        flash('Please log in to access this page.', 'warning')
+    if 'user_id' not in session:
+        flash('Please log in first', 'error')
         return redirect(url_for('login'))
 
-    user_id = session['user_id']
-    email = session['email']
-
     try:
-        user_info = db.child("users").child(user_id).get().val()
-        if not user_info or user_info.get('user_type') != 'Admin':
-            raise ValueError("Unauthorized access")
+        user_id = session['user_id']
+        user_info = session.get('user_info', {})
 
-        # Here you can add any admin-specific data you want to pass to the template
-        # For example, you might want to get some statistics or user lists
+        # Verify user is admin
+        if user_info.get('user_type') != 'Admin':
+            flash('Unauthorized access', 'error')
+            return redirect(url_for('index'))
 
-        return render_template('Admin/index.html', user_info=user_info, email=email)
+        # Get all users from Firebase
+        all_users = db.child("users").get().val() or {}
+        
+        # Initialize stats
+        user_stats = {'active': 0, 'inactive': 0}
+        vendor_stats = {'active': 0, 'pending': 0, 'rejected': 0}
+        
+        # Calculate statistics
+        for user in all_users.values():
+            if user.get('user_type') == 'vendor':
+                vendor_status = user.get('vendor_status', 'pending')
+                vendor_stats[vendor_status] = vendor_stats.get(vendor_status, 0) + 1
+            
+            if user.get('status') == 'active':
+                user_stats['active'] += 1
+            else:
+                user_stats['inactive'] += 1
+
+        return render_template('Admin/index.html',
+                             user_info=user_info,
+                             user_stats=user_stats,
+                             vendor_stats=vendor_stats)
+
     except Exception as e:
         app.logger.error(f"Error in admin_dashboard: {str(e)}")
-        flash('An error occurred while loading the page. Please try again.', 'danger')
-        return redirect(url_for('index'))
+        flash('An error occurred while loading the dashboard', 'error')
+        return redirect(url_for('login'))
 
 @app.route('/index')
 def index():
@@ -558,706 +596,6 @@ def reset_password():
             flash('Password reset email sent. Please check your inbox.', 'success')
         except Exception as e:
             flash(f'Error sending password reset email: {str(e)}', 'danger')
-    return render_template('reset_password.html')
-from sqlite3 import Date
-from weakref import ref
-from flask import Flask, jsonify, render_template, request, redirect, url_for, session, flash, logging, send_file, abort
-from networkx import is_path
-import pyrebase
-import re
-import json
-from oauthlib.oauth2 import WebApplicationClient
-import requests
-import os
-import firebase_admin
-from firebase_admin import credentials, db
-from dotenv import load_dotenv  # type: ignore
-from datetime import datetime  # Import datetime
-from werkzeug.utils import secure_filename
-import traceback
-import logging
-import stripe
-import uuid
-import random
-import string
-from decimal import Decimal
-import pdfkit  # You'll need to install this: pip install pdfkit
-import io
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
-
-logging.basicConfig(level=logging.DEBUG)
-
-load_dotenv()
-
-# Allow insecure transport for development
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
-
-# Initialize Flask application
-app = Flask(__name__)
-
-from mlprice import get_all_product_suggestions
-
-@app.route('/analysis')
-def analysis():
-    # Check if user is logged in
-    if 'user_id' not in session or 'email' not in session:
-        flash('Please log in to access this page.', 'warning')
-        return redirect(url_for('login'))
-
-    user_id = session['user_id']
-    email = session['email']
-
-    try:
-        # Fetch user information
-        user_info = db.child("users").child(user_id).get().val()
-        if not user_info:
-            raise ValueError("User information not found")
-
-        suggestions = get_all_product_suggestions()
-        app.logger.info(f"Generated {len(suggestions)} suggestions")
-
-        for suggestion in suggestions:
-            product_name = suggestion.get('product_name', 'Unknown')
-            product_id = suggestion.get('product_id', 'Unknown')
-            demand = suggestion.get('demand', 'Unknown')
-            app.logger.info(f"Product: {product_name}, ID: {product_id}, Demand: {demand}")
-        
-        return render_template('analysis.html', 
-                               suggestions=suggestions, 
-                               user_info=user_info, 
-                               email=email)
-    except Exception as e:
-        app.logger.error(f"Error in analysis route: {str(e)}", exc_info=True)
-        return render_template('error.html', 
-                               error="An error occurred while generating product suggestions.",
-                               user_info=user_info if 'user_info' in locals() else None, 
-                               email=email), 500
-app.secret_key = 'turbolegion6282'
-
-# Firebase configuration
-config = {
-    "apiKey": "AIzaSyB42nHmPcpj7BmOPPdO93lXqzA3PjjXZOc",
-    "authDomain": "project-dbebd.firebaseapp.com",
-    "projectId": "project-dbebd",
-    "storageBucket": "project-dbebd.appspot.com",
-    "messagingSenderId": "374516311348",
-    "appId": "1:374516311348:web:d916facf6720a4e275f161",
-    "databaseURL": "https://project-dbebd-default-rtdb.asia-southeast1.firebasedatabase.app/"
-}
-
-firebase = pyrebase.initialize_app(config)
-auth = firebase.auth()
-db = firebase.database()
-
-# OAuth 2 client setup
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
-GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
-GOOGLE_DISCOVERY_URL = os.environ.get("GOOGLE_DISCOVERY_URL")
-client = WebApplicationClient(GOOGLE_CLIENT_ID)
-
-def get_google_provider_cfg():
-    return requests.get(GOOGLE_DISCOVERY_URL).json()
-
-def is_valid_email(email):
-    regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return re.match(regex, email)
-
-def is_valid_password(password):
-    regex = r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$'
-    return re.match(regex, password)
-
-def is_valid_phone(phone):
-    regex = r'^\+?1?\d{9,15}$'
-    return re.match(regex, phone)
-
-def is_valid_name(name):
-    regex = r'^[A-Za-z\s]+$'
-    
-    return re.match(regex, name)
-
-def is_valid_district(district):
-    regex = r'^[A-Za-z\s]+$'
-    return re.match(regex, district)
-
-@app.route('/')
-def home():
-    if 'email' in session and 'user_info' in session:
-        email = session['email']
-        user_info = session['user_info']
-        return render_template('index.html', email=email, user_info=user_info)
-    return render_template('index.html')
-
-def is_valid_address(address):
-    # Regular expression to allow only letters, numbers, spaces, commas, periods, and newlines
-    regex = r'^[a-zA-Z0-9\s,.\n]+$'
-    return re.match(regex, address)
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if 'email' in session and 'user_info' in session:
-        return redirect(url_for('index'))
-
-    if request.method == 'POST':
-        email = request.form.get('email').lower()
-        password = request.form.get('password')
-        name = request.form.get('name')
-        phone = request.form.get('phone')
-        district = request.form.get('district')
-        address = request.form.get('address')  # Get address from form
-        user_type = request.form.get('user_type')  # Get user type from form
-        status = "active"    # Default status
-        registration_date = datetime.now().date().strftime("%Y-%m-%d")  # Get current date
-
-        if not is_valid_email(email):
-            flash('Invalid email address.', 'danger')
-            return render_template('register.html')
-
-        if not is_valid_password(password):
-            flash('Password must be at least 8 characters long and include one uppercase letter, one lowercase letter, one number, and one special character.', 'danger')
-            return render_template('register.html')
-
-        if not is_valid_phone(phone):
-            flash('Invalid phone number.', 'danger')
-            return render_template('register.html')
-
-        if not is_valid_name(name):
-            flash('Name cannot contain numbers or special characters.', 'danger')
-            return render_template('register.html')
-
-        if not is_valid_district(district):
-            flash('District cannot contain numbers or special characters.', 'danger')
-            return render_template('register.html')
-
-        if not is_valid_address(address):  # Validate address
-            flash('Address can only contain letters, numbers, spaces, commas, and periods', 'danger')
-            return render_template('register.html')
-
-        try:
-            # Create user in Firebase Auth
-            user = auth.create_user_with_email_and_password(email, password)
-            user_id = user['localId']
-            auth.send_email_verification(user['idToken'])
-
-            # Store user data in Firebase Realtime Database
-            db.child("users").child(user_id).set({
-                "name": name,
-                "phone": phone,
-                "district": district,
-                "address": address,  # Add address to user data
-                "email": email,
-                "user_type": user_type,  # Save user type
-                "status": status,  # Default status
-                "registration_date": registration_date  # Save registration date (only date)
-            })
-
-            flash('Registration successful! Please verify your email before logging in.', 'success')
-            return redirect(url_for('login'))
-
-        except Exception as e:
-            error = f"Unsuccessful registration: {str(e)}"
-            flash(error, 'danger')
-            return render_template('register.html')
-
-    return render_template('register.html')
-
-
-@app.route('/resend-verification', methods=['GET', 'POST'])
-def resend_verification():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        try:
-            user = auth.sign_in_with_email_and_password(email, password)
-            auth.send_email_verification(user['idToken'])
-            flash('Verification email sent.', 'success')
-        except Exception as e:
-            flash(f'Failed to send verification email: {str(e)}', 'danger')
-
-    return render_template('resend_verification.html')
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if 'email' in session and 'user_info' in session:
-        return redirect(url_for('index'))
-
-    if request.method == 'POST':
-        email = request.form.get('email').lower()
-        password = request.form.get('password')
-
-        if not is_valid_email(email):
-            flash('Invalid email address.', 'danger')
-            return render_template('login.html')
-
-        if not is_valid_password(password):
-            flash('Invalid password format.', 'danger')
-            return render_template('login.html')
-
-        try:
-            user = auth.sign_in_with_email_and_password(email, password)
-        except Exception as e:
-            error_message = str(e)
-            if "INVALID_PASSWORD" in error_message:
-                flash('Incorrect password. Please try again.', 'danger')
-            elif "EMAIL_NOT_FOUND" in error_message:
-                flash('Email not found. Please check your email or register.', 'danger')
-            else:
-                flash(f'Login error: {error_message}', 'danger')
-            return render_template('login.html')
-
-        # Check email verification
-        if not auth.get_account_info(user['idToken'])['users'][0]['emailVerified']:
-            flash('Email not verified. Please check your email for the verification link.', 'danger')
-            return render_template('login.html')
-
-        # Get all users and find the matching email
-        users = db.child("users").get()
-        user_data = None
-        user_key = None
-
-        if users.each():
-            for user_info in users.each():
-                if user_info.val().get('email') == email:
-                    user_data = user_info.val()
-                    user_key = user_info.key()
-                    break
-
-        if user_data:
-            session['user_id'] = user_key
-            session['email'] = email
-            session['user_info'] = user_data
-
-            # Redirect based on user type
-            if user_data.get('user_type') == 'Admin':
-                return redirect(url_for('admin_dashboard'))
-            elif user_data.get('user_type') == 'vendor':
-                return redirect(url_for('vendor_dashboard'))
-            elif user_data.get('user_type') == 'delivery_agent':
-                return redirect(url_for('delivery_dashboard')) 
-            else:
-                return redirect(url_for('index'))
-        else:
-            flash('User data not found.', 'danger')
-            return render_template('login.html')
-
-    return render_template('login.html')
-
-@app.route('/login/google')
-def google_login():
-    google_provider_cfg = get_google_provider_cfg()
-    authorization_endpoint = google_provider_cfg["authorization_endpoint"]
-
-    request_uri = client.prepare_request_uri(
-        authorization_endpoint,
-        redirect_uri=request.base_url + "/callback",
-        scope=["openid", "email", "profile"],
-        prompt="select_account"  # Force account selection
-    )
-    return redirect(request_uri)
-
-@app.route('/login/google/callback')
-def google_callback():
-    code = request.args.get("code")
-    google_provider_cfg = get_google_provider_cfg()
-    token_endpoint = google_provider_cfg["token_endpoint"]
-
-    # Exchange authorization code for access token
-    token_url, headers, body = client.prepare_token_request(
-        token_endpoint,
-        authorization_response=request.url,
-        redirect_url=request.base_url,
-        code=code
-    )
-    token_response = requests.post(
-        token_url,
-        headers=headers,
-        data=body,
-        auth=(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET),
-    )
-    token_json = token_response.json()
-
-    client.parse_request_body_response(json.dumps(token_json))
-    userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
-    uri, headers, body = client.add_token(userinfo_endpoint)
-    userinfo_response = requests.get(uri, headers=headers, data=body)
-
-    userinfo = userinfo_response.json()
-
-    if userinfo.get("email_verified"):
-        users_email = userinfo["email"]
-        users_name = userinfo["name"]
-        picture = userinfo["picture"]
-
-        session['email'] = users_email
-        session['name'] = users_name
-        session['picture'] = picture
-
-        # Check if user already exists in Firebase
-        try:
-            user = auth.sign_in_with_email_and_password(users_email, users_email)
-            user_id = user['localId']
-        except:
-            # If the user does not exist, create a new one
-            try:
-                user = auth.create_user_with_email_and_password(users_email, users_email)
-                user_id = user['localId']
-                # Save user info in Firebase
-                db.child("users").child(user_id).set({
-                    "name": users_name,
-                    "phone": "",  # Default values if not provided
-                    "district": "",
-                    "email": users_email,
-                    "user_type": "customer"  # Default user type
-                })
-            except Exception as e:
-                flash(f"Error creating user: {str(e)}", 'danger')
-                return redirect(url_for('login'))
-
-        # Fetch user data from the database and update the session
-        user_data = db.child("users").child(user_id).get().val()
-
-        if user_data:
-            session['user_id'] = user_id
-            session['user_info'] = user_data
-            flash('Logged in successfully with Google.', 'success')
-            return redirect(url_for('index'))
-        else:
-            flash('User data not found after login.', 'danger')
-            return redirect(url_for('login'))
-    else:
-        flash('User email not available or not verified by Google.', 'danger')
-        return redirect(url_for('login'))
-@app.route('/admin_dashboard')
-def admin_dashboard():
-    if 'email' not in session:
-        return redirect(url_for('login'))
-
-    try:
-        # Get all users
-        users = db.child("users").get().val()
-        email = session.get('email')
-        
-        # Find the current user's data using their email
-        user_name = None
-        if users:
-            for user in users.values():
-                if user.get('email') == email:
-                    user_name = user.get('name')
-                    break
-        
-        # Initialize counters for both users and vendors
-        user_stats = {
-            'active': 0,
-            'inactive': 0
-        }
-        
-        vendor_stats = {
-            'active': 0,
-            'pending': 0,
-            'rejected': 0
-        }
-        
-        # Count both user and vendor statistics
-        if users:
-            for user in users.values():
-                if user.get('user_type') == 'vendor':
-                    # Count vendor statistics
-                    status = user.get('vendor_status', 'pending')
-                    if status == 'approved':
-                        vendor_stats['active'] += 1
-                    elif status == 'pending':
-                        vendor_stats['pending'] += 1
-                    elif status == 'rejected':
-                        vendor_stats['rejected'] += 1
-                else:
-                    # Count user statistics
-                    if user.get('status') == 'active':
-                        user_stats['active'] += 1
-                    else:
-                        user_stats['inactive'] += 1
-
-        return render_template('Admin/index.html',
-                            user_name=user_name or "Admin",  # Fallback to "Admin" if name not found
-                            email=email,
-                            today=datetime.now(),
-                            user_stats=user_stats,
-                            vendor_stats=vendor_stats)
-
-    except Exception as e:
-        app.logger.error(f"Error in admin_dashboard: {str(e)}")
-        return redirect(url_for('login'))
-@app.route('/index')
-def index():
-    email = session.get('email')
-    user_info = session.get('user_info')
-    user_name = None
-
-    app.logger.debug(f"Session email: {email}")
-    app.logger.debug(f"Session user_info: {user_info}")
-
-    if email:
-        try:
-            users = db.child("users").get().val()
-            for user_id, user_data in users.items():
-                if user_data.get('email') == email:
-                    user_name = user_data.get('name')
-                    break
-            app.logger.debug(f"User name fetched: {user_name}")
-        except Exception as e:
-            app.logger.error(f"Error fetching user name: {str(e)}")
-
-    # Fetch data from the 'products' table
-    try:
-        products = db.child("products").get().val()
-        product_reviews = db.child("product_reviews").get().val()
-    except Exception as e:
-        products = None
-        flash(f"Failed to retrieve products: {str(e)}", 'danger')
-        app.logger.error(f"Error fetching products: {str(e)}")
-
-    # Fetch best seller products (assuming first 5 are best sellers)
-    best_seller_products = []
-    if products:
-        for product_id, product in list(products.items())[:5]:
-            product['id'] = product_id
-            best_seller_products.append(product)
-
-    app.logger.debug(f"Rendering template with user_name: {user_name}")
-
-    return render_template('index.html', 
-                           email=email, 
-                           user_info=user_info,
-                           user_name=user_name,
-                           products=products, 
-                           best_seller_products=best_seller_products,
-                            product_reviews=product_reviews)
-
-
-@app.route('/vendor_dashboard')
-def vendor_dashboard():
-    if 'user_id' not in session or 'email' not in session:
-        flash('Please log in to access this page.', 'warning')
-        return redirect(url_for('login'))
-
-    user_id = session['user_id']
-    email = session['email']
-
-    try:
-        user_info = db.child("users").child(user_id).get().val()
-        if not user_info:
-            raise ValueError("User information not found")
-
-        # Fetch all users and count customers
-        all_users = db.child("users").get().val()
-        customer_count = sum(1 for user in all_users.values() if user.get('user_type') == 'customer')
-
-        # Fetch recent orders for the vendor
-        all_orders = db.child("orders").get().val()
-        recent_orders = []
-        store_name = user_info.get('store_name', '')
-        total_orders = 34
-        total_revenue = 0
-        if all_orders:
-            for order_id, order in all_orders.items():
-                if order.get('store_name') == store_name:
-                    total_orders += 1
-                for item in order.get('items', []):
-                    if item.get('store_name') == store_name:
-                        product_id = item.get('product_id')
-                        product_details = get_product_details(product_id)
-                        recent_orders.append({
-                            'order_id': order_id,
-                            'product_image': product_details.get('product_image', ''),
-                            'product_name': product_details.get('product_name', 'Unknown Product'),
-                            'quantity': item.get('quantity', 0),
-                            'order_date': order.get('created_at', 'N/A'),
-                            'order_cost': f"₹{float(item.get('item_total', 0)):,.2f}",
-                            'status': order.get('status', 'Unknown')
-                        })
-                        total_revenue += float(item.get('item_total', 0))
-                        if len(recent_orders) >= 5:  # Limit to 5 recent orders
-                            break
-                if len(recent_orders) >= 5:
-                    break
-
-        formatted_revenue = "₹{:,.2f}".format(total_revenue)
-
-        print(f"Debug: customer_count = {customer_count}")  # Debug line
-        print(f"Debug: total_orders = {total_orders}")  # Debug line
-        print(f"Debug: total_revenue = {total_revenue}")  # Debug line
-
-        return render_template('andshop/index.html', user_info=user_info, email=email, recent_orders=recent_orders, customer_count=customer_count, total_orders=total_orders, total_revenue=formatted_revenue)
-    except Exception as e:
-        app.logger.error(f"Error in vendor_dashboard: {str(e)}")
-        flash('An error occurred while loading the page. Please try again.', 'danger')
-        return redirect(url_for('index'))
-
-@app.route('/account')
-def account():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
-    user_id = session['user_id']
-    user_info = session.get('user_info')
-
-    try:
-        # Fetch orders for the current user
-        orders_data = db.child("orders").order_by_child("user_id").equal_to(user_id).get()
-        
-        orders = []
-        if orders_data.each():
-            for order in orders_data.each():
-                order_data = order.val()
-                order_data['order_id'] = order.key()
-
-                # Add payment ID and shipping address to order data
-                order_data['payment_id'] = order_data.get('payment_intent_id', 'N/A')
-                order_data['shipping_address'] = order_data.get('shipping_address', 'N/A')
-
-                # Fetch product details for each item in the order
-                items = order_data.get('items', [])
-                for item in items:
-                    product_id = item.get('product_id')
-                    if product_id:
-                        product_details = get_product_details(product_id)
-                        item['product_name'] = product_details.get('product_name', 'Unknown Product')
-                        item['image_url'] = product_details.get('product_image', '')
-                    else:
-                        item['product_name'] = 'Unknown Product'
-                        item['image_url'] = ''
-
-                orders.append(order_data)
-        
-        # Sort orders by date (assuming there's a 'created_at' field)
-        orders.sort(key=lambda x: x.get('created_at', ''), reverse=True)
-
-    except Exception as e:
-        print(f"Error fetching orders: {str(e)}")
-        flash('An error occurred while fetching your orders.', 'danger')
-        orders = []
-
-    return render_template('account.html', user_info=user_info, orders=orders)
-
-def get_product_details(product_id):
-    try:
-        product = db.child("products").child(product_id).get().val()
-        if product:
-            return {
-                'product_name': product.get('product_name', 'Unknown Product'),
-                'product_image': product.get('product_image', '')
-            }
-        else:
-            print(f"Product not found for ID: {product_id}")
-            return {'product_name': 'Unknown Product', 'product_image': ''}
-    except Exception as e:
-        print(f"Error fetching product details for ID {product_id}: {str(e)}")
-        return {'product_name': 'Unknown Product', 'product_image': ''}
-
-@app.route('/get-order-details')
-def get_order_details():
-    try:
-        order_id = request.args.get('order_id')
-        if not order_id:
-            return jsonify({'success': False, 'error': 'Order ID is required'}), 400
-
-        # Get order details
-        order = db.child("orders").child(order_id).get().val()
-        if not order:
-            return jsonify({'success': False, 'error': 'Order not found'}), 404
-
-        # Convert items to list if it's a dictionary
-        items = order.get('items', [])
-        if isinstance(items, dict):
-            items = [items]
-
-        processed_items = []
-        for item in items:
-            # Get product details
-            product_id = item.get('product_id')
-            if product_id:
-                product = db.child("products").child(product_id).get().val()
-                if product:
-                    item['product_name'] = product.get('product_name', 'Unknown Product')
-                    item['product_image'] = product.get('product_image', '')
-                    item['store_name'] = product.get('store_name', 'N/A')
-
-            # Ensure all required dates are present
-            processed_item = {
-                'product_id': product_id,
-                'product_name': item.get('product_name', 'Unknown Product'),
-                'product_image': item.get('product_image', ''),
-                'store_name': item.get('store_name', 'N/A'),
-                'quantity': item.get('quantity', 1),
-                'item_total': item.get('item_total', 0),
-                'status': item.get('status', 'ordered'),
-                'ordered_at': item.get('ordered_at', order.get('created_at')),
-                'in_transit_at': item.get('in_transit_at'),
-                'out_for_delivery_at': item.get('out_for_delivery_at'),
-                'delivered_at': item.get('delivered_at'),
-                'return_initiated_at': item.get('return_initiated_at'),
-                'return_completed_at': item.get('return_completed_at'),
-                'rent_from': item.get('rent_from'),
-                'rent_to': item.get('rent_to')
-            }
-            processed_items.append(processed_item)
-
-        order_data = {
-            'order_id': order_id,
-            'created_at': order.get('created_at'),
-            'items': processed_items,
-            'order_total': order.get('order_total'),
-            'shipping_address': order.get('shipping_address'),
-            'payment_intent_id': order.get('payment_intent_id'),
-            'store_name': order.get('store_name', 'N/A'),
-            'gst_number': order.get('gst_number', 'GSTIN29AAAAA0000A1Z5')
-        }
-        
-        app.logger.debug(f"Processed order data: {order_data}")  # Debug log
-        return jsonify({'success': True, 'order': order_data})
-        
-    except Exception as e:
-        app.logger.error(f"Error getting order details: {str(e)}")
-        return jsonify({
-            'success': False, 
-            'error': f'Failed to fetch order details: {str(e)}'
-        }), 500
-
-def get_product_details(product_id):
-    try:
-        product = db.child("products").child(product_id).get().val()
-        if product:
-            return {
-                'product_name': product.get('product_name', 'Unknown Product'),
-                'product_image': product.get('product_image', '')
-            }
-        else:
-            return {'product_name': 'Unknown Product', 'product_image': ''}
-    except Exception as e:
-        print(f"Error fetching product details: {str(e)}")
-        return {'product_name': 'Unknown Product', 'product_image': ''}
-
-@app.route('/account-details')
-def account_details():
-    return render_template('account_details.html')
-
-@app.route('/shop')
-def shop():
-    return render_template('shop.html')
-
-
-@app.route('/reset_password', methods=['GET', 'POST'])
-def reset_password():
-    if request.method == 'POST':
-        email = request.form['email']
-        try:
-            auth.send_password_reset_email(email)
-            flash('Password reset email sent successfully. Please check your inbox.', 'success')
-            return redirect(url_for('login'))
-        except Exception as e:
-            flash(f'Failed to send password reset email: {str(e)}', 'danger')
-            return render_template('reset_password.html')
-    
-    # If it's a GET request, render the reset password form
     return render_template('reset_password.html')
 
 @app.route('/logout')
@@ -1543,9 +881,23 @@ def add_product():
                 "product_price": product_price,
                 "product_image": product_image_url,
                 "store_name": store_name,  # Add the store name here
-                "vendor_id": user_id  # Optionally add the vendor's user ID
+                "vendor_id": user_id,  # Optionally add the vendor's user ID
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
-            db.child("products").push(new_product)
+            product_ref = db.child("products").push(new_product)
+            
+            # After successfully adding to Firebase, register on blockchain
+            try:
+                authenticator = RentalAuthenticator()
+                authenticator.register_product(
+                    product_id=product_ref.key(),
+                    name=product_name
+                )
+                print(f"Product registered on blockchain with ID: {product_ref.key()}")
+            except Exception as e:
+                print(f"Blockchain registration error: {str(e)}")
+                # Continue even if blockchain registration fails
+                pass
 
             flash('Product added successfully!', 'success')
             return redirect(url_for('product_list'))
@@ -1572,62 +924,70 @@ import logging
 
 @app.route('/product/<product_id>')
 def product_detail(product_id):
-    user_id = session.get('user_id')
-    user_purchased = False
-
-    current_app.logger.info(f"Checking purchase for User ID: {user_id}, Product ID: {product_id}")
-
-    if user_id:
-        # Fetch all orders
-        orders = db.child("orders").get().val()
-        if orders:
+    try:
+        # Get product data
+        product = db.child("products").child(product_id).get().val()
+        if not product:
+            return render_template('error.html', message="Product not found"), 404
+            
+        # Add the ID to the product data
+        product['id'] = product_id
+        
+        # Get product reviews
+        reviews = db.child("product_reviews").child(product_id).get().val() or {}
+        
+        # Get user info from session
+        user_info = None
+        if 'user_id' in session:
+            user_info = db.child("users").child(session['user_id']).get().val()
+        
+        # Get cart count
+        cart_count = 0
+        if 'user_id' in session:
+            cart = db.child("carts").child(session['user_id']).get().val()
+            if cart:
+                cart_count = sum(item.get('quantity', 0) for item in cart.values())
+        
+        # Check if user has purchased this product
+        user_purchased = False
+        if 'user_id' in session:
+            user_id = session['user_id']
+            orders = db.child("orders").get().val() or {}
             for order_id, order in orders.items():
-                current_app.logger.info(f"Checking order: {order_id}")
-                current_app.logger.info(f"Order user_id: {order.get('user_id')}, Order items: {order.get('items', [])}")
-                
-                # Check if this order belongs to the current user
                 if order.get('user_id') == user_id:
-                    # Check if the product_id is in the order items
-                    for item in order.get('items', []):
+                    order_items = order.get('items', [])
+                    for item in order_items:
                         if item.get('product_id') == product_id:
                             user_purchased = True
-                            current_app.logger.info(f"User has purchased the product. Order ID: {order_id}")
                             break
-                
-                if user_purchased:
-                    break
-
-    current_app.logger.info(f"Final user_purchased status: {user_purchased}")
-
-    product_details = db.child("products").child(product_id).get().val()
-    if product_details:
-        product_details['id'] = product_id
-        # Fetch reviews for this product
-        reviews = db.child("product_reviews").child(product_id).get().val()
+                    if user_purchased:
+                        break
+        
+        # Get product reviews
         product_reviews = []
-        if reviews:
-            for review_id, review_data in reviews.items():
-                product_reviews.append(review_data)
+        reviews = db.child("product_reviews").child(product_id).get().val() or {}
+        for review_id, review in reviews.items():
+            # Get user name for review
+            user = db.child("users").child(review['user_id']).get().val()
+            review['user_name'] = user.get('name', 'Anonymous') if user else 'Anonymous'
+            product_reviews.append(review)
         
-        # Sort reviews by date (newest first)
-        product_reviews.sort(key=lambda x: x['date'], reverse=True)
+        app.logger.info(f"Session data: {session}")
+        app.logger.info(f"User info: {user_info}")
+        app.logger.info(f"Cart count: {cart_count}")
         
-        # Calculate cart count
-        cart = session.get('cart', {})
-        cart_count = sum(item['quantity'] for item in cart.values())
-
-        user_info = session.get('user_info', {})
-        cart_count = session.get('cart_count', 0)
-
-        return render_template('product.html', 
-                               product_details=product_details, 
-                               product_reviews=product_reviews, 
-                               user_purchased=user_purchased,
-                               user_info=user_info,
-                               cart_count=cart_count,
-                               upsell_products=[])  # Add empty upsell_products list
-    else:
-        return render_template('error.html', error="Product not found"), 404
+        return render_template('product.html',
+                             product=product,
+                             user_info=user_info,
+                             cart_count=cart_count,
+                             user_purchased=user_purchased,
+                             product_reviews=product_reviews,
+                             session=session)
+                             
+    except Exception as e:
+        app.logger.error(f"Error in product_detail: {str(e)}")
+        app.logger.error(f"Traceback: {traceback.format_exc()}")
+        return render_template('error.html', message=str(e)), 500
 
 def get_upsell_products(limit=5, exclude_id=None):
     try:
@@ -3626,38 +2986,67 @@ def complete_return(order_id, product_id):
         order = db.child("orders").child(order_id).get().val()
         if not order:
             app.logger.error(f"Order not found: {order_id}")
-            return
+            return False
 
         # Find the specific item in the order
-        item_to_return = next((item for item in order.get('items', []) if item.get('product_id') == product_id), None)
+        item_to_return = next((item for item in order.get('items', []) 
+                             if item.get('product_id') == product_id), None)
         if not item_to_return:
             app.logger.error(f"Product not found in order: {product_id}")
-            return
+            return False
 
-        # Get the current product details
-        product = db.child("products").child(product_id).get().val()
-        if not product:
-            app.logger.error(f"Product not found: {product_id}")
-            return
+        current_time = datetime.now().isoformat()
 
-        # Update the product quantity
-        current_quantity = int(product.get('product_quantity', '0'))
-        returned_quantity = int(item_to_return.get('quantity', 1))
-        new_quantity = current_quantity + returned_quantity
+        # Record return on blockchain
+        try:
+            authenticator = RentalAuthenticator()
+            shipping_address = order.get('shipping_address', '')
+            condition = item_to_return.get('return_condition', 'Good')
+            notes = item_to_return.get('return_notes', '')
+            
+            # Record return with proper parameters
+            blockchain_success = authenticator.record_return(
+                product_id,
+                shipping_address,
+                condition,
+                notes
+            )
 
-        # Update the product quantity in the database
-        db.child("products").child(product_id).update({'product_quantity': str(new_quantity)})
+            if blockchain_success:
+                # Update verification status in Firebase
+                db.child("products").child(product_id).update({
+                    'blockchain_verified': True,
+                    'last_verification': current_time,
+                    'last_condition': condition,
+                    'last_return': {
+                        'order_id': order_id,
+                        'returned_at': current_time,
+                        'condition': condition,
+                        'notes': notes
+                    }
+                })
+
+        except Exception as e:
+            app.logger.error(f"Error recording return on blockchain: {str(e)}")
+            blockchain_success = False
 
         # Update the order status
-        db.child("orders").child(order_id).child('returns').update({
-            'status': 'returned',
-            'completed_at': datetime.now().isoformat(),
-            'product_id': product_id
-        })
+        try:
+            db.child("orders").child(order_id).child("items").update({
+                'status': 'returned',
+                'return_completed_at': current_time,
+                'blockchain_verified': blockchain_success
+            })
+            
+            return True
 
-        app.logger.info(f"Return completed for order {order_id}, product {product_id}")
+        except Exception as e:
+            app.logger.error(f"Error updating order status: {str(e)}")
+            return False
+
     except Exception as e:
-        app.logger.error(f"Error completing return: {str(e)}")
+        app.logger.error(f"Error in complete_return: {str(e)}")
+        return False
 
 
 from flask import jsonify, request
@@ -4910,12 +4299,39 @@ def complete_return_delivery():
         if not all([order_id, product_id, condition]):
             return jsonify({'success': False, 'message': 'Missing required fields'}), 400
             
-        # Get the order
-        order_ref = db.child("orders").child(order_id)
-        order = order_ref.get().val()
+        # Get the order and product
+        order = db.child("orders").child(order_id).get().val()
+        product = db.child("products").child(product_id).get().val()
         
-        if not order:
-            return jsonify({'success': False, 'message': 'Order not found'}), 404
+        if not order or not product:
+            return jsonify({'success': False, 'message': 'Order or product not found'}), 404
+
+        # Get items array
+        items = order.get('items', [])
+        if isinstance(items, dict):
+            items = [items]
+
+        # Find the item being returned and update product quantity
+        for i, item in enumerate(items):
+            if (item.get('product_id') == product_id and 
+                item.get('store_name') == store_name):
+                # Get the quantity being returned
+                returned_quantity = int(item.get('quantity', 1))
+                current_product_quantity = int(product.get('product_quantity', 0))
+                
+                # Update product quantity
+                new_quantity = current_product_quantity + returned_quantity
+                db.child("products").child(product_id).update({
+                    'product_quantity': str(new_quantity)
+                })
+                
+                # Update item status
+                item_path = f"orders/{order_id}/items/{i}"
+                db.update({
+                    f"{item_path}/status": "returned",
+                    f"{item_path}/return_completed_at": current_time
+                })
+                break
 
         # Create product condition entry
         condition_data = {
@@ -4930,30 +4346,10 @@ def complete_return_delivery():
         
         # Add to product_conditions table
         db.child("product_conditions").push(condition_data)
-        app.logger.debug(f"Added condition record: {condition_data}")
 
-        # Get items array
-        items = order.get('items', [])
-        if isinstance(items, dict):
-            items = [items]
-
-        # Update status and return time in items
-        for i, item in enumerate(items):
-            if (item.get('product_id') == product_id and 
-                item.get('store_name') == store_name):
-                # Update status and return time
-                item_path = f"orders/{order_id}/items/{i}"
-                db.update({
-                    f"{item_path}/status": "returned",
-                    f"{item_path}/return_completed_at": current_time
-                })
-                app.logger.debug(f"Updated item status and return time at path: {item_path}")
-                break
-        
-        app.logger.debug("Return completed successfully")
         return jsonify({
             'success': True,
-            'message': 'Return completed successfully'
+            'message': 'Return completed and product quantity updated successfully'
         })
         
     except Exception as e:
@@ -4996,6 +4392,127 @@ def get_ai_response():
             'success': False,
             'error': str(e)
         }), 500
+from blockchain.rental_authenticator import RentalAuthenticator
 
+authenticator = RentalAuthenticator()
+
+@app.route('/verify-rental-history/<product_id>')
+def verify_rental_history(product_id):
+    try:
+        app.logger.debug(f"Verifying rental history for product: {product_id}")
+        authenticator = RentalAuthenticator()
+        
+        # Get product from Firebase
+        product = db.child("products").child(product_id).get().val()
+        if not product:
+            return jsonify({
+                'verified': False,
+                'message': 'Product not found'
+            })
+
+        # Get blockchain verification status and history
+        blockchain_data = authenticator.get_product_history(product_id)
+        is_verified = blockchain_data[0] if blockchain_data else False
+
+        # Get all orders for this product from Firebase
+        orders_ref = db.child("orders").get()
+        rental_history = []
+        
+        # Create a reverse lookup map for order IDs
+        order_id_map = {}
+        orders_data = orders_ref.val() if orders_ref.val() else {}
+        for firebase_key, order in orders_data.items():
+            if 'order_id' in order:
+                order_id_map[order['order_id']] = firebase_key
+
+        # Get all conditions for this product
+        conditions_ref = db.child("product_conditions").get()
+        conditions_map = {}
+        if conditions_ref.each():
+            for condition_record in conditions_ref.each():
+                record = condition_record.val()
+                if record.get('product_id') == product_id:
+                    # Get the original order ID from Firebase key
+                    firebase_order_key = record.get('order_id')
+                    if firebase_order_key:
+                        conditions_map[firebase_order_key] = {
+                            'condition': record.get('condition'),
+                            'notes': record.get('notes', ''),
+                            'recorded_at': record.get('recorded_at')
+                        }
+        
+        app.logger.debug(f"Conditions map: {conditions_map}")
+        app.logger.debug(f"Order ID map: {order_id_map}")
+
+        if orders_ref.each():
+            for order in orders_ref.each():
+                order_data = order.val()
+                items = order_data.get('items', [])
+                
+                if isinstance(items, dict):
+                    items = [items]
+                
+                for item in items:
+                    if (isinstance(item, dict) and 
+                        item.get('product_id') == product_id and 
+                        item.get('status') == 'returned'):
+                        
+                        firebase_key = order.key()
+                        app.logger.debug(f"Processing Firebase key: {firebase_key}")
+                        
+                        condition_info = conditions_map.get(firebase_key, {})
+                        app.logger.debug(f"Found condition info: {condition_info}")
+
+                        user_id = order_data.get('user_id')
+                        user_info = db.child("users").child(user_id).get().val() if user_id else None
+                        
+                        history_entry = {
+                            'order_id': order_data.get('order_id'),
+                            'user_name': user_info.get('name', 'Unknown User') if user_info else 'Unknown User',
+                            'rent_from': item.get('rent_from'),
+                            'rent_to': item.get('rent_to'),
+                            'status': 'returned',
+                            'store_name': item.get('store_name'),
+                            'quantity': item.get('quantity', 1),
+                            'condition': condition_info.get('condition', 'Not specified'),
+                            'notes': condition_info.get('notes', ''),
+                            'returned_at': item.get('return_completed_at')
+                        }
+                        rental_history.append(history_entry)
+                        app.logger.debug(f"Added history entry with condition: {condition_info.get('condition')}")
+
+        return jsonify({
+            'verified': is_verified,
+            'product': {
+                **product,
+                'blockchain_verified': is_verified
+            },
+            'rental_history': rental_history,
+            'blockchain_data': blockchain_data
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error in verify_rental_history: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/record-rental', methods=['POST'])
+def record_rental():
+    try:
+        order_data = request.json
+        
+        # Initialize rental authenticator
+        authenticator = RentalAuthenticator()
+        
+        # Record rental with full order data
+        success = authenticator.record_rental(order_data)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Rental recorded successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to record rental'}), 400
+            
+    except Exception as e:
+        app.logger.error(f"Error recording rental: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 if __name__ == '__main__':
     app.run(debug=True)

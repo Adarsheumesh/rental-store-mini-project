@@ -202,7 +202,7 @@
             <div class="col-md-4">
                 <div class="stat-card completed position-relative">
                     <h2>{{ completed_count|default(45) }}</h2>
-                    <p>Completed Today</p>
+                    <p>Return Completed</p>
                     <i class="mdi mdi-check-circle text-success"></i>
                 </div>
             </div>
@@ -246,6 +246,9 @@
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
+
+    // Add AGENT_DISTRICT constant at the top of your script
+    const AGENT_DISTRICT = '{{ user_info.district }}';
 
     // Function to format date
     function formatDate(dateString) {
@@ -311,20 +314,23 @@
     // Function to update stats
     function updateStats(orders) {
         const stats = Object.values(orders).reduce((acc, order) => {
-            switch(order.status.toLowerCase()) {
-                case 'paid':
-                    acc.pending++;
-                    break;
-                case 'in_transit':
-                    acc.active++;
-                    break;
-                case 'delivered':
-                    acc.completed++;
-                    break;
+            // Only process orders in the agent's district
+            if (order.shipping_district === AGENT_DISTRICT) {
+                if (order.items && Array.isArray(order.items)) {
+                    const hasOrderedItems = order.items.some(item => item.status === 'ordered');
+                    const hasInTransitItems = order.items.some(item => item.status === 'in_transit');
+                    const hasReturnedItems = order.items.some(item => item.status === 'returned');
+
+                    // Count order only once for each status
+                    if (hasOrderedItems) acc.pending++;
+                    if (hasInTransitItems) acc.active++;
+                    if (hasReturnedItems) acc.completed++;
+                }
             }
             return acc;
         }, { pending: 0, active: 0, completed: 0 });
 
+        // Update the stats in the UI
         document.querySelector('.stat-card.pending h2').textContent = stats.pending;
         document.querySelector('.stat-card.active h2').textContent = stats.active;
         document.querySelector('.stat-card.completed h2').textContent = stats.completed;
@@ -352,6 +358,7 @@
     // Listen for orders
     database.ref('orders').on('value', (snapshot) => {
         const orders = snapshot.val() || {};
+        updateStats(orders);
         renderOrders(orders);
     });
     </script>

@@ -443,20 +443,26 @@
 	document.addEventListener('DOMContentLoaded', function() {
 		var ctx = document.getElementById('vendorStats').getContext('2d');
 		
+		var vendorStats = {
+			active: {{ vendor_stats.active if vendor_stats is defined else 0 }},
+			pending: {{ vendor_stats.pending if vendor_stats is defined else 0 }},
+			rejected: {{ vendor_stats.rejected if vendor_stats is defined else 0 }}
+		};
+		
 		new Chart(ctx, {
-			type: 'doughnut',  // Changed to doughnut for better visualization
+			type: 'doughnut',
 			data: {
 				labels: ['Active', 'Pending', 'Rejected'],
 				datasets: [{
 					data: [
-						{{ vendor_stats.active|default(0) }},
-						{{ vendor_stats.pending|default(0) }},
-						{{ vendor_stats.rejected|default(0) }}
+						vendorStats.active,
+						vendorStats.pending,
+						vendorStats.rejected
 					],
 					backgroundColor: [
-						'rgba(40, 167, 69, 0.8)',  // Green for active
-						'rgba(255, 193, 7, 0.8)',  // Yellow for pending
-						'rgba(220, 53, 69, 0.8)'   // Red for rejected
+						'rgba(40, 167, 69, 0.8)',
+						'rgba(255, 193, 7, 0.8)',
+						'rgba(220, 53, 69, 0.8)'
 					],
 					borderColor: [
 						'rgba(40, 167, 69, 1)',
@@ -476,20 +482,6 @@
 							padding: 20,
 							font: {
 								size: 12
-							}
-						}
-					},
-					tooltip: {
-						backgroundColor: '#fff',
-						titleColor: '#333',
-						bodyColor: '#666',
-						borderColor: '#e9ecef',
-						borderWidth: 1,
-						padding: 10,
-						displayColors: false,
-						callbacks: {
-							label: function(context) {
-								return context.label + ': ' + context.parsed + ' vendors';
 							}
 						}
 					}

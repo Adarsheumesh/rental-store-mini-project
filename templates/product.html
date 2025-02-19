@@ -282,7 +282,7 @@
                 var rating = $('#rating-value').val();
                 var reviewTextarea = $('#review-text');
                 var review = reviewTextarea.val().trim();
-                var productId = '{{ product_details["id"] }}';  // Make sure this is correct
+                var productId = '{{ product.id }}';  // Changed from product_details to product
 
                 console.log('Form submitted. Values:', { rating, review, productId });
 
@@ -365,7 +365,7 @@
         // Add this function to reload reviews
 function reloadReviews() {
     $.ajax({
-        url: '/get-reviews/' + '{{ product_details["id"] }}',
+        url: '/get-reviews/' + '{{ product.id }}',
         type: 'GET',
         success: function(response) {
             if (response.success) {
@@ -398,7 +398,7 @@ function updateCartCount(newCount) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    const addToCartForm = document.querySelector('form[action="{{ url_for("add_to_cart", product_id=product_details.id) }}"]');
+    const addToCartForm = document.querySelector('form[action="{{ url_for("add_to_cart", product_id=product.id) }}"]');
     if (addToCartForm) {
         addToCartForm.addEventListener('submit', function(e) {
             e.preventDefault();
@@ -545,7 +545,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="tab-content">
                             <div id="thumb1" class="tab-pane active">
                                 <a data-fancybox="images" href="">
-                                    <img src="{{ product_details.product_image }}"alt="product-view">
+                                    <img src="{{ product.product_image }}" alt="product-view">
                                 </a> 
                             </div>
                         </div>
@@ -557,10 +557,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <!-- Main Thumbnail Image End -->
                     <!-- Thumbnail Description Start -->
-                     <script> print(product_details)</script>
+                     <script> print(product)</script>
                     <div class="col-lg-7">
                         <div class="thubnail-desc fix">
-                            <h3 class="product-header">{{ product_details['product_name'] }}</h3>
+                            <h3 class="product-header">{{ product.product_name }}</h3>
                             <div class="rating-summary fix mtb-10">
                                 <div class="rating f-left">
                                     <i class="fa fa-star"></i>
@@ -575,36 +575,36 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             </div>
                             <div class="pro-price mb-10">
-                                <p><span class="price">₹{{ product_details['product_price'] }}<span class="per-day">/day</span></span><del class="prev-price"></del></p>
+                                <p><span class="price">₹{{ product.product_price }}<span class="per-day">/day</span></span><del class="prev-price"></del></p>
                             </div>
                             <div class="pro-ref mb-15">
                                 <p>
-                                    {% if product_details['product_quantity']|int == 0 %}
+                                    {% if product.product_quantity|int == 0 %}
                                         <span class="out-of-stock">OUT OF STOCK</span>
-                                    {% elif product_details['product_quantity']|int < 10 %}
+                                    {% elif product.product_quantity|int < 10 %}
                                         <span class="limited-stock">LIMITED STOCK</span>
-                                        <span class="sku">({{ product_details['product_quantity'] }} left)</span>
+                                        <span class="sku">({{ product.product_quantity }} left)</span>
                                     {% else %}
                                         <span class="in-stock">IN STOCK</span>
-                                        <span class="sku">({{ product_details['product_quantity'] }} available)</span>
+                                        <span class="sku">({{ product.product_quantity }} available)</span>
                                     {% endif %}
                                 </p>
                             </div>
                             <div class="box-quantity">
-                                <input class="number" id="quantity" type="number" name="quantity" min="1" max="{{ product_details['product_quantity'] }}" value="1">
-                                {% if product_details['product_quantity']|int > 0 %}
-                                    <button type="button" class="add-cart" data-product-id="{{ product_details['id'] }}">
+                                <input class="number" id="quantity" type="number" name="quantity" min="1" max="{{ product.product_quantity }}" value="1">
+                                {% if product.product_quantity|int > 0 %}
+                                    <button type="button" class="add-cart" data-product-id="{{ product.id }}">
                                         Add to cart
                                     </button>
                                 {% else %}
-                                    <button type="button" class="add-cart notify-me" data-product-id="{{ product_details['id'] }}">
+                                    <button type="button" class="add-cart notify-me" data-product-id="{{ product.id }}">
                                         Notify Me
                                     </button>
                                 {% endif %}
                             </div>
                             <div class="product-link">
                                 <ul class="list-inline">
-                                    <li><a href="#" class="add-to-wishlist" data-product-id="{{ product_details['id'] }}">Add to Wish List</a></li>
+                                    <li><a href="#" class="add-to-wishlist" data-product-id="{{ product.id }}">Add to Wish List</a></li>
                                     
                                 </ul>
                             </div>
@@ -626,6 +626,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <ul class="main-thumb-desc nav">
                             <li><a class="active" data-bs-toggle="tab" href="#dtail">Details</a></li>
                             <li><a data-bs-toggle="tab" href="#review">Review{% if product_reviews|length != 1 %}s{% endif %} ({{ product_reviews|length }})</a></li>
+                            <li><a data-bs-toggle="tab" href="#rental-history">Rental History</a></li>
                         </ul>
                         <!-- Product Thumbnail Tab Content Start -->
                         <div class="tab-content thumb-content border-default">
@@ -675,7 +676,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 {% if session.get('user_id') %}
                                     {% if user_purchased %}
                                         <div class="review border-default universal-padding mt-30">
-                                            <h2 class="review-title mb-30">You're reviewing: <br><span>{{ product_details['product_name'] }}</span></h2>
+                                            <h2 class="review-title mb-30">You're reviewing: <br><span>{{ product.product_name }}</span></h2>
                                             <p class="review-mini-title">Your rating</p>
                                             <!-- Reviews Field Start -->
                                             <div class="riview-field mt-40">
@@ -711,13 +712,38 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </div>
                                 {% endif %}
                             </div>
+                            <div id="rental-history" class="tab-pane">
+                                <div class="review-list border-default universal-padding mt-30">
+                                    <div class="d-flex justify-content-between align-items-center mb-30">
+                                        <h2 class="review-title">Product Rental History</h2>
+                                        <div id="blockchain-badge"></div>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table rental-history-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Customer</th>
+                                                    <th>Store</th>
+                                                    <th>Rental Period</th>
+                                                    <th>Return Date</th>
+                                                    <th>Condition</th>
+                                                    <th>Notes</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="rentalHistoryResult">
+                                                <tr>
+                                                    <td colspan="6" class="text-center">Loading...</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <!-- Product Thumbnail Tab Content End -->
                     </div>
                 </div>
-                <!-- Row End -->
             </div>
-            <!-- Container End -->
         </div>
         <!-- Product Thumbnail Description End -->
         <!-- Realted Product Start -->
@@ -966,6 +992,156 @@ document.addEventListener('DOMContentLoaded', function() {
     <div id="custom-popup" class="custom-popup" style="display: none;">
         <p id="popup-message"></p>
     </div>
+    <!-- Add this section after the product details -->
+
+
+    <script>
+    function getConditionDetails(condition) {
+        const conditions = {
+            'excellent': {
+                class: 'condition-excellent',
+                icon: 'fa-gem',
+                text: 'Excellent'
+            },
+            'good': {
+                class: 'condition-good',
+                icon: 'fa-thumbs-up',
+                text: 'Good'
+            },
+            'fair': {
+                class: 'condition-fair',
+                icon: 'fa-check',
+                text: 'Fair'
+            },
+            'poor': {
+                class: 'condition-poor',
+                icon: 'fa-exclamation-circle',
+                text: 'Poor'
+            },
+            'default': {
+                class: 'condition-unknown',
+                icon: 'fa-question-circle',
+                text: 'Not Specified'
+            }
+        };
+        return conditions[condition?.toLowerCase()] || conditions.default;
+    }
+
+    async function verifyRentalHistory(productId) {
+        const resultDiv = document.getElementById('rentalHistoryResult');
+        const blockchainBadge = document.getElementById('blockchain-badge');
+        
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+        
+        try {
+            const response = await fetch(`/verify-rental-history/${productId}`);
+            const data = await response.json();
+            
+            let historyHtml = '';
+            
+            if (data.verified) {
+                blockchainBadge.innerHTML = '<span class="badge bg-success"><i class="fa fa-shield"></i> Blockchain Verified</span>';
+                
+                if (data.rental_history && data.rental_history.length > 0) {
+                    const sortedHistory = data.rental_history.sort((a, b) => {
+                        const dateA = a.returned_at ? new Date(a.returned_at) : new Date(a.rent_from);
+                        const dateB = b.returned_at ? new Date(b.returned_at) : new Date(b.rent_from);
+                        return dateB - dateA;
+                    });
+
+                    sortedHistory.forEach((record) => {
+                        const conditionInfo = getConditionDetails(record.condition);
+                        historyHtml += `
+                            <tr>
+                                <td>
+                                    <i class="fa fa-user-circle me-2"></i>
+                                    ${record.user_name}
+                                </td>
+                                <td>
+                                    <i class="fa fa-store me-2"></i>
+                                    ${record.store_name}
+                                </td>
+                                <td>
+                                    <i class="fa fa-calendar me-2"></i>
+                                    ${formatDate(record.rent_from)} - ${formatDate(record.rent_to)}
+                                </td>
+                                <td>
+                                    ${record.status === 'returned' ? `
+                                        <i class="fa fa-check-circle me-2 text-success"></i>
+                                        ${formatDate(record.returned_at)}
+                                    ` : 'Active'}
+                                </td>
+                                <td>
+                                    ${record.status === 'returned' ? `
+                                        <span class="condition-badge ${conditionInfo.class}">
+                                            <i class="fa ${conditionInfo.icon}"></i>
+                                            ${conditionInfo.text}
+                                        </span>
+                                    ` : '-'}
+                                </td>
+                                <td>
+                                    ${record.notes ? `
+                                        <i class="fa fa-comment me-2"></i>
+                                        ${record.notes}
+                                    ` : '-'}
+                                </td>
+                            </tr>`;
+                    });
+                } else {
+                    historyHtml = `
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <i class="fa fa-history fa-2x mb-2"></i>
+                                <p>No rental history available</p>
+                            </td>
+                        </tr>`;
+                }
+            } else {
+                blockchainBadge.innerHTML = '<span class="badge bg-warning"><i class="fa fa-exclamation-triangle"></i> Not Verified</span>';
+                historyHtml = `
+                    <tr>
+                        <td colspan="6" class="text-center py-4">
+                            <i class="fa fa-exclamation-circle fa-2x mb-2"></i>
+                            <p>${data.message || 'Unable to verify rental history'}</p>
+                        </td>
+                    </tr>`;
+            }
+            
+            resultDiv.innerHTML = historyHtml;
+            
+        } catch (error) {
+            console.error('Error:', error);
+            resultDiv.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center py-4">
+                        <i class="fa fa-times-circle fa-2x mb-2"></i>
+                        <p>Error loading rental history: ${error.message}</p>
+                    </td>
+                </tr>`;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const productId = '{{ product.id }}';
+        if (productId) {
+            verifyRentalHistory(productId);
+        }
+    });
+    </script>
+
+    <!-- Add this hidden div to store product data -->
+    <div id="product-data" data-product-id="{{ product.id }}" style="display: none;"></div>
 </body>
 <!-- Mirrored from htmldemo.net/jantrik/jantrik/product.html by HTTrack Website Copier/3.x [XR&CO'2014], Fri, 05 Jul 2024 04:21:08 GMT -->
 </html>

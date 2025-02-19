@@ -207,7 +207,6 @@
                             <th>Store</th>
                             <th>Rental Period</th>
                             <th>Pickup Address</th>
-                            <th>Total</th>
                             <th>Status</th>
                             <th class="text-end pe-4">Actions</th>
                         </tr>
@@ -241,7 +240,6 @@
                                             </span>
                                         </div>
                                     </td>
-                                    <td><span class="amount">₹{{ return_order.order_total }}</span></td>
                                     <td>
                                         <span class="status-badge status-pickup">
                                             <i class="mdi mdi-truck-fast me-1"></i>
@@ -264,7 +262,7 @@
                             {% endfor %}
                         {% else %}
                             <tr>
-                                <td colspan="7" class="text-center py-5">
+                                <td colspan="6" class="text-center py-5">
                                     <div class="empty-state">
                                         <i class="mdi mdi-truck-delivery text-secondary mb-3"></i>
                                         <h5 class="text-secondary mb-2">No Active Returns</h5>
@@ -327,7 +325,7 @@
                 console.log('Rendering empty state');
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="text-center py-5">
+                        <td colspan="6" class="text-center py-5">
                             <div class="empty-state">
                                 <i class="mdi mdi-truck-delivery text-secondary mb-3"></i>
                                 <h5 class="text-secondary mb-2">No Active Returns</h5>
@@ -364,7 +362,6 @@
                                 <span>${return_order.shipping_address}${return_order.shipping_address2 ? '<br>' + return_order.shipping_address2 : ''}</span>
                             </div>
                         </td>
-                        <td><span class="amount">${formatCurrency(return_order.order_total)}</span></td>
                         <td>
                             <span class="status-badge status-in-transit">
                                 <i class="mdi mdi-truck-fast me-1"></i>

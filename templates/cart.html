@@ -124,9 +124,10 @@
                                         <th class="product-thumbnail">Image</th>
                                         <th class="product-name">Product</th>
                                         <th class="product-price">Price</th>
-                                        <th class="product-quantity">Quantity</th>
+                                        
                                         <th class="product-rent-from">Rent From</th>
                                         <th class="product-rent-to">Rent To</th>
+                                        <th class="product-quantity">Quantity</th>
                                         <th class="product-subtotal">Total</th>
                                         <th class="product-remove">Remove</th>
                                     </tr>
@@ -140,18 +141,19 @@
                                             </td>
                                             <td class="product-name"><a href="#">{{ item.product_name }}</a></td>
                                             <td class="product-price"><span class="amount" id="price_{{ item.product_id }}">{{ item.product_price }}</span></td>
+                                           
+                                            <td class="product-rent-from">
+                                                <input type="date" class="rent-from" value="{{ item.rent_from }}" data-cart-item-id="{{ item.cart_item_id }}" min="">
+                                            </td>
+                                            <td class="product-rent-to">
+                                                <input type="date" class="rent-to" value="{{ item.rent_to }}" data-cart-item-id="{{ item.cart_item_id }}" min="">
+                                            </td>
                                             <td class="product-quantity">
                                                 <div class="quantity-wrapper">
                                                     <button type="button" onclick="decrementQuantity('{{ item.product_id }}')">-</button>
                                                     <input type="number" id="quantity_{{ item.product_id }}" name="quantity" class="quantity" value="{{ item.product_quantity }}" min="1" max="{{ item.max_quantity }}" onchange="updatePrice('{{ item.product_id }}')" />
                                                     <button type="button" onclick="incrementQuantity('{{ item.product_id }}')">+</button>
                                                 </div>
-                                            </td>
-                                            <td class="product-rent-from">
-                                                <input type="date" class="rent-from" value="{{ item.rent_from }}" data-cart-item-id="{{ item.cart_item_id }}" min="">
-                                            </td>
-                                            <td class="product-rent-to">
-                                                <input type="date" class="rent-to" value="{{ item.rent_to }}" data-cart-item-id="{{ item.cart_item_id }}" min="">
                                             </td>
                                             <td class="product-subtotal"><span id="total_{{ item.product_id }}">{{ item.total_price }}</span></td>
                                             <td class="product-remove">
@@ -417,18 +419,34 @@
                         // Increment the quantity of a specific item
                         function incrementQuantity(itemKey) {
                             const quantityInput = document.getElementById('quantity_' + itemKey);
+                            const $row = $(`tr[data-product-id="${itemKey}"]`);
+                            const rentFrom = $row.find('.rent-from').val();
+                            const rentTo = $row.find('.rent-to').val();
+                            
+                            if (!rentFrom || !rentTo) {
+                                showPopup('Please select rental dates before adjusting quantity');
+                                return;
+                            }
+                            
                             if (quantityInput) {
                                 let quantity = parseInt(quantityInput.value) + 1;
                                 quantityInput.value = quantity;
                                 updatePrice(itemKey);
-                            } else {
-                                console.error('Quantity input not found for item:', itemKey);
                             }
                         }
                     
                         // Decrement the quantity of a specific item
                         function decrementQuantity(itemKey) {
                             const quantityInput = document.getElementById('quantity_' + itemKey);
+                            const $row = $(`tr[data-product-id="${itemKey}"]`);
+                            const rentFrom = $row.find('.rent-from').val();
+                            const rentTo = $row.find('.rent-to').val();
+                            
+                            if (!rentFrom || !rentTo) {
+                                showPopup('Please select rental dates before adjusting quantity');
+                                return;
+                            }
+                            
                             if (quantityInput) {
                                 let quantity = parseInt(quantityInput.value);
                                 if (quantity > 1) {
@@ -438,8 +456,6 @@
                                 } else {
                                     showPopup('Quantity cannot be less than 1.');
                                 }
-                            } else {
-                                console.error('Quantity input not found for item:', itemKey);
                             }
                         }
                     

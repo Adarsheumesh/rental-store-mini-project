@@ -298,31 +298,34 @@
                                 </div>
 
                                 <ul>
-                                    <!-- Your existing dropdown code -->
+                                    <!-- User Account Dropdown -->
                                     <li class="user-account-dropdown">
-                                        {% if user_name %}
+                                        {% if session.get('user_info') %}
                                             <a href="#" class="user-toggle">
-                                                <i class="fa fa-user-circle"></i> Hello, {{ user_name }} <i class="fa fa-angle-down"></i>
+                                                <i class="fa fa-user-circle"></i> Hello, {{ session.get('user_info', {}).get('name', 'User') }} <i class="fa fa-angle-down"></i>
                                             </a>
                                             <ul class="ht-dropdown user-menu">
-                                                <li><a href="/account"><i class="fa fa-user"></i> My Account</a></li>
-                                                <li><a href="/wishlist"><i class="fa fa-heart"></i> Wishlist</a></li>
+                                                <li><a href="{{ url_for('account') }}"><i class="fa fa-user"></i> My Account</a></li>
+                                                <li><a href="{{ url_for('wishlist') }}"><i class="fa fa-heart"></i> Wishlist</a></li>
                                                 <li class="divider"></li>
-                                                <li><a href="/logout"><i class="fa fa-sign-out"></i> Logout</a></li>
+                                                <li><a href="{{ url_for('logout') }}"><i class="fa fa-sign-out"></i> Logout</a></li>
                                             </ul>
                                         {% else %}
-                                            <a href="/login" class="user-toggle">
+                                            <a href="{{ url_for('login') }}" class="user-toggle">
                                                 <i class="fa fa-user"></i> Login / Register <i class="fa fa-angle-down"></i>
                                             </a>
                                             <ul class="ht-dropdown user-menu">
-                                                <li><a href="/login"><i class="fa fa-sign-in"></i> Login</a></li>
-                                                <li><a href="/register"><i class="fa fa-user-plus"></i> Register</a></li>
+                                                <li><a href="{{ url_for('login') }}"><i class="fa fa-sign-in"></i> Login</a></li>
+                                                <li><a href="{{ url_for('register') }}"><i class="fa fa-user-plus"></i> Register</a></li>
                                             </ul>
                                         {% endif %}
-                                    </li>                                    
+                                    </li>
                                     <li><a href="/wishlist"><i class="fa fa-heart-o"></i></a></li>
-                                    <li><a href="/cart"><i class="fa fa-shopping-basket"></i><span class="cart-counter">{{ cart_count }}</span></a>
-                                        
+                                    <li>
+                                        <a href="/cart">
+                                            <i class="fa fa-shopping-basket"></i>
+                                            <span class="cart-counter">{{ cart_count }}</span>
+                                        </a>
                                     </li>
                                 </ul>
                             </div>
