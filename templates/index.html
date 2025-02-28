@@ -1101,6 +1101,9 @@ setInterval(checkInternetConnection, 5000);
         const message = userInput.value.trim();
         
         if (message) {
+            // Disable input while processing
+            userInput.disabled = true;
+            
             // Display user message
             addMessage(message, 'user');
             userInput.value = '';
@@ -1136,6 +1139,10 @@ setInterval(checkInternetConnection, 5000);
                 loadingDiv.remove();
                 addMessage("I'm sorry, I'm having trouble connecting right now. Please try again later.", 'bot');
                 console.error('Error:', error);
+            } finally {
+                // Re-enable input
+                userInput.disabled = false;
+                userInput.focus();
             }
         }
     }

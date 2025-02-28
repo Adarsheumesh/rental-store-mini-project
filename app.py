@@ -4363,15 +4363,40 @@ def complete_return_delivery():
 def get_ai_response():
     try:
         data = request.get_json()
-        user_message = data.get('message', '')
+        user_message = data.get('message', '').lower()
 
-        # Create a context/prompt for the AI
-        context = """You are a helpful customer service agent for ToolHive, a tool rental website. 
-        Be concise and friendly in your responses. Focus on:
-        - Tool rentals and availability
-        - Pricing and payment options
-        - Delivery and return policies
-        - General customer support
+        # Get products from Firebase
+        products = db.child("products").get().val()
+        
+        # Create product info string
+        product_info = "Here are our available products:\n"
+        if products:
+            for product_id, product in products.items():
+                product_info += f"- {product.get('product_name', 'N/A')}: ₹{product.get('product_price', 'N/A')}/day (Quantity: {product.get('product_quantity', '0')})\n"
+
+        # Create context with real product data and 30-day limit
+        context = f"""You are a helpful customer service agent for ToolHive, a tool rental website.
+        Be concise and friendly in your responses. 
+        
+        Current product information:
+        {product_info}
+        
+        Rental policies:
+        - Minimum rental period: 1 day
+        - Maximum rental period: 30 days from today
+        - Delivery available within city limits
+        
+        Payment options:
+        - Online payment
+        
+        Important rental rules:
+        - Tools can only be rented for up to 30 days from the current date
+        - Rentals cannot be extended beyond the 30-day limit
+        - Early returns are allowed
+        
+        If asked about a specific product, check the product list above and provide accurate information.
+        If the product is not in our list, inform that it's not available.
+        If asked about rental duration, emphasize the 30-day maximum limit.
         Keep responses under 100 words."""
 
         # Combine context and user message

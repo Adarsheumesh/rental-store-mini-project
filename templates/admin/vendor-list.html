@@ -44,7 +44,7 @@
 				<div class="ec-brand">
 					<a href="/admin_dashboard">
 						<img class="ec-brand-icon" src="{{ url_for('static', filename='assets/img/logo/favicon.png') }}" alt="" />
-						<span class="ec-brand-name text-truncate">ANDSHOP</span>
+						<span class="ec-brand-name text-truncate">ADMIN</span>
 					</a>
 				</div>
 
@@ -87,7 +87,28 @@
 								</ul>
 							</div>
 						</li>
-
+						<!-- Delivery -->
+						<li class="has-sub">
+							<a class="sidenav-item-link" href="javascript:void(0)">
+								<!-- <i class="mdi mdi-palette-advanced"></i> -->
+								<i class="mdi mdi-package-variant-closed"></i>
+								<span class="nav-text">Delivery Agent</span> <b class="caret"></b>
+							</a>
+							<div class="collapse">
+								<ul class="sub-menu" id="products" data-parent="#sidebar-menu">
+									<li class="">
+										<a class="sidenav-item-link" href="/agent-add">
+											<span class="nav-text">Add Delivery Agent</span>
+										</a>										
+									</li>
+									<li class="">
+										<a class="sidenav-item-link" href="/agent-list">
+											<span class="nav-text">List Delivery Agent</span>
+										</a>
+									</li>
+								</ul>
+							</div>
+						</li>
 						<!-- Users -->
 						
 
