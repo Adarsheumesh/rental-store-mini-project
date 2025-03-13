@@ -87,6 +87,23 @@
 							</div>
 							<hr>
 						</li>
+						<!-- Analytics -->
+						<li class="has-sub">
+							<a class="sidenav-item-link" href="javascript:void(0)">
+								<i class="mdi mdi-chart-line"></i>
+								<span class="nav-text">Analytics</span> <b class="caret"></b>
+							</a>
+							<div class="collapse">
+								<ul class="sub-menu" id="analytics" data-parent="#sidebar-menu">
+									<li class="">
+										<a class="sidenav-item-link" href="/store-revenue">
+											<span class="nav-text">Store Revenue</span>
+										</a>
+									</li>
+								</ul>
+							</div>
+							<hr>
+						</li>
 						<!-- Products -->
 						<li class="has-sub">
 							<a class="sidenav-item-link" href="javascript:void(0)">
@@ -223,30 +240,40 @@
 													<th>Status</th>
 													<th>Shipping address</th>
 													<th>Quantity</th>
-													 <!-- Changed from "Action" to "Cancel" -->
 												</tr>
 											</thead>
 
 											<tbody>
 												{% if orders %}
 												{% for order in orders %}
+												{% if order.store_name == user_info.store_name %}
+												{% set product = products.get(order.product_id, {}) %}
 												<tr>
 													<td><img class="product-img tbl-img"
-															src="{{ order.product_image }}" alt="product"></td>
-													<td>{{ order.product_name }}</td>
-													<td>{{ order.category }}</td>
-													<td>{{ order.price }}</td>
+															src="{{ product.get('product_image', '') }}" alt="product"></td>
+													<td>{{ product.get('product_name', 'Unknown Product') }}</td>
+													<td>{{ product.get('main_category', 'N/A') }}</td>
+													<td>₹{{ order.total_price }}</td>
 													<td>{{ order.rent_from }}</td>
 													<td>{{ order.rent_to }}</td>
-													<td>{{ order.payment_status }}</td>
-													<td>{{ order.shipping_address }}</td>
+													<td>
+														<span class="badge {% if order.get('status', '') == 'ordered' %}badge-warning
+																		{% elif order.get('status', '') == 'confirmed' %}badge-success
+																		{% elif order.get('status', '') == 'cancelled' %}badge-danger
+																		{% elif order.get('status', '') == 'completed' %}badge-info
+																		{% elif order.get('status', '') == 'delivered' %}badge-primary
+																		{% else %}badge-secondary{% endif %}">
+															{{ order.get('status', 'Unknown')|title }}
+														</span>
+													</td>
+													<td>{{ order.shipping_address }}{% if order.shipping_district %}, {{ order.shipping_district }}{% endif %}</td>
 													<td>{{ order.quantity }}</td>
-													
 												</tr>
+												{% endif %}
 												{% endfor %}
 												{% else %}
 												<tr>
-													<td colspan="10" class="text-center">No orders found.</td>
+													<td colspan="10" class="text-center">No orders found for this store.</td>
 												</tr>
 												{% endif %}
 											</tbody>

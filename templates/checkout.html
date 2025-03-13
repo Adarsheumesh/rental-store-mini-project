@@ -129,8 +129,16 @@
                                         </tbody>
                                         <tfoot>
                                             <tr>
-                                                <th>Order Total</th>
+                                                <th>Subtotal</th>
                                                 <td class="text-right"><strong>₹{{ "%.2f"|format(total_price) }}</strong></td>
+                                            </tr>
+                                            <tr>
+                                                <th>Wallet Deposit (Refundable)</th>
+                                                <td class="text-right"><strong>₹1000.00</strong></td>
+                                            </tr>
+                                            <tr class="order-total">
+                                                <th>Order Total</th>
+                                                <td class="text-right"><strong>₹{{ "%.2f"|format(total_price + 1000) }}</strong></td>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -145,7 +153,7 @@
                                     <div id="card-errors" role="alert" class="text-danger mb-3"></div>
                                     <div id="payment-message" class="alert alert-info" style="display: none;"></div>
                                     <button type="submit" id="submit-button" class="btn btn-primary btn-lg btn-block">
-                                        <span id="button-text">Pay ₹{{ "%.2f"|format(total_price) }}</span>
+                                        <span id="button-text">Pay ₹{{ "%.2f"|format(total_price + 1000) }}</span>
                                         <span id="spinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
                                     </button>
                                 </div>
@@ -233,7 +241,8 @@
             formData.append('item_totals[]', '{{ (item.product_price|default(0) * item.quantity|default(1) * item.rental_days|default(1))|round(2) }}');
             {% endfor %}
 
-            formData.append('order_total', '{{ total_price|default(0) }}');
+            formData.append('order_total', '{{ (total_price + 1000)|default(0) }}');
+            formData.append('wallet_deposit', '1000');
 
             // Add shipping information to formData
             var shipBox = document.getElementById('ship-box');

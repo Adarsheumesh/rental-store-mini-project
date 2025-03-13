@@ -120,14 +120,35 @@
             min-width: 300px;
             max-width: 400px;
             border: 1px solid #ddd;
-            animation: fadeInOut 3.3s ease-in-out;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            animation: fadeInOut 5s ease-in-out;
+            background-color: #fff;
+            z-index: 9999;
         }
 
         @keyframes fadeInOut {
-            0% { opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { opacity: 0; }
+            0% { opacity: 0; transform: translateY(-20px); }
+            10% { opacity: 1; transform: translateY(0); }
+            90% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+        
+        #refundNotification .fa-check-circle {
+            color: #28a745;
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        #refundNotification h4 {
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        #refundNotification p {
+            color: #555;
+            margin-bottom: 5px;
         }
 
         .order-progress {
@@ -574,6 +595,16 @@
                                                                             data-rent-to="{{ item.get('rent_to', '') }}">
                                                                         Return
                                                                     </button>
+                                                                    <!-- Extend Rental Button -->
+                                                                    <button class="btn btn-sm btn-primary" 
+                                                                            onclick="handleExtendRental(this)"
+                                                                            data-order-id="{{ order.get('order_id', '') }}"
+                                                                            data-item-index="{{ loop.index0 }}"
+                                                                            data-item='{{ item|tojson|safe }}'
+                                                                            data-wallet-deposit="{{ order.get('wallet_deposit', 0) }}">
+                                                                        <i class="fa fa-calendar-plus"></i>
+                                                                        Extend Rental
+                                                                    </button>
                                                                 {% endif %}
                                                             </div>
                                                         </td>
@@ -588,7 +619,8 @@
                                                         <td colspan="6">
                                                             <div class="d-flex flex-column align-items-start">
                                                                 <div class="btn-group-vertical w-100 mb-2" role="group">
-                                                                    <button class="btn btn-outline-primary btn-sm view-order-details" data-order-id="{{ order.get('order_id', '') }}">
+                                                                    <button class="btn btn-outline-primary btn-sm view-order-details" 
+                                                                            data-order-id="{{ order.get('order_id', '') }}">
                                                                         <i class="fa fa-eye"></i> View Details
                                                                     </button>
                                                                    
@@ -1067,9 +1099,58 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<!-- Initialize Firebase -->
+<script>
+    // Firebase Configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyB42nHmPcpj7BmOPPdO93lXqzA3PjjXZOc",
+        authDomain: "project-dbebd.firebaseapp.com",
+        databaseURL: "https://project-dbebd-default-rtdb.asia-southeast1.firebasedatabase.app/",
+        projectId: "project-dbebd",
+        storageBucket: "project-dbebd.appspot.com",
+        messagingSenderId: "374516311348",
+        appId: "1:374516311348:web:d916facf6720a4e275f161"
+    };
+
+    // Initialize Firebase app if it hasn't been initialized yet
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    } else {
+        firebase.app(); // if already initialized, use that one
+    }
+
+    // Get database reference - make it global
+    window.database = firebase.database();
+</script>
+
+<!-- Include the rental extension script AFTER Firebase and Bootstrap -->
+<script src="{{ url_for('static', filename='js/rental-extension.js') }}"></script>
+
+<!-- Include the order details script -->
+<script src="{{ url_for('static', filename='js/order-details.js') }}"></script>
+
 <!-- Add the return functionality JavaScript -->
 <script>
 $(document).ready(function() {
+    // All modal initialization and event handlers for moreDetailsModal have been removed
+    // The modal is now fully handled by order-details.js
+    
+    // Close button handlers for both the X and footer close button
+    $('[data-bs-dismiss="modal"]').on('click', function() {
+        $('#moreDetailsModal').modal('hide');
+    });
+
+    // Modal hidden event handler for cleanup
+    $('#moreDetailsModal').on('hidden.bs.modal', function() {
+        $('#moreDetailsContent').empty().addClass('d-none');
+        $('#orderDetailsLoading').removeClass('d-none');
+        $('#orderDetailsError').addClass('d-none');
+    });
+
     // Use consistent class name
     $('.return-btn, .return-item').on('click', function(e) {
         e.preventDefault();
@@ -1091,7 +1172,10 @@ $(document).ready(function() {
             .data('order-id', orderId)
             .data('product-id', productId);
 
-        $('#returnModal').modal('show');
+        // Use Bootstrap 5 modal initialization
+        const returnModal = document.getElementById('confirmReturnModal');
+        const bsReturnModal = new bootstrap.Modal(returnModal);
+        bsReturnModal.show();
     });
 
     // Update the confirm return handler
@@ -1110,7 +1194,12 @@ $(document).ready(function() {
                 product_id: productId
             }),
             success: function(response) {
-                $('#returnModal').modal('hide');
+                // Use Bootstrap 5 modal hide
+                const returnModal = document.getElementById('confirmReturnModal');
+                const bsReturnModal = bootstrap.Modal.getInstance(returnModal);
+                if (bsReturnModal) {
+                    bsReturnModal.hide();
+                }
                 // Remove alert and just reload
                 setTimeout(() => {
                     location.reload();
@@ -1122,258 +1211,29 @@ $(document).ready(function() {
             }
         });
     });
-});
 
-// Toast function
-function showToast(title, message, isError = false) {
-    const toast = document.getElementById('liveToast');
-    const toastInstance = new bootstrap.Toast(toast);
-    
-    document.getElementById('toastTitle').textContent = title;
-    document.getElementById('toastMessage').textContent = message;
-    
-    toast.classList.remove('bg-danger', 'text-white', 'bg-success');
-    if (isError) {
-        toast.classList.add('bg-danger', 'text-white');
-    } else {
-        toast.classList.add('bg-success', 'text-white');
+    // Add showToast function
+    function showToast(title, message, isError = false) {
+        const toast = document.getElementById('liveToast');
+        const toastInstance = new bootstrap.Toast(toast);
+        
+        // Set toast content
+        document.getElementById('toastTitle').textContent = title;
+        document.getElementById('toastMessage').textContent = message;
+        
+        // Set toast class based on type
+        toast.classList.remove('bg-danger', 'text-white', 'bg-success');
+        if (isError) {
+            toast.classList.add('bg-danger', 'text-white');
+        } else {
+            toast.classList.add('bg-success', 'text-white');
+        }
+        
+        // Show toast
+        toastInstance.show();
     }
-    
-    toastInstance.show();
-}
-</script>
 
-<!-- Add complete modal structure -->
-<div class="modal fade" id="confirmReturnModal" tabindex="-1" aria-labelledby="confirmReturnModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="confirmReturnModalLabel">Confirm Return</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to return this item?</p>
-                <p><strong>Product:</strong> <span id="returnProductName"></span></p>
-                <p><strong>Rent From:</strong> <span id="returnRentFrom"></span></p>
-                <p><strong>Rent To:</strong> <span id="returnRentTo"></span></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="confirmReturn">Confirm Return</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- More Details Modal -->
-<div class="modal fade" id="moreDetailsModal" tabindex="-1" aria-labelledby="moreDetailsModalLabel" aria-hidden="true" data-bs-backdrop="false">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="moreDetailsModalLabel">Order Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <!-- Loading Spinner -->
-                <div id="orderDetailsLoading" class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-
-                <!-- Error Alert -->
-                <div id="orderDetailsError" class="alert alert-danger d-none" role="alert">
-                    Failed to load order details. Please try again.
-                </div>
-
-                <!-- Order Content -->
-                <div id="moreDetailsContent" class="d-none">
-                    <!-- Order Progress Section -->
-                    <div class="order-progress mb-4">
-                        <h6 class="border-bottom pb-2">Order Progress</h6>
-                        <div class="progress-track">
-                            <div class="progress-steps">
-                                <div class="step">
-                                    <div class="step-icon">
-                                        <i class="fas fa-shopping-cart"></i>
-                                    </div>
-                                    <p class="step-text">Ordered</p>
-                                    <small class="step-date"></small>
-                                </div>
-                                <div class="step">
-                                    <div class="step-icon">
-                                        <i class="fas fa-truck"></i>
-                                    </div>
-                                    <p class="step-text">In Transit</p>
-                                    <small class="step-date"></small>
-                                </div>
-                                <div class="step">
-                                    <div class="step-icon">
-                                        <i class="fas fa-shipping-fast"></i>
-                                    </div>
-                                    <p class="step-text">Out for Delivery</p>
-                                    <small class="step-date"></small>
-                                </div>
-                                <div class="step">
-                                    <div class="step-icon">
-                                        <i class="fas fa-box"></i>
-                                    </div>
-                                    <p class="step-text">Delivered</p>
-                                    <small class="step-date"></small>
-                                </div>
-                                <div class="step">
-                                    <div class="step-icon">
-                                        <i class="fas fa-undo"></i>
-                                    </div>
-                                    <p class="step-text">Return Initiated</p>
-                                    <small class="step-date"></small>
-                                </div>
-                                <div class="step">
-                                    <div class="step-icon">
-                                        <i class="fas fa-check-circle"></i>
-                                    </div>
-                                    <p class="step-text">Returned</p>
-                                    <small class="step-date"></small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Order Info Section -->
-                    <div class="order-info mb-4">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <p><strong>Order ID:</strong> <span id="modalOrderId"></span></p>
-                                <p><strong>Order Date:</strong> <span id="modalOrderDate"></span></p>
-                                <p><strong>Total Amount:</strong> <span id="modalOrderTotal"></span></p>
-                            </div>
-                            <div class="col-md-6">
-                                <p><strong>Shipping Address:</strong> <span id="modalShippingAddress"></span></p>
-                                <p><strong>Payment ID:</strong> <span id="modalPaymentId"></span></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Cancel Order Modal -->
-<div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel" aria-hidden="true" data-bs-backdrop="false">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="cancelOrderModalLabel">Cancel Order</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <!-- Loading Spinner -->
-                <div id="cancelOrderLoading" class="text-center py-4 d-none">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-
-                <!-- Error Alert -->
-                <div id="cancelOrderError" class="alert alert-danger d-none" role="alert">
-                    Failed to process cancellation. Please try again.
-                </div>
-
-                <!-- Cancel Content -->
-                <div id="cancelOrderContent">
-                    <p>Are you sure you want to cancel this order?</p>
-                    <p><strong>Order ID:</strong> <span id="cancelOrderId"></span></p>
-                    <p><strong>Product:</strong> <span id="cancelProductName"></span></p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, Keep Order</button>
-                <button type="button" class="btn btn-danger" id="confirmCancel">Yes, Cancel Order</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add this modal for item cancellation -->
-<div class="modal fade" id="cancelItemModal" tabindex="-1" role="dialog" aria-labelledby="cancelItemModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="cancelItemModalLabel">Cancel Item</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to cancel this item?</p>
-                <p><strong>Order ID:</strong> <span id="cancelItemOrderId"></span></p>
-                <p><strong>Product:</strong> <span id="cancelItemProductName"></span></p>
-                <div id="cancelQuantitySelector" style="display: none;">
-                    <label for="cancelQuantity">Select quantity to cancel:</label>
-                    <select id="cancelQuantity" class="form-control">
-                        <!-- Options will be dynamically populated -->
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">No, Keep Item</button>
-                <button type="button" class="btn btn-danger" id="confirmCancelItem">Yes, Cancel Item</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Refund Notification Popup -->
-<div id="refundNotification" class="position-fixed top-50 start-50 translate-middle bg-white p-4 rounded shadow-lg text-center" style="display: none; z-index: 9999;">
-    <div class="mb-3">
-        <i class="fa fa-check-circle text-success" style="font-size: 48px;"></i>
-    </div>
-    <h4>Refund Initiated</h4>
-    <p>Your refund will be processed within 48 hours.</p>
-</div>
-
-<!-- Add Toast Container -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-    <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="toast-header">
-            <strong class="me-auto" id="toastTitle">Notification</strong>
-            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-        <div class="toast-body" id="toastMessage">
-        </div>
-    </div>
-</div>
-
-<script>
-// Add showToast function
-function showToast(title, message, isError = false) {
-    const toast = document.getElementById('liveToast');
-    const toastInstance = new bootstrap.Toast(toast);
-    
-    // Set toast content
-    document.getElementById('toastTitle').textContent = title;
-    document.getElementById('toastMessage').textContent = message;
-    
-    // Set toast class based on type
-    toast.classList.remove('bg-danger', 'text-white', 'bg-success');
-    if (isError) {
-        toast.classList.add('bg-danger', 'text-white');
-    } else {
-        toast.classList.add('bg-success', 'text-white');
-    }
-    
-    // Show toast
-    toastInstance.show();
-}
-
-// Update the success handling in your existing script
-$(document).ready(function() {
-    // ... existing modal initialization code ...
-
+    // Update the success handling in your existing script
     // Confirm cancel button handler
     $('#confirmCancel').on('click', function() {
         const orderId = $('#cancelOrderId').text();
@@ -1417,160 +1277,6 @@ $(document).ready(function() {
             }
         });
     });
-
-    // ... rest of your existing code ...
-});
-
-$(document).ready(function() {
-    // Initialize the modal
-    const moreDetailsModal = new bootstrap.Modal(document.getElementById('moreDetailsModal'), {
-        backdrop: true,
-        keyboard: true
-    });
-
-    // View Order Details button click handler
-    $('.view-order-details').on('click', function(e) {
-        e.preventDefault();
-        const orderId = $(this).data('order-id');
-        console.log('Viewing order details for:', orderId);
-        
-        // Show modal
-        moreDetailsModal.show();
-        
-        // Fetch order details
-        fetchOrderDetails(orderId);
-    });
-
-    // Close button handlers for both the X and footer close button
-    $('[data-bs-dismiss="modal"]').on('click', function() {
-        moreDetailsModal.hide();
-    });
-
-    // Modal hidden event handler for cleanup
-    $('#moreDetailsModal').on('hidden.bs.modal', function() {
-        $('#moreDetailsContent').empty().addClass('d-none');
-        $('#orderDetailsLoading').removeClass('d-none');
-        $('#orderDetailsError').addClass('d-none');
-    });
-
-    // View Order Details functionality
-    $('.view-order-details').on('click', function() {
-        const orderId = $(this).data('order-id');
-        fetchOrderDetails(orderId);
-    });
-
-    function fetchOrderDetails(orderId) {
-        $.ajax({
-            url: '/get-order-details',
-            method: 'GET',
-            data: { order_id: orderId },
-            success: function(response) {
-                if (response.success) {
-                    populateMoreDetailsModal(response.order);
-                } else {
-                    console.error('Failed to fetch order details:', response.message);
-                    showToast('Error', 'Failed to load order details. Please try again.', true);
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('Error fetching order details:', error);
-                showToast('Error', 'An error occurred while loading order details.', true);
-            }
-        });
-    }
-
-    function populateMoreDetailsModal(order) {
-        console.log('Populating modal with order:', order);
-
-        // Reset previous content
-        $('#moreDetailsContent').empty();
-
-        // Get the first item
-        const item = order.items[0];
-        console.log('Item details:', item);
-
-        // Create order details HTML with correct data mapping
-        let detailsHtml = `
-            <div class="order-info mt-4">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h5>Order Details</h5>
-                        <p><strong>Order ID:</strong> ${order.order_id}</p>
-                        <p><strong>Order Date:</strong> ${new Date(order.created_at).toLocaleString()}</p>
-                        <p><strong>Product:</strong> ${item.product_name}</p>
-                        <p><strong>Total Amount:</strong> ₹${order.order_total.toFixed(2)}</p>
-                        <p><strong>Store:</strong> ${item.store_name}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <h5>Delivery Details</h5>
-                        <p><strong>Shipping Address:</strong> ${order.shipping_address}</p>
-                        <p><strong>Payment ID:</strong> ${order.payment_intent_id}</p>
-                        <p><strong>Status:</strong> <span class="badge bg-${getStatusBadgeColor(item.status)}">${item.status}</span></p>
-                        <p><strong>Quantity:</strong> ${item.quantity}</p>
-                        <p><strong>Rental Period:</strong> ${item.rent_from} to ${item.rent_to}</p>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        $('#moreDetailsContent').append(detailsHtml);
-
-        // Update progress bar
-        updateProgressBar(item);
-    }
-
-    function updateProgressBar(item) {
-        console.log('Updating progress with item:', item);
-        
-        // Reset all steps
-        const steps = $('.step');
-        steps.removeClass('active completed');
-        $('.step-date').text('');
-
-        // Define the steps and their dates
-        const orderSteps = [
-            { status: 'ordered', date: item.ordered_at },
-            { status: 'delivered', date: item.delivered_at },
-            { status: 'return_initiated', date: item.return_initiated_at },
-            { status: 'returned', date: item.return_completed_at }
-        ];
-
-        // Get current status index
-        const currentStatus = item.status.toLowerCase();
-        const currentStepIndex = orderSteps.findIndex(step => step.status === currentStatus);
-
-        if (currentStepIndex !== -1) {
-            // Update steps based on current status
-            steps.each(function(index) {
-                const $step = $(this);
-                const stepData = orderSteps[index];
-
-                if (index <= currentStepIndex) {
-                    if (index < currentStepIndex) {
-                        $step.addClass('completed');
-                    } else {
-                        $step.addClass('active');
-                    }
-
-                    // Add date if available
-                    if (stepData.date) {
-                        $step.find('.step-date').text(new Date(stepData.date).toLocaleString());
-                    }
-                }
-            });
-        }
-    }
-
-    function getStatusBadgeColor(status) {
-        const colors = {
-            'ordered': 'primary',
-            'delivered': 'success',
-            'return_initiated': 'warning',
-            'returned': 'secondary',
-            'cancelled': 'danger'
-        };
-        return colors[status?.toLowerCase()] || 'secondary';
-    }
 
     // Add this function to generate and download the invoice
     function downloadInvoice(orderId) {
@@ -1664,18 +1370,14 @@ $(document).ready(function() {
     }
 
     // Make sure to call updateCancelButton for each order when the page loads
-    $(document).ready(function() {
-        $('.cancel-order').each(function() {
-            const button = $(this);
-            const orderId = button.data('order-id');
-            const orderTime = new Date(button.data('order-time'));
-            const cancelWindowMs = 10 * 60 * 1000; // 10 minutes in milliseconds
-            const orderStatus = button.data('order-status');
-            
-            updateCancelButton(button, orderTime, cancelWindowMs, orderStatus);
-        });
-
-        // ... rest of your existing code ...
+    $('.cancel-order').each(function() {
+        const button = $(this);
+        const orderId = button.data('order-id');
+        const orderTime = new Date(button.data('order-time'));
+        const cancelWindowMs = 10 * 60 * 1000; // 10 minutes in milliseconds
+        const orderStatus = button.data('order-status');
+        
+        updateCancelButton(button, orderTime, cancelWindowMs, orderStatus);
     });
 
     $('.cancel-order').on('click', function() {
@@ -1689,57 +1391,18 @@ $(document).ready(function() {
         if (timeSinceOrder <= cancelWindowMs) {
             $('#cancelOrderId').text(orderId);
             $('#cancelProductName').text(productName);
-            $('#cancelOrderModal').modal('show');
+            
+            // Use Bootstrap 5 modal initialization
+            const cancelOrderModal = document.getElementById('cancelOrderModal');
+            const bsCancelOrderModal = new bootstrap.Modal(cancelOrderModal);
+            bsCancelOrderModal.show();
         } else {
             showToast('Error', 'The cancellation window for this order has expired.', true);
         }
     });
 
-    $('#confirmCancel').on('click', function() {
-        const orderId = $('#cancelOrderId').text();
-        const button = $(this);
-        
-        // Show loading state
-        $('#cancelOrderContent').addClass('d-none');
-        $('#cancelOrderLoading').removeClass('d-none');
-        $('#cancelOrderError').addClass('d-none');
-        button.prop('disabled', true);
-
-        // Send cancel request
-        $.ajax({
-            url: '/cancel-order',
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ order_id: orderId }),
-            success: function(response) {
-                console.log('Cancel response:', response);
-                if (response.success) {
-                    cancelOrderModal.hide();
-                    showToast('Success', 'Order cancelled successfully');
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    $('#cancelOrderLoading').addClass('d-none');
-                    $('#cancelOrderError').removeClass('d-none')
-                        .text(response.error || 'Failed to cancel order');
-                    $('#cancelOrderContent').removeClass('d-none');
-                    showToast('Error', response.error || 'Failed to cancel order', true);
-                }
-            },
-            error: function(xhr, status, error) {
-                console.error('Cancel error:', error);
-                $('#cancelOrderLoading').addClass('d-none');
-                $('#cancelOrderError').removeClass('d-none');
-                $('#cancelOrderContent').removeClass('d-none');
-                showToast('Error', 'Failed to cancel order. Please try again.', true);
-            },
-            complete: function() {
-                button.prop('disabled', false);
-            }
-        });
-    });
-
-    // Reset modal on close
-    $('#cancelOrderModal').on('hidden.bs.modal', function() {
+    // Reset modal on close - use Bootstrap 5 event
+    document.getElementById('cancelOrderModal').addEventListener('hidden.bs.modal', function() {
         $('#cancelOrderContent').removeClass('d-none');
         $('#cancelOrderLoading').addClass('d-none');
         $('#cancelOrderError').addClass('d-none');
@@ -1747,435 +1410,175 @@ $(document).ready(function() {
         $('#cancelProductName').text('');
     });
 
-    // Add this to your existing JavaScript
-    $(document).ready(function() {
-        // ... existing code ...
-
-        $('.cancel-item').on('click', function() {
-            const orderId = $(this).data('order-id');
-            const productId = $(this).data('product-id');
-            const productName = $(this).data('product-name');
-            const quantity = $(this).data('quantity');
-
-            // Populate modal
-            $('#cancelItemOrderId').text(orderId);
-            $('#cancelItemProductName').text(productName);
-
-            // Show quantity selector if quantity > 1
-            if (quantity > 1) {
-                $('#cancelQuantitySelector').show();
-                const $quantitySelect = $('#cancelQuantity');
-                $quantitySelect.empty();
-                for (let i = 1; i <= quantity; i++) {
-                    $quantitySelect.append($('<option>', {
-                        value: i,
-                        text: i
-                    }));
-                }
-            } else {
-                $('#cancelQuantitySelector').hide();
-            }
-
-            // Store data for use in confirmCancelItem
-            $('#confirmCancelItem').data('order-id', orderId).data('product-id', productId);
-
-            // Show modal
-            $('#cancelItemModal').modal('show');
-        });
-
-        $('#confirmCancelItem').on('click', function() {
-            const orderId = $(this).data('order-id');
-            const productId = $(this).data('product-id');
-            const cancelQuantity = $('#cancelQuantity').is(':visible') ? parseInt($('#cancelQuantity').val()) : 1;
-            cancelOrderItem(orderId, productId, cancelQuantity);
-        });
-
-        function cancelOrderItem(orderId, productId, quantity) {
-            $.ajax({
-                url: '/cancel-order-item',
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ order_id: orderId, product_id: productId, quantity: quantity }),
-                success: function(response) {
-                    if (response.success) {
-                        showToast('Success', 'Item cancelled successfully', false);
-                        updateItemStatus(orderId, productId, response.newStatus, quantity, response.remainingQuantity);
-                        
-                        // Update the quantity displayed in the order
-                        $(`#item-quantity-${orderId}-${productId}`).text(response.remainingQuantity);
-                        
-                        // Update the cancel button's data-quantity attribute
-                        $(`#cancel-button-${orderId}-${productId}`).data('quantity', response.remainingQuantity);
-                        
-                        // Update the order total
-                        if (response.newOrderTotal !== undefined) {
-                            $(`#order-total-${orderId}`).text(`₹${response.newOrderTotal.toFixed(2)}`);
-                        }
-
-                        // Show refund notification
-                        showRefundNotification();
-                    } else {
-                        showToast('Error', 'Failed to cancel item: ' + response.message, true);
-                    }
-                    $('#cancelItemModal').modal('hide');
-                },
-                error: function(xhr, status, error) {
-                    console.error('Error:', error);
-                    showToast('Error', 'An error occurred while cancelling the item', true);
-                    $('#cancelItemModal').modal('hide');
-                }
-            });
-        }
-
-        function updateItemStatus(orderId, productId, newStatus, cancelledQuantity, remainingQuantity) {
-            const statusCell = $(`#status-cell-${orderId}-${productId}`);
-            let statusHtml = '';
-            if (newStatus === 'cancelled') {
-                statusHtml = `
-                    <span class="badge bg-danger">Cancelled</span><br>
-                    <small>Cancelled on: <span class="cancelled-date">${new Date().toISOString().split('T')[0]}</span></small>
-                `;
-            } else if (newStatus === 'partially_cancelled') {
-                statusHtml = `
-                    <span class="badge bg-warning">Partially Cancelled</span><br>
-                    <small>Cancelled: ${cancelledQuantity}, Remaining: ${remainingQuantity}</small><br>
-                    <small>Last update: <span class="cancelled-date">${new Date().toISOString().split('T')[0]}</span></small>
-                `;
-            }
-            statusCell.html(statusHtml);
-
-            // Disable the cancel button if the item is fully cancelled
-            if (newStatus === 'cancelled' || remainingQuantity === 0) {
-                $(`#cancel-button-${orderId}-${productId}`).prop('disabled', true);
-            }
-        }
-
-        // ... rest of your existing code ...
-    });
-
-    // Add this new function to handle the refund notification
-    function showRefundNotification() {
-        const $notification = $('#refundNotification');
-        
-        // Show the notification with fade effect
-        $notification.fadeIn(300);
-        
-        // Hide the notification after 3 seconds with fade effect
-        setTimeout(() => {
-            $notification.fadeOut(300);
-        }, 3000);
-    }
-
-    // Initialize countdown for each cancel button
+    // Check if orders can be cancelled (within 10 minutes of ordering)
     $('.cancel-item').each(function() {
-        const button = $(this);
-        const orderTime = new Date(button.data('order-time'));
-        const now = new Date();
-        const timeSinceOrder = now - orderTime;
-        const cancelWindowMs = 10 * 60 * 1000;
-        
-        if (timeSinceOrder <= cancelWindowMs) {
-            // Start countdown
-            updateCancelButtonTimer(button, orderTime);
-        } else {
-            // Hide button if more than 10 minutes have passed
-            button.hide();
+        const orderTimeStr = $(this).data('order-time');
+        if (orderTimeStr) {
+            const orderTime = new Date(orderTimeStr);
+            const currentTime = new Date();
+            const timeDiffMinutes = (currentTime - orderTime) / (1000 * 60);
+            
+            // If more than 10 minutes have passed, hide the cancel button
+            if (timeDiffMinutes > 10) {
+                $(this).hide();
+            }
         }
     });
 
-    function updateCancelButtonTimer(button, orderTime) {
-        const updateTimer = () => {
-            const now = new Date();
-            const timeSinceOrder = now - orderTime;
-            const cancelWindowMs = 10 * 60 * 1000;
-            const timeLeftMs = cancelWindowMs - timeSinceOrder;
-            
-            if (timeLeftMs <= 0) {
-                // Time's up - hide cancel button
-                button.hide();
-                clearInterval(timerInterval);
-            } else {
-                // Update button text with countdown
-                const minutes = Math.floor(timeLeftMs / 60000);
-                const seconds = Math.floor((timeLeftMs % 60000) / 1000);
-                button.html(`<i class="fa fa-times"></i> Cancel (${minutes}:${seconds.toString().padStart(2, '0')})`);
-            }
-        };
-
-        // Update immediately and then every second
-        updateTimer();
-        const timerInterval = setInterval(updateTimer, 1000);
-        
-        // Store the interval ID on the button element for cleanup
-        button.data('timerInterval', timerInterval);
-    }
-
-    // Handle button click
+    // Add this to your existing JavaScript
     $('.cancel-item').on('click', function() {
-        const button = $(this);
-        const orderTime = new Date(button.data('order-time'));
-        const now = new Date();
-        const timeSinceOrder = now - orderTime;
-        const cancelWindowMs = 10 * 60 * 1000;
+        const orderId = $(this).data('order-id');
+        const productId = $(this).data('product-id');
+        const productName = $(this).data('product-name');
+        const quantity = $(this).data('quantity');
 
-        if (timeSinceOrder > cancelWindowMs) {
-            showToast('Error', 'Cancel window has expired', true);
-            button.hide();
-            return;
-        }
-
-        // Your existing cancel logic here
-        const orderId = button.data('order-id');
-        const productId = button.data('product-id');
-        const productName = button.data('product-name');
-        const quantity = button.data('quantity');
-
-        // Show cancel confirmation modal
+        // Populate modal
         $('#cancelItemOrderId').text(orderId);
         $('#cancelItemProductName').text(productName);
-        $('#cancelItemModal').modal('show');
+        
+        // Store product ID in a hidden field
+        if (!$('#cancelItemProductId').length) {
+            $('<input>').attr({
+                type: 'hidden',
+                id: 'cancelItemProductId',
+                value: productId
+            }).appendTo('#cancelItemModal .modal-body');
+        } else {
+            $('#cancelItemProductId').val(productId);
+        }
+        
+        // Show the modal using Bootstrap 5
+        const modal = new bootstrap.Modal(document.getElementById('cancelItemModal'));
+        modal.show();
     });
 
-    // Cleanup intervals when the page is unloaded
-    $(window).on('unload', function() {
-        $('.cancel-item').each(function() {
-            const interval = $(this).data('timerInterval');
-            if (interval) {
-                clearInterval(interval);
-            }
-        });
-    });
-
-    // Return button click handler
-    $('.return-item').on('click', function(e) {
-        e.preventDefault();
+    // Handle the confirm cancel button click
+    $('#confirmCancelItem').on('click', function() {
+        const orderId = $('#cancelItemOrderId').text();
+        const productId = $('#cancelItemProductId').val() || '';
+        const productName = $('#cancelItemProductName').text();
         const button = $(this);
-        const orderId = button.attr('data-order-id'); // Changed from data() to attr()
-        console.log('Return button clicked for order:', orderId);
-
-        // Update modal and show it
-        $('#confirmReturn').attr('data-order-id', orderId); // Changed from data() to attr()
-        const returnModal = new bootstrap.Modal(document.getElementById('confirmReturnModal'));
-        returnModal.show();
-    });
-
-    // Confirm return button click handler
-    $('#confirmReturn').on('click', function() {
-        const orderId = $(this).attr('data-order-id'); // Changed from data() to attr()
-        const productId = $(this).data('product-id');
-
-        console.log('Confirming return:', { orderId, productId });
-
+        
+        // Show loading state
+        button.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...');
+        
+        // Send the cancel request to the server
         $.ajax({
-            url: '/initiate-return',
+            url: '/cancel-order-item',
             method: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({
+            data: JSON.stringify({ 
                 order_id: orderId,
                 product_id: productId
             }),
             success: function(response) {
-                $('#returnModal').modal('hide');
-                // Remove alert and just reload
-                setTimeout(() => {
-                    location.reload();
-                }, 500);
+                // Hide the modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('cancelItemModal'));
+                modal.hide();
+                
+                if (response.success) {
+                    // Show success message
+                    showToast('Success', 'Item cancelled successfully');
+                    
+                    // Show refund notification popup
+                    $('#refundNotification').fadeIn(300).delay(5000).fadeOut(300);
+                    
+                    // Update the UI to reflect the cancellation
+                    const itemRow = $(`#item-row-${orderId}-${productId}`);
+                    if (itemRow.length) {
+                        // Update the status cell
+                        $(`#status-cell-${orderId}-${productId}`).html(`
+                            <span class="badge bg-danger">Cancelled</span><br>
+                            <small>Rental Period: ${response.rent_from || 'N/A'} to ${response.rent_to || 'N/A'}</small><br>
+                            <small>Quantity: ${response.quantity || 'N/A'} | Days: ${response.rental_days || 'N/A'}</small>
+                        `);
+                        
+                        // Hide the cancel button
+                        $(`#cancel-button-${orderId}-${productId}`).hide();
+                        
+                        // Update order total if provided in the response
+                        if (response.order_total !== undefined) {
+                            $(`#order-total-${orderId}`).text(`₹${parseFloat(response.order_total).toFixed(2)}`);
+                        }
+                    }
+                } else {
+                    // Show error message
+                    showToast('Error', response.message || 'Failed to cancel item', true);
+                }
             },
             error: function(xhr, status, error) {
-                console.error('Return error:', error);
-                // Changed the error alert message too
+                // Hide the modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('cancelItemModal'));
+                modal.hide();
+                
+                // Show error message
+                showToast('Error', 'Cancel error: ' + (xhr.responseJSON?.message || error), true);
+                console.error('Cancel error:', error);
+            },
+            complete: function() {
+                // Reset button state
+                button.prop('disabled', false).html('Yes, Cancel Item');
             }
         });
     });
-});
 
-// Click handler for the "More Details" button
-$(document).ready(function() {
-    $('.view-order-details').on('click', function(e) {
-        e.preventDefault();
-        const orderId = $(this).data('order-id');
-        console.log('Button clicked, Order ID:', orderId); // Debug log
-        showOrderDetails(orderId);
-    });
-});
-
-function showOrderDetails(orderId) {
-    console.log('showOrderDetails called with ID:', orderId); // Debug log
-    
-    // Show loading spinner, hide content and error
-    $('#orderDetailsLoading').removeClass('d-none');
-    $('#moreDetailsContent').addClass('d-none');
-    $('#orderDetailsError').addClass('d-none');
-    
-    // Show the modal
-    const modal = new bootstrap.Modal(document.getElementById('moreDetailsModal'));
-    modal.show();
-
-    // Make sure orderId exists before making the request
-    if (!orderId) {
-        console.error('No order ID provided');
-        $('#orderDetailsLoading').addClass('d-none');
-        $('#orderDetailsError').removeClass('d-none').text('No order ID provided');
+    // Check if Bootstrap is loaded
+    if (typeof bootstrap === 'undefined') {
+        console.error('Bootstrap is not loaded!');
+        alert('Error: Bootstrap is not loaded. Please check your internet connection and reload the page.');
         return;
+    } else {
+        console.log('Bootstrap version:', bootstrap.Tooltip.VERSION);
     }
-
-    // Fetch order details
-    $.ajax({
-        url: '/get-order-details',
-        method: 'GET',
-        data: { order_id: orderId },
-        success: function(response) {
-            console.log('Response received:', response); // Debug log
-            
-            if (response) {
-                // Update basic order info
-                $('#modalOrderId').text(orderId);
-                $('#modalOrderDate').text(new Date(response.created_at).toLocaleString());
-                $('#modalOrderTotal').text(`₹${response.order_total}`);
-                $('#modalShippingAddress').text(response.shipping_address);
-                $('#modalPaymentId').text(response.payment_intent_id);
-
-                // Update items table
-                let itemsHtml = '';
-                if (response.items && Array.isArray(response.items)) {
-                    response.items.forEach(item => {
-                        itemsHtml += `
-                            <tr>
-                                <td>${item.product_name || item.product_id}</td>
-                                <td>${item.quantity}</td>
-                                <td>${item.rent_from} to ${item.rent_to}</td>
-                                <td>
-                                    <span class="badge bg-${getStatusBadgeColor(item.status)}">
-                                        ${item.status}
-                                    </span>
-                                </td>
-                                <td>₹${item.total_price}</td>
-                            </tr>
-                        `;
-                    });
-                }
-                $('#orderItemsTable').html(itemsHtml);
-
-                // Update progress steps
-                updateOrderProgress(response);
-
-                // Hide loading, show content
-                $('#orderDetailsLoading').addClass('d-none');
-                $('#moreDetailsContent').removeClass('d-none');
-            } else {
-                throw new Error('No data received from server');
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Ajax error:', error); // Debug log
-            console.error('Status:', status);
-            console.error('Response:', xhr.responseText);
-            
-            $('#orderDetailsLoading').addClass('d-none');
-            $('#orderDetailsError').removeClass('d-none')
-                .text('Failed to load order details: ' + error);
-        }
-    });
-}
-
-function updateOrderProgress(order) {
-    console.log('Updating progress with:', order); // Debug log
-    const steps = $('.step');
-    let currentStep = 0;
-
-    // Reset all steps
-    steps.removeClass('active completed');
-
-    // Determine current step and update progress
-    if (order.ordered_at || order.created_at) {
-        currentStep = 1;
-        updateStep(0, order.ordered_at || order.created_at);
-    }
-    if (order.delivery_started_at) {
-        currentStep = 2;
-        updateStep(1, order.delivery_started_at);
-    }
-    if (order.delivery_completed_at) {
-        currentStep = 3;
-        updateStep(2, order.delivery_completed_at);
-    }
-    if (order.return_initiated_at) {
-        currentStep = 4;
-        updateStep(3, order.return_initiated_at);
-    }
-    if (order.return_completed_at) {
-        currentStep = 5;
-        updateStep(4, order.return_completed_at);
-    }
-
-    // Update step classes
-    steps.each(function(index) {
-        if (index < currentStep) {
-            $(this).addClass('completed');
-        } else if (index === currentStep) {
-            $(this).addClass('active');
-        }
-    });
-}
-
-function updateStep(stepIndex, date) {
-    const dateElement = $('.step-date').eq(stepIndex);
-    if (date) {
-        dateElement.text(new Date(date).toLocaleString());
-    }
-}
-
-function getStatusBadgeColor(status) {
-    const colors = {
-        'ordered': 'primary',
-        'in_transit': 'info',
-        'delivered': 'success',
-        'return_initiated': 'warning',
-        'returned': 'secondary',
-        'cancelled': 'danger',
-        'paid': 'success'
-    };
-    return colors[status?.toLowerCase()] || 'secondary';
-}
+});
 </script>
 
-<!-- Add this modal structure at the bottom of the body -->
-<div class="modal fade" id="returnDetailsModal" tabindex="-1" aria-labelledby="returnDetailsModalLabel" aria-hidden="true" data-bs-backdrop="false">
-    <div class="modal-dialog modal-lg">
+<!-- Add complete modal structure -->
+<div class="modal fade" id="confirmReturnModal" tabindex="-1" aria-labelledby="confirmReturnModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="returnDetailsModalLabel">Return Details</h5>
+                <h5 class="modal-title" id="confirmReturnModalLabel">Confirm Return</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="product-info mb-4">
-                            <h6 class="border-bottom pb-2">Product Information</h6>
-                            <p><strong>Product Name:</strong> <span id="modalProductName"></span></p>
-                            <p><strong>Order ID:</strong> <span id="modalOrderId"></span></p>
-                            <p><strong>Quantity:</strong> <span id="modalQuantity"></span></p>
-                            <p><strong>Price:</strong> ₹<span id="modalPrice"></span></p>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="return-info mb-4">
-                            <h6 class="border-bottom pb-2">Return Information</h6>
-                            <p><strong>Return Date:</strong> <span id="modalReturnDate"></span></p>
-                            <p><strong>Rental Period:</strong> <span id="modalRentalPeriod"></span></p>
-                            <p><strong>Return Status:</strong> <span id="modalReturnStatus"></span></p>
-                        </div>
+                <p>Are you sure you want to return this item?</p>
+                <p><strong>Product:</strong> <span id="returnProductName"></span></p>
+                <p><strong>Rent From:</strong> <span id="returnRentFrom"></span></p>
+                <p><strong>Rent To:</strong> <span id="returnRentTo"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmReturn">Confirm Return</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- More Details Modal -->
+<div class="modal fade" id="moreDetailsModal" tabindex="-1" aria-labelledby="moreDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="moreDetailsModalLabel">Order Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Loading Spinner -->
+                <div id="orderDetailsLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
-                <div class="row mt-3">
-                    <div class="col-12">
-                        <div class="timeline mb-4">
-                            <h6 class="border-bottom pb-2">Return Timeline</h6>
-                            <div class="return-timeline" id="modalTimeline">
-                                <!-- Timeline will be populated dynamically -->
-                            </div>
-                        </div>
-                    </div>
+
+                <!-- Error Alert -->
+                <div id="orderDetailsError" class="alert alert-danger d-none" role="alert">
+                    Failed to load order details. Please try again.
+                </div>
+
+                <!-- Order Content -->
+                <div id="moreDetailsContent" class="d-none">
+                    <!-- Content will be dynamically populated -->
                 </div>
             </div>
             <div class="modal-footer">
@@ -2185,110 +1588,149 @@ function getStatusBadgeColor(status) {
     </div>
 </div>
 
-<!-- Add this script at the bottom of the file -->
-<script>
-$(document).ready(function() {
-    $('.view-return-details').on('click', function() {
-        const orderId = $(this).data('order-id');
-        const productId = $(this).data('product-id');
-        
-        // Find the corresponding order and item
-        const orderItem = findOrderItem(orderId, productId);
-        if (orderItem) {
-            populateReturnModal(orderItem);
-        }
-        
-        // Show the modal
-        const returnModal = new bootstrap.Modal(document.getElementById('returnDetailsModal'));
-        returnModal.show();
-    });
-
-    function findOrderItem(orderId, productId) {
-        for (const order of {{ orders|tojson|safe }}) {
-            if (order.order_id === orderId) {
-                for (const item of order.items) {
-                    if (item.product_id === productId) {
-                        return { ...item, order_id: orderId };
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    function populateReturnModal(item) {
-        // Populate product information
-        $('#modalProductName').text(item.product_name || 'N/A');
-        $('#modalOrderId').text(item.order_id || 'N/A');
-        $('#modalQuantity').text(item.quantity || 'N/A');
-        $('#modalPrice').text(item.total_price ? item.total_price.toFixed(2) : 'N/A');
-        $('#modalReturnDate').text(item.return_completed_at || 'N/A');
-        $('#modalRentalPeriod').text(
-            `${item.rent_from || 'N/A'} to ${item.rent_to || 'N/A'}`
-        );
-        $('#modalReturnStatus').html(
-            '<span class="badge bg-success">Returned</span>'
-        );
-
-        // Update download invoice link
-        $('#modalDownloadInvoice').attr(
-            'href', 
-            `/download-order-pdf/${item.order_id}`
-        );
-
-        // Populate timeline
-        const timeline = buildTimeline(item);
-        $('#modalTimeline').html(timeline);
-    }
-
-    function buildTimeline(item) {
-        const events = [
-            { 
-                date: item.created_at,
-                label: 'Order Placed',
-                icon: 'fa-shopping-cart'
-            },
-            {
-                date: item.delivered_at,
-                label: 'Delivered',
-                icon: 'fa-truck'
-            },
-            {
-                date: item.return_initiated_at,
-                label: 'Return Initiated',
-                icon: 'fa-undo'
-            },
-            {
-                date: item.return_completed_at,
-                label: 'Return Completed',
-                icon: 'fa-check-circle'
-            }
-        ];
-
-        let timelineHtml = '<div class="timeline-events">';
-        events.forEach(event => {
-            if (event.date) {
-                timelineHtml += `
-                    <div class="timeline-event">
-                        <div class="timeline-icon">
-                            <i class="fa ${event.icon}"></i>
-                        </div>
-                        <div class="timeline-content">
-                            <div class="timeline-date">${event.date}</div>
-                            <div class="timeline-label">${event.label}</div>
-                        </div>
+<!-- Cancel Order Modal -->
+<div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel" aria-hidden="true" data-bs-backdrop="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cancelOrderModalLabel">Cancel Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Loading Spinner -->
+                <div id="cancelOrderLoading" class="text-center py-4 d-none">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
-                `;
-            }
-        });
-        timelineHtml += '</div>';
-        return timelineHtml;
-    }
-});
-</script>
-                     
+                </div>
+
+                <!-- Error Alert -->
+                <div id="cancelOrderError" class="alert alert-danger d-none" role="alert">
+                    Failed to process cancellation. Please try again.
+                </div>
+
+                <!-- Cancel Content -->
+                <div id="cancelOrderContent">
+                    <p>Are you sure you want to cancel this order?</p>
+                    <p><strong>Order ID:</strong> <span id="cancelOrderId"></span></p>
+                    <p><strong>Product:</strong> <span id="cancelProductName"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, Keep Order</button>
+                <button type="button" class="btn btn-danger" id="confirmCancel">Yes, Cancel Order</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add this modal for item cancellation -->
+<div class="modal fade" id="cancelItemModal" tabindex="-1" aria-labelledby="cancelItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cancelItemModalLabel">Cancel Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel this item?</p>
+                <p><strong>Order ID:</strong> <span id="cancelItemOrderId"></span></p>
+                <p><strong>Product:</strong> <span id="cancelItemProductName"></span></p>
+                <div id="cancelQuantitySelector" style="display: none;">
+                    <label for="cancelQuantity">Select quantity to cancel:</label>
+                    <select id="cancelQuantity" class="form-control">
+                        <!-- Options will be dynamically populated -->
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, Keep Item</button>
+                <button type="button" class="btn btn-danger" id="confirmCancelItem">Yes, Cancel Item</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Refund Notification Popup -->
+<div id="refundNotification" class="position-fixed top-50 start-50 translate-middle bg-white p-4 rounded shadow-lg text-center" style="display: none; z-index: 9999;">
+    <div class="mb-3">
+        <i class="fa fa-check-circle text-success" style="font-size: 48px;"></i>
+    </div>
+    <h4>Refund Initiated</h4>
+    <p>Your wallet deposit and paid amount will be refunded soon.</p>
+    <p class="text-muted small">The refund process typically takes 3-5 business days.</p>
+</div>
+
+<!-- Add Toast Container -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto" id="toastTitle">Notification</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+        </div>
+    </div>
+</div>
+
+<!-- Extend Rental Modal -->
+<div class="modal fade" id="extendRentalModal" tabindex="-1" aria-labelledby="extendRentalModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="extendRentalModalLabel">Extend Rental Period</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="extendRentalContent">
+                    <input type="hidden" id="extendOrderId">
+                    <input type="hidden" id="extendItemIndex">
+                    <input type="hidden" id="maxDays">
+                    <input type="hidden" id="perDayCharge">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Current Return Date</label>
+                        <input type="text" class="form-control" id="currentRentTo" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Available Deposit Amount</label>
+                        <input type="text" class="form-control" id="availableDeposit" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Number of Days to Extend</label>
+                        <select class="form-select" id="extensionDays">
+                            <option value="">Select days</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Total Extension Cost</label>
+                        <input type="text" class="form-control" id="extensionCost" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Remaining Deposit After Extension</label>
+                        <input type="text" class="form-control" id="remainingDeposit" readonly>
+                    </div>
+                </div>
+                
+                <div id="extendRentalLoading" class="text-center d-none">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Processing your request...</p>
+                </div>
+                
+                <div id="extendRentalError" class="alert alert-danger d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="submitExtensionBtn">Extend Rental</button>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
-
-
-<!-- Mirrored from htmldemo.net/jantrik/jantrik/account.html by HTTrack Website Copier/3.x [XR&CO'2014], Fri, 05 Jul 2024 04:21:12 GMT -->
 </html>

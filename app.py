@@ -44,8 +44,8 @@ from mlprice import get_all_product_suggestions, get_products
 GOOGLE_API_KEY = 'AIzaSyBiPsei3KY2ftDpKr58k-Jy62IN4rNuH_c'  # Replace with your actual API key
 genai.configure(api_key=GOOGLE_API_KEY)
 
-# Initialize Gemini model
-model = genai.GenerativeModel('gemini-pro')
+# Initialize Gemini model 
+model = genai.GenerativeModel('gemini-1.5-pro')
 
 # Initialize blockchain before starting the app
 try:
@@ -430,11 +430,17 @@ def index():
     except Exception as e:
         best_seller_products = None
 
+    wallet_balance = 0
+    if 'user_id' in session:
+        user_id = session['user_id']
+        wallet_balance = get_user_wallet_balance(user_id)
+    
     return render_template('index.html', 
                            email=email, 
                            user_info=user_info, 
                            products=products, 
-                           best_seller_products=best_seller_products)
+                           best_seller_products=best_seller_products,
+                           wallet_balance=wallet_balance)
 
 
 @app.route('/vendor_dashboard')
@@ -451,30 +457,66 @@ def vendor_dashboard():
         if not user_info:
             raise ValueError("User information not found")
 
-        # Fetch recent orders for the vendor
+        store_name = user_info.get('store_name')
+        
+        # Initialize statistics
+        total_customers = 0
+        total_orders = 0
+        total_revenue = 0
+        total_products = 0
+        
+        # Calculate total products for this store
+        all_products = db.child("products").get().val()
+        if all_products:
+            total_products = sum(1 for product in all_products.values() 
+                               if product.get('store_name') == store_name)
+        
+        # Calculate orders and revenue
         all_orders = db.child("orders").get().val()
+        unique_customers = set()
         recent_orders = []
+        
         if all_orders:
             for order_id, order in all_orders.items():
-                for item in order.get('items', []):
-                    if item.get('store_name') == user_info.get('store_name'):
-                        product_id = item.get('product_id')
-                        product_details = get_product_details(product_id)
-                        recent_orders.append({
-                            'order_id': order_id,
-                            'product_image': product_details.get('product_image', ''),
-                            'product_name': product_details.get('product_name', 'Unknown Product'),
-                            'quantity': item.get('quantity', 0),
-                            'order_date': order.get('created_at', 'N/A'),
-                            'order_cost': f"₹{float(item.get('item_total', 0)):,.2f}",
-                            'status': order.get('status', 'Unknown')
-                        })
-                        if len(recent_orders) >= 5:  # Limit to 5 recent orders
-                            break
-                if len(recent_orders) >= 5:
-                    break
+                order_items = order.get('items', [])
+                for item in order_items:
+                    if item.get('store_name') == store_name:
+                        # Count unique customers
+                        unique_customers.add(order.get('user_id'))
+                        
+                        # Add to total revenue
+                        total_revenue += float(item.get('item_total', 0))
+                        
+                        # Count total orders
+                        total_orders += 1
+                        
+                        # Add to recent orders list
+                        if len(recent_orders) < 5:
+                            product_id = item.get('product_id')
+                            product_details = get_product_details(product_id)
+                            recent_orders.append({
+                                'order_id': order_id,
+                                'product_image': product_details.get('product_image', ''),
+                                'product_name': product_details.get('product_name', 'Unknown Product'),
+                                'quantity': item.get('quantity', 0),
+                                'order_date': order.get('created_at', 'N/A'),
+                                'order_cost': f"₹{float(item.get('item_total', 0)):,.2f}",
+                                'status': item.get('status', 'Unknown')
+                            })
+        
+        # Set total customers from unique customers set
+        total_customers = len(unique_customers)
 
-        return render_template('andshop/index.html', user_info=user_info, email=email, recent_orders=recent_orders)
+        return render_template(
+            'andshop/index.html',
+            user_info=user_info,
+            email=email,
+            recent_orders=recent_orders,
+            customer_count=total_customers,
+            total_orders=total_orders,
+            total_revenue=f"{total_revenue:,.2f}",
+            product_count=total_products
+        )
     except Exception as e:
         app.logger.error(f"Error in vendor_dashboard: {str(e)}")
         flash('An error occurred while loading the page. Please try again.', 'danger')
@@ -1255,68 +1297,55 @@ from flask import url_for
 
 @app.route('/new-order')
 def new_order():
-    if 'user_id' not in session:
-        flash('Please log in to access this page.', 'warning')
-        return redirect(url_for('login'))
-
-    user_id = session['user_id']
-    
     try:
-        user_info = db.child("users").child(user_id).get().val()
-        if not user_info:
-            raise ValueError("User information not found")
+        # Check if user is logged in
+        if 'user_info' not in session:
+            return redirect('/login')
 
-        user_store_name = user_info.get('store_name')
-        if not user_store_name:
-            raise ValueError("User's store name not found")
+        user_info = session['user_info']
 
-        all_orders = db.child("orders").get().val()
+        # Get all products
+        products = db.child("products").get().val() or {}
+
+        # Get all orders
+        orders = db.child("orders").get().val() or {}
         
         processed_orders = []
-        if all_orders:
-            for order_id, order in all_orders.items():
-                for item in order.get('items', []):
-                    if item.get('store_name') == user_store_name:
-                        product_id = item.get('product_id')
-                        product_details = get_product_details(product_id)
-                        
-                        price = item.get('item_total', 0)
-                        
-                        try:
-                            price_decimal = Decimal(str(price)).quantize(Decimal('0.01'))
-                            formatted_price = f"₹{price_decimal:,.2f}"
-                        except (InvalidOperation, TypeError):
-                            logging.error(f"Error formatting price for order {order_id}, product {product_id}. Price value: {price}")
-                            formatted_price = "Price Error"
-                        
-                        product_image = product_details.get('product_image', '')
-                        if product_image.startswith('/static/'):
-                            product_image = product_image[7:]  # Remove '/static/' from the beginning
-                        
-                        processed_orders.append({
+        if orders:
+            for order_id, order_data in orders.items():
+                # Get items from the order
+                items = order_data.get('items', [])
+                created_at = order_data.get('created_at', '')  # Get the order creation date
+                
+                # Process each item as a separate order row
+                for item in items:
+                    if item.get('store_name') == user_info.get('store_name'):
+                        order_row = {
                             'order_id': order_id,
-                            'product_image': url_for('static', filename=product_image) if product_image else '',
-                            'product_name': product_details.get('product_name', 'Unknown'),
-                            'category': product_details.get('main_category', 'Unknown'),
-                            'price': formatted_price,
-                            'rent_from': item.get('rent_from', 'N/A'),
-                            'rent_to': item.get('rent_to', 'N/A'),
-                            'payment_status': order.get('status', 'Unknown'),
-                            'shipping_address': order.get('shipping_address', 'N/A'),
-                            'quantity': item.get('quantity', 0),
-                            'customer_id': order.get('user_id', 'Unknown'),
-                            'order_date': order.get('created_at', 'N/A'),
-                            'order_cost': formatted_price  # This is the same as 'price' for a single item
-                        })
+                            'product_id': item.get('product_id'),
+                            'quantity': item.get('quantity', 1),
+                            'total_price': item.get('total_price', 0),
+                            'rent_from': item.get('rent_from', ''),
+                            'rent_to': item.get('rent_to', ''),
+                            'status': item.get('status', 'Unknown'),
+                            'store_name': item.get('store_name'),
+                            'shipping_address': order_data.get('shipping_address', ''),
+                            'shipping_district': order_data.get('shipping_district', ''),
+                            'created_at': created_at  # Add creation date to order row
+                        }
+                        processed_orders.append(order_row)
 
-        logging.info(f"Processed orders: {processed_orders}")
+        # Sort processed orders by created_at in descending order (latest first)
+        processed_orders.sort(key=lambda x: x.get('created_at', ''), reverse=True)
 
-        return render_template('andshop/new-order.html', user_info=user_info, orders=processed_orders)
+        return render_template('andshop/new-order.html', 
+                            user_info=user_info, 
+                            orders=processed_orders,
+                            products=products)
     except Exception as e:
-        logging.error(f"Error in new_order: {str(e)}")
-        logging.error(traceback.format_exc())
-        flash('An error occurred while loading the page. Please try again.', 'danger')
-        return redirect(url_for('index'))
+        app.logger.error(f"Error in new_order: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return redirect('/index')
 
 @app.route('/add-to-cart', methods=['POST'])
 def add_to_cart():
@@ -1674,7 +1703,10 @@ def create_payment():
         # Get shipping information
         use_different_shipping = request.form.get('use_different_shipping') == 'true'
         shipping_address = request.form.get('shipping_address')
-        shipping_district = request.form.get('shipping_district')  # Changed from shipping_address2
+        shipping_district = request.form.get('shipping_district')
+        
+        # Get wallet deposit amount from form
+        wallet_deposit = float(request.form.get('wallet_deposit', 1000))
         
         # Get cart items and create order items list
         order_items = []
@@ -1696,24 +1728,23 @@ def create_payment():
             })
         
         order_total = float(request.form.get('order_total', 0))
+        subtotal = order_total - wallet_deposit  # Calculate subtotal
         
-        # Create order in database
+        # Create order in database with wallet deposit
         order_id = create_order_in_database(
-            user_id, 
-            order_items, 
-            order_total, 
-            use_different_shipping, 
-            shipping_address, 
-            shipping_district  # Changed from shipping_address2
+            user_id=user_id,
+            order_items=order_items,
+            order_total=order_total,
+            use_different_shipping=use_different_shipping,
+            shipping_address=shipping_address,
+            shipping_district=shipping_district,
+            wallet_deposit=wallet_deposit
         )
         
         # Process payment
         payment_success, payment_intent_id = process_payment(order_total)
         
         if payment_success:
-            # Update order status
-            update_order_status(order_id, 'paid', payment_intent_id)
-            
             # Clear cart after successful payment
             clear_cart(user_id)
             
@@ -1727,6 +1758,56 @@ def create_payment():
     except Exception as e:
         app.logger.error(f"Error in create_payment: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+def create_order_in_database(user_id, order_items, order_total, use_different_shipping, 
+                           shipping_address, shipping_district, wallet_deposit):
+    try:
+        order_id = str(uuid.uuid4())
+        current_time = datetime.now().isoformat()
+        
+        # Set initial status for each item
+        for item in order_items:
+            product_id = item.get('product_id')
+            product_details = get_product_details(product_id)
+            item['store_name'] = product_details.get('store_name', 'Unknown Store')
+            if 'status' not in item:
+                item['status'] = 'ordered'
+                item['ordered_at'] = current_time
+
+        # Create order data structure with wallet deposit
+        order_data = {
+            'order_id': order_id,
+            'user_id': user_id,
+            'items': order_items,
+            'order_total': order_total,
+            'wallet_deposit': float(wallet_deposit),  # Ensure it's stored as float
+            'subtotal': float(order_total - wallet_deposit),  # Calculate and store subtotal
+            'use_different_shipping': use_different_shipping,
+            'shipping_address': shipping_address,
+            'shipping_district': shipping_district,
+            'status': 'pending',
+            'created_at': current_time
+        }
+        
+        # Push to Firebase
+        new_order = db.child("orders").push(order_data)
+        
+        # Create wallet transaction record
+        wallet_transaction = {
+            'user_id': user_id,
+            'amount': float(wallet_deposit),
+            'type': 'deposit',
+            'order_id': order_id,
+            'status': 'active',
+            'created_at': current_time
+        }
+        db.child("wallet_transactions").push(wallet_transaction)
+        
+        return order_id
+        
+    except Exception as e:
+        app.logger.error(f"Error creating order in database: {str(e)}")
+        raise
 
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -1751,95 +1832,6 @@ def handle_exception(e):
     app.logger.error(f"Unhandled Exception: {str(e)}")
     app.logger.error(traceback.format_exc())
     return jsonify({'success': False, 'error': 'An unexpected error occurred'}), 500
-def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
-    try:
-        order_id = str(uuid.uuid4())
-        
-        # Set initial status for each item
-        for item in order_items:
-            product_id = item.get('product_id')
-            product_details = get_product_details(product_id)
-            item['store_name'] = product_details.get('store_name', 'Unknown Store')
-            item['status'] = 'ordered'  # Set initial status
-            item['ordered_at'] = datetime.now().isoformat()
-
-        order_data = {
-            'order_id': order_id,
-            'user_id': user_id,
-            'items': order_items,
-            'order_total': order_total,
-            'use_different_shipping': use_different_shipping,
-            'shipping_address': shipping_address,
-            'shipping_address2': shipping_address2,
-            'status': 'pending',
-            'created_at': datetime.now().isoformat()
-        }
-        new_order = db.child("orders").push(order_data)
-        
-        # Schedule status update for items after 10 minutes
-        Timer(600, update_items_status, args=[order_id]).start()
-        
-        app.logger.info(f"New order created with ID: {order_id}")
-        return order_id
-    except Exception as e:
-        app.logger.error(f"Error creating order in database: {str(e)}")
-        raise
-
-
-def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
-    # Implement your logic to create an order in the database
-    order_data = {
-        'user_id': user_id,
-        'items': order_items,
-        'order_total': order_total,
-        'use_different_shipping': use_different_shipping,
-        'shipping_address': shipping_address,
-        'shipping_address2': shipping_address2,
-        'status': 'pending',
-        'created_at': datetime.now().isoformat()
-    }
-    
-    # Add the order to your database (e.g., using Firebase)
-    new_order = db.child("orders").push(order_data)
-    return new_order['name']  # Return the new order ID
-
-def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
-    try:
-        order_data = {
-            'user_id': user_id,
-            'items': order_items,
-            'order_total': order_total,
-            'use_different_shipping': use_different_shipping,
-            'shipping_address': shipping_address or '',
-            'shipping_address2': shipping_address2 or '',
-            'status': 'pending',
-            'created_at': datetime.now().isoformat()
-        }
-        
-        new_order = db.child("orders").push(order_data)
-        return new_order['name']
-    except Exception as e:
-        app.logger.error(f"Error creating order in database: {str(e)}")
-        raise
-
-def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
-    try:
-        order_data = {
-            'user_id': user_id,
-            'items': order_items,
-            'order_total': order_total,
-            'use_different_shipping': use_different_shipping,
-            'shipping_address': shipping_address or '',
-            'shipping_address2': shipping_address2 or '',
-            'status': 'pending',
-            'created_at': datetime.now().isoformat()
-        }
-        
-        new_order = db.child("orders").push(order_data)
-        return new_order['name']
-    except Exception as e:
-        app.logger.error(f"Error creating order in database: {str(e)}")
-        raise
 
 def process_payment(amount):
     try:
@@ -1989,78 +1981,7 @@ def process_payment(amount):
     payment_intent_id = 'pi_' + ''.join(random.choices(string.ascii_letters + string.digits, k=24))
     return payment_success, payment_intent_id
 
-def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_address2):
-    try:
-        order_data = {
-            'user_id': user_id,
-            'items': order_items,
-            'order_total': order_total,
-            'use_different_shipping': use_different_shipping,
-            'shipping_address': shipping_address,
-            'shipping_address2': shipping_address2,
-            'status': 'pending',
-            'created_at': datetime.now().isoformat()
-        }
-        new_order = db.child("orders").push(order_data)
-        return new_order['name']  # Return the new order ID
-    except Exception as e:
-        app.logger.error(f"Error creating order in database: {str(e)}")
-        raise
-
-def update_order_status(order_id, status, payment_intent_id=None):
-    try:
-        app.logger.info(f"Updating order status for order ID: {order_id} to {status}")
-        # Fetch all orders
-        all_orders = db.child("orders").get().val()
-        
-        if all_orders:
-            for key, order in all_orders.items():
-                if order.get('order_id') == order_id:
-                    update_data = {
-                        'status': status,
-                        'updated_at': datetime.now().isoformat()
-                    }
-                    if payment_intent_id:
-                        update_data['payment_intent_id'] = payment_intent_id
-                    
-                    db.child("orders").child(key).update(update_data)
-                    app.logger.info(f"Order status updated for order ID: {order_id}")
-                    
-                    # If the status is changed to 'paid', update product quantities
-                    if status == 'paid':
-                        app.logger.info(f"Order {order_id} is paid. Updating product quantities.")
-                        update_product_quantities(order.get('items', []))
-                    else:
-                        app.logger.info(f"Order {order_id} status is {status}. Not updating product quantities.")
-                    
-                    return
-        
-        app.logger.warning(f"Order not found for updating status: {order_id}")
-    except Exception as e:
-        app.logger.error(f"Error updating order status: {str(e)}")
-        app.logger.error(traceback.format_exc())
-        raise
-
-from threading import Timer  # Add this import at the top with other imports
-
-def update_items_status_to_delivered(order_name):
-    try:
-        order = db.child("orders").child(order_name).get().val()
-        if order:
-            items = order.get('items', [])
-            for item in items:
-                item['status'] = 'delivered'
-                item['delivered_at'] = datetime.now().isoformat()
-            
-            db.child("orders").child(order_name).update({
-                'items': items,
-                'status': 'delivered',
-                'updated_at': datetime.now().isoformat()
-            })
-    except Exception as e:
-        app.logger.error(f"Error updating order status: {str(e)}")
-
-def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_district):
+def create_order_in_database(user_id, order_items, order_total, use_different_shipping, shipping_address, shipping_district, wallet_deposit=1000):
     try:
         order_id = str(uuid.uuid4())  # Generate a unique order ID
         
@@ -2078,21 +1999,31 @@ def create_order_in_database(user_id, order_items, order_total, use_different_sh
             'user_id': user_id,
             'items': order_items,
             'order_total': order_total,
+            'wallet_deposit': wallet_deposit,  # Add this line
+            'subtotal': order_total - wallet_deposit,  # Add this line
             'use_different_shipping': use_different_shipping,
             'shipping_address': shipping_address,
-            'shipping_district': shipping_district,  # Add shipping district
+            'shipping_district': shipping_district,
             'status': 'pending',
             'created_at': datetime.now().isoformat()
         }
         
+        # Push to Firebase
         new_order = db.child("orders").push(order_data)
         
-        # Create and start the timer for status update
-        status_timer = Timer(600, update_items_status_to_delivered, args=[new_order['name']])
-        status_timer.daemon = True
-        status_timer.start()
+        # Create wallet transaction record
+        wallet_transaction = {
+            'user_id': user_id,
+            'amount': wallet_deposit,
+            'type': 'deposit',
+            'order_id': order_id,
+            'status': 'active',
+            'created_at': datetime.now().isoformat()
+        }
+        db.child("wallet_transactions").push(wallet_transaction)
         
         return order_id
+        
     except Exception as e:
         app.logger.error(f"Error creating order in database: {str(e)}")
         raise
@@ -2446,20 +2377,6 @@ def order_details(order_id):
 def get_product_details(product_id):
     try:
         product = db.child("products").child(product_id).get().val()
-        if product:
-            return {
-                'product_name': product.get('product_name', 'Unknown Product'),
-                'product_image': product.get('product_image', '')
-            }
-        else:
-            return {'product_name': 'Unknown Product', 'product_image': ''}
-    except Exception as e:
-        print(f"Error fetching product details for ID {product_id}: {str(e)}")
-        return {'product_name': 'Unknown Product', 'product_image': ''}
-
-def get_product_details(product_id):
-    try:
-        product = db.child("products").child(product_id).get().val()
         logging.info(f"Raw product data for ID {product_id}: {product}")
         if product:
             return {
@@ -2476,6 +2393,7 @@ def get_product_details(product_id):
         logging.error(f"Error fetching product details for ID {product_id}: {str(e)}")
         logging.error(traceback.format_exc())
         return {'product_name': 'Unknown Product', 'product_image': '', 'store_name': 'Unknown Store', 'main_category': 'Unknown Category', 'item_total': 0}
+
 @app.route('/vendor-list')
 def vendor_list():
     if 'user_id' not in session or 'email' not in session:
@@ -2505,6 +2423,7 @@ def vendor_list():
         app.logger.error(f"Error in vendor_list: {str(e)}")
         flash('An error occurred while loading the page. Please try again.', 'danger')
         return redirect(url_for('admin_dashboard'))
+
 @app.route('/vendor-accept')
 def vendor_accept():
     if 'user_id' not in session or 'email' not in session:
@@ -3270,6 +3189,30 @@ def cancel_order_item():
 
         # Recalculate the order total
         new_order_total = sum(item.get('item_total', 0) for item in items if item.get('status') != 'cancelled')
+        
+        # Update the order total in the database
+        db.child("orders").child(order_id).update({
+            'order_total': new_order_total
+        })
+        
+        # Remove wallet deposit if all items are cancelled
+        all_cancelled = all(item.get('status') == 'cancelled' for item in items)
+        if all_cancelled:
+            # Update order to remove wallet deposit
+            db.child("orders").child(order_id).update({
+                'wallet_deposit': 0
+            })
+            
+            # Update wallet transaction status to cancelled
+            transactions = db.child("wallet_transactions").order_by_child("order_id").equal_to(order_id).get()
+            if transactions.each():
+                for transaction in transactions.each():
+                    transaction_data = transaction.val()
+                    if transaction_data.get('type') == 'deposit':
+                        db.child("wallet_transactions").child(transaction.key()).update({
+                            'status': 'cancelled',
+                            'updated_at': datetime.now().isoformat()
+                        })
 
         # Update product quantity in stock
         product = db.child("products").child(product_id).get().val()
@@ -3280,9 +3223,12 @@ def cancel_order_item():
 
         return jsonify({
             'success': True,
-            'newStatus': new_status,
-            'remainingQuantity': remaining_quantity,
-            'newOrderTotal': new_order_total
+            'status': new_status,
+            'quantity': remaining_quantity,
+            'rent_from': item.get('rent_from', 'N/A'),
+            'rent_to': item.get('rent_to', 'N/A'),
+            'rental_days': item.get('rental_days', 'N/A'),
+            'order_total': new_order_total
         })
 
     except Exception as e:
@@ -4539,5 +4485,158 @@ def record_rental():
     except Exception as e:
         app.logger.error(f"Error recording rental: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+def get_user_wallet_balance(user_id):
+    try:
+        # Get all orders for the user
+        orders = db.child("orders").order_by_child("user_id").equal_to(user_id).get()
+        
+        total_balance = 0
+        if orders.each():
+            for order in orders.each():
+                order_data = order.val()
+                # Add wallet deposit if order status is not 'cancelled' or 'refunded'
+                if order_data.get('status') not in ['cancelled', 'refunded']:
+                    total_balance += float(order_data.get('wallet_deposit', 0))
+        
+        return total_balance
+    except Exception as e:
+        print(f"Error fetching wallet balance: {str(e)}")
+        return 0
+
+@app.route('/store-revenue')
+def store_revenue():
+    if 'email' not in session or 'user_info' not in session:
+        flash('Please log in to view revenue details.', 'warning')
+        return redirect(url_for('login'))
+
+    user_info = session['user_info']
+    store_name = user_info.get('store_name', '')
+
+    # Fetch all orders
+    all_orders = db.child("orders").get().val()
+
+    # Initialize revenue data
+    revenue_data = {
+        'total_orders': 0,
+        'total_sales': 0,
+        'total_revenue': 0,  # 5% of total sales
+        'monthly_data': defaultdict(lambda: {'sales': 0, 'revenue': 0, 'orders': 0}),
+        'orders': []
+    }
+
+    if all_orders:
+        for order_id, order in all_orders.items():
+            # Get order items, handle both list and dict formats
+            order_items = order.get('items', [])
+            if isinstance(order_items, dict):
+                order_items = list(order_items.values())
+            elif not isinstance(order_items, list):
+                order_items = []
+            
+            # Filter items for this store
+            store_items = []
+            for item in order_items:
+                if isinstance(item, dict) and item.get('store_name', '').lower() == store_name.lower():
+                    store_items.append(item)
+            
+            if store_items:
+                # Calculate store's total for this order and revenue (5%)
+                store_total = 0
+                store_revenue = 0
+                for item in store_items:
+                    item_total = float(item.get('total_price', 0))
+                    store_total += item_total
+                    # Calculate 5% revenue for each item
+                    store_revenue += (item_total * 0.05)
+                
+                try:
+                    # Get order date - try different formats
+                    created_at_str = order.get('created_at', '')
+                    try:
+                        created_at = datetime.strptime(created_at_str, '%Y-%m-%dT%H:%M:%S.%f')
+                    except ValueError:
+                        try:
+                            created_at = datetime.strptime(created_at_str, '%Y-%m-%d %H:%M')
+                        except ValueError:
+                            app.logger.error(f"Could not parse date: {created_at_str}")
+                            continue
+                    
+                    month_key = created_at.strftime('%B %Y')
+                    
+                    # Update monthly data
+                    revenue_data['monthly_data'][month_key]['sales'] += store_total
+                    revenue_data['monthly_data'][month_key]['revenue'] += store_revenue
+                    revenue_data['monthly_data'][month_key]['orders'] += 1
+                    
+                    # Update totals
+                    revenue_data['total_orders'] += 1
+                    revenue_data['total_sales'] += store_total
+                    revenue_data['total_revenue'] += store_revenue
+                    
+                    # Get customer name
+                    user_id = order.get('user_id')
+                    customer_name = 'Unknown Customer'
+                    if user_id:
+                        user_data = db.child("users").child(user_id).get().val()
+                        if user_data:
+                            customer_name = user_data.get('name', 'Unknown Customer')
+                    
+                    # Process items with product details
+                    processed_items = []
+                    for item in store_items:
+                        product_id = item.get('product_id')
+                        if product_id:
+                            product_details = get_product_details(product_id)
+                            if product_details:
+                                product_name = product_details.get('product_name', 'Unknown Product')
+                            else:
+                                product_name = 'Unknown Product'
+                        else:
+                            product_name = 'Unknown Product'
+                            
+                        processed_items.append({
+                            'product_name': product_name,
+                            'quantity': int(item.get('quantity', 1))
+                        })
+                    
+                    # Create order data structure matching template expectations
+                    order_data = {
+                        'order_id': str(order.get('order_id', order_id)),
+                        'customer_name': customer_name,
+                        'order_items': processed_items,
+                        'total': float(store_total),
+                        'revenue': float(store_revenue),
+                        'created_at': created_at.strftime('%Y-%m-%d %H:%M')
+                    }
+                    
+                    revenue_data['orders'].append(order_data)
+                except Exception as e:
+                    app.logger.error(f"Error processing order {order_id}: {str(e)}")
+                    continue
+
+    # Sort orders by date (newest first)
+    revenue_data['orders'].sort(key=lambda x: x['created_at'], reverse=True)
+    
+    # Convert monthly data to sorted list
+    monthly_data = [
+        {
+            'month': month,
+            'sales': data['sales'],
+            'revenue': data['revenue'],
+            'orders': data['orders']
+        }
+        for month, data in revenue_data['monthly_data'].items()
+    ]
+    monthly_data.sort(key=lambda x: datetime.strptime(x['month'], '%B %Y'), reverse=True)
+    revenue_data['monthly_data'] = monthly_data
+
+    app.logger.debug(f"Revenue data structure: {revenue_data}")
+
+    return render_template('andshop/store-revenue.html', 
+                         revenue_data=revenue_data,
+                         store_name=store_name,
+                         user_info=user_info)
+
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Andshop - Admin Dashboard HTML Template.">
+
+    <title>Andshop</title>
+
+    <!-- GOOGLE FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com/">
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700;800&amp;family=Poppins:wght@300;400;500;600;700;800;900&amp;family=Roboto:wght@400;500;700;900&amp;display=swap" rel="stylesheet">
+
+    <link href="{{ url_for('static', filename='assets/css/materialdesignicons.min.css') }}" rel="stylesheet" />
+
+    <!-- PLUGINS CSS STYLE -->
+    <link href="{{ url_for('static', filename='assets/plugins/simplebar/simplebar.css') }}" rel="stylesheet" />
+
+    <!-- Data-Tables -->
+    <link href="{{ url_for('static', filename='assets/plugins/data-tables/datatables.bootstrap5.min.css') }}" rel='stylesheet'>
+    <link href="{{ url_for('static', filename='assets/plugins/data-tables/responsive.datatables.min.css') }}" rel='stylesheet'>
+
+    <!-- custom css -->
+    <link id="style.css" rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}" />
+
+    <!-- FAVICON -->
+    <link href="{{ url_for('static', filename='assets/img/favicon.png') }}" rel="shortcut icon" />
+</head>
+
+<body class="ec-header-fixed ec-sidebar-fixed ec-sidebar-dark ec-header-light" id="body">
+    <!-- WRAPPER -->
+    <div class="wrapper">
+        <!-- LEFT MAIN SIDEBAR -->
+        <div class="ec-left-sidebar ec-bg-sidebar">
+            <div id="sidebar" class="sidebar ec-sidebar-footer">
+                <div class="ec-brand">
+                    <a href="/vendor_dashboard">
+                        <img class="ec-brand-icon" src="{{ url_for('static', filename='assets/img/logo/favicon.png') }}" alt="" />
+                        <span class="ec-brand-name text-truncate">ANDSHOP</span>
+                    </a>
+                </div>
+
+                <!-- begin sidebar scrollbar -->
+                <div class="ec-navigation" data-simplebar>
+                    <!-- sidebar menu -->
+                    <ul class="nav sidebar-inner" id="sidebar-menu">
+                        <!-- Dashboard -->
+                        <li>
+                            <a class="sidenav-item-link" href="/vendor_dashboard">
+                                <i class="mdi mdi-view-dashboard-outline"></i>
+                                <span class="nav-text">Dashboard</span>
+                            </a>
+                            <hr>
+                        </li>
+
+                        <!-- Users -->
+                        <li class="has-sub">
+                            <a class="sidenav-item-link" href="javascript:void(0)">
+                                <i class="mdi mdi-account-multiple-outline"></i>
+                                <span class="nav-text">Customers</span>
+                                <b class="caret"></b>
+                            </a>
+                            <div class="collapse">
+                                <ul class="sub-menu" id="users" data-parent="#sidebar-menu">
+                                    <li>
+                                        <a class="sidenav-item-link" href="/user-list">
+                                            <span class="nav-text">User List</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <hr>
+                        </li>
+
+                        <!-- Analytics -->
+                        <li class="has-sub active expand">
+                            <a class="sidenav-item-link" href="javascript:void(0)">
+                                <i class="mdi mdi-chart-line"></i>
+                                <span class="nav-text">Analytics</span>
+                                <b class="caret"></b>
+                            </a>
+                            <div class="collapse show">
+                                <ul class="sub-menu" id="analytics" data-parent="#sidebar-menu">
+                                    <li>
+                                        <a class="sidenav-item-link" href="/analysis">
+                                            <span class="nav-text">Product Analysis</span>
+                                        </a>
+                                    </li>
+                                    <li class="active">
+                                        <a class="sidenav-item-link" href="/store-revenue">
+                                            <span class="nav-text">Store Revenue</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <hr>
+                        </li>
+
+                        <!-- Products -->
+                        <li class="has-sub">
+                            <a class="sidenav-item-link" href="javascript:void(0)">
+                                <i class="mdi mdi-package-variant-closed"></i>
+                                <span class="nav-text">Products</span>
+                                <b class="caret"></b>
+                            </a>
+                            <div class="collapse">
+                                <ul class="sub-menu" id="products" data-parent="#sidebar-menu">
+                                    <li>
+                                        <a class="sidenav-item-link" href="/product-add">
+                                            <span class="nav-text">Add Product</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="sidenav-item-link" href="/products">
+                                            <span class="nav-text">List Product</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+
+                        <!-- Orders -->
+                        <li class="has-sub">
+                            <a class="sidenav-item-link" href="javascript:void(0)">
+                                <i class="mdi mdi-cart-outline"></i>
+                                <span class="nav-text">Orders</span>
+                                <b class="caret"></b>
+                            </a>
+                            <div class="collapse">
+                                <ul class="sub-menu" id="orders" data-parent="#sidebar-menu">
+                                    <li>
+                                        <a class="sidenav-item-link" href="/new-order">
+                                            <span class="nav-text">Order List</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+
+                        <!-- Error page -->
+                        <li>
+                            <a class="sidenav-item-link" href="/analysis">
+                                <i class="mdi mdi-finance"></i>
+                                <span class="nav-text">Product Analysis page</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE WRAPPER -->
+        <div class="ec-page-wrapper">
+            <!-- Header -->
+            <header class="ec-main-header" id="header">
+                <nav class="navbar navbar-static-top navbar-expand-lg">
+                    <!-- Sidebar toggle button -->
+                    <button id="sidebar-toggler">
+                        <img src="{{ url_for('static', filename='assets/img/icons/clops.png') }}" alt="">
+                    </button>
+
+                    <!-- search form -->
+                    <div class="search-form d-lg-inline-block">
+                        <div class="input-group">
+                            <input type="text" name="query" id="search-input" class="form-control"
+                                placeholder="search.." autofocus autocomplete="off" />
+                            <button type="button" name="search" id="search-btn" class="btn btn-flat">
+                                <i class="mdi mdi-magnify"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- navbar right -->
+                    <div class="navbar-right">
+                        <ul class="nav navbar-nav">
+                            <!-- User Account -->
+                            <li class="dropdown user-menu">
+                                <button class="dropdown-toggle nav-link ec-drop" data-bs-toggle="dropdown"
+                                    aria-expanded="false">
+                                    <img src="{{ url_for('static', filename=user_info.profile_pic) }}" class="user-image" alt="User Image" />
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-right ec-dropdown-menu">
+                                    <!-- User image -->
+                                    <li class="dropdown-header">
+                                        <div class="d-inline-block">
+                                            <h5>{{ user_info.name }}</h5>
+                                            <p class="pt-2">{{ user_info.email }}</p>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <a href="/user-profile">
+                                            <i class="mdi mdi-account"></i> My Profile
+                                        </a>
+                                    </li>
+                                    <li class="dropdown-footer">
+                                        <a href="/logout"> <i class="mdi mdi-logout"></i> Log Out </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </nav>
+            </header>
+
+            <!-- CONTENT WRAPPER -->
+            <div class="ec-content-wrapper">
+                <div class="content">
+                    <div class="breadcrumb-wrapper d-flex align-items-center justify-content-between">
+                        <div>
+                            <h1>Store Revenue</h1>
+                            <p class="breadcrumbs">
+                                <span><a href="/vendor_dashboard">Home</a></span>
+                                <span><i class="mdi mdi-chevron-right"></i></span>Store Revenue
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Revenue Summary Cards -->
+                    <div class="row">
+                        <div class="col-xl-4 col-sm-6 p-b-15 lbl-card">
+                            <div class="card card-mini dash-card card-1">
+                                <div class="card-body">
+                                    <h2 class="mb-1">₹{{ "%.2f"|format(revenue_data.total_revenue) }}</h2>
+                                    <p>Total Revenue (5%)</p>
+                                    <span class="mdi mdi-currency-inr"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-4 col-sm-6 p-b-15 lbl-card">
+                            <div class="card card-mini dash-card card-2">
+                                <div class="card-body">
+                                    <h2 class="mb-1">₹{{ "%.2f"|format(revenue_data.total_sales) }}</h2>
+                                    <p>Total Sales</p>
+                                    <span class="mdi mdi-cart"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-4 col-sm-6 p-b-15 lbl-card">
+                            <div class="card card-mini dash-card card-3">
+                                <div class="card-body">
+                                    <h2 class="mb-1">₹{{ "%.2f"|format(revenue_data.total_revenue / revenue_data.total_orders if revenue_data.total_orders > 0 else 0) }}</h2>
+                                    <p>Average Revenue/Order</p>
+                                    <span class="mdi mdi-calculator"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Revenue Table -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card card-default">
+                                <div class="card-header card-header-border-bottom">
+                                    <h2>Monthly Revenue Breakdown</h2>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table id="responsive-data-table" class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Month</th>
+                                                    <th>Orders</th>
+                                                    <th>Total Sales</th>
+                                                    <th>Revenue (5%)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for month_data in revenue_data.monthly_data %}
+                                                <tr>
+                                                    <td>{{ month_data.month }}</td>
+                                                    <td><span class="badge bg-light text-dark">{{ month_data.orders }}</span></td>
+                                                    <td class="amount">₹{{ "%.2f"|format(month_data.sales) }}</td>
+                                                    <td class="amount text-primary">₹{{ "%.2f"|format(month_data.revenue) }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Orders -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card card-default">
+                                <div class="card-header card-header-border-bottom">
+                                    <h2>Recent Orders</h2>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table id="responsive-data-table-2" class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Order ID</th>
+                                                    <th>Customer</th>
+                                                    <th>Items</th>
+                                                    <th>Total</th>
+                                                    <th>Revenue (5%)</th>
+                                                    <th>Order Date</th>
+                                                    <th>Date & Time</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for order in revenue_data.orders %}
+                                                <tr>
+                                                    <td><span class="text-muted">#{{ order.order_id }}</span></td>
+                                                    <td>{{ order.customer_name }}</td>
+                                                    <td>
+                                                        {% for item in order.order_items %}
+                                                            <div class="d-flex align-items-center mb-1">
+                                                                <span class="text-dark">{{ item.product_name }}</span>
+                                                                <span class="badge bg-light text-dark ms-2">x{{ item.quantity }}</span>
+                                                            </div>
+                                                        {% endfor %}
+                                                    </td>
+                                                    <td class="amount">₹{{ "%.2f"|format(order.total) }}</td>
+                                                    <td class="amount text-primary">₹{{ "%.2f"|format(order.revenue) }}</td>
+                                                    <td>
+                                                        <span class="order-date-only">{{ order.created_at.split(' ')[0] }}</span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="order-date">
+                                                            <span class="date-day">{{ order.created_at.split(' ')[0] }}</span>
+                                                            <span class="date-time text-muted">{{ order.created_at.split(' ')[1] }}</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <footer class="footer mt-auto">
+                <div class="copyright bg-white">
+                    <p>
+                        Copyright &copy; <span id="ec-year"></span><a class="text-primary"
+                        href="https://themeforest.net/user/ashishmaraviya" target="_blank"> AndShop Dashboard</a>. All Rights Reserved.
+                    </p>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Common Javascript -->
+    <script src="{{ url_for('static', filename='assets/plugins/jquery/jquery-3.5.1.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/simplebar/simplebar.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/jquery-zoom/jquery.zoom.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/slick/slick.min.js') }}"></script>
+
+    <!-- Data-Tables -->
+    <script src="{{ url_for('static', filename='assets/plugins/data-tables/jquery.datatables.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/data-tables/datatables.bootstrap5.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/data-tables/datatables.responsive.min.js') }}"></script>
+
+    <!-- Option Switcher -->
+    <script src="{{ url_for('static', filename='assets/plugins/options-sidebar/optionswitcher.js') }}"></script>
+
+    <!-- custom js -->
+    <script src="{{ url_for('static', filename='assets/js/custom.js') }}"></script>
+
+    <style>
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            padding: 15px 20px;
+        }
+        .card-header h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        .table {
+            width: 100%;
+            margin-bottom: 0;
+            background-color: transparent;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .table th {
+            font-weight: 600;
+            background-color: #f4f6f8;
+            border-bottom: 2px solid #dee2e6;
+            color: #333;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            padding: 15px;
+            vertical-align: middle;
+        }
+        .table td {
+            padding: 15px;
+            vertical-align: middle;
+            border-top: 1px solid #eee;
+            color: #555;
+            font-size: 14px;
+        }
+        .table tbody tr {
+            transition: all 0.3s ease;
+        }
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .table-responsive {
+            margin: 0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .card-mini {
+            border-radius: 10px;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+        .card-mini:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .card-1 {
+            background: linear-gradient(45deg, #7571f9, #9574f9);
+        }
+        .card-2 {
+            background: linear-gradient(45deg, #2196f3, #00bcd4);
+        }
+        .card-3 {
+            background: linear-gradient(45deg, #4caf50, #8bc34a);
+        }
+        .dash-card {
+            position: relative;
+            color: #fff;
+            padding: 20px;
+        }
+        .dash-card span {
+            font-size: 3rem;
+            opacity: 0.2;
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
+            transition: all 0.3s ease;
+        }
+        .dash-card:hover span {
+            opacity: 0.3;
+            transform: scale(1.1);
+        }
+        .dash-card h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        .dash-card p {
+            margin: 0;
+            opacity: 0.7;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+        .breadcrumb-wrapper {
+            margin-bottom: 1.5rem;
+            padding: 15px 0;
+        }
+        .breadcrumbs {
+            margin: 0;
+            padding: 0;
+        }
+        .breadcrumbs a {
+            color: #7571f9;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        .breadcrumbs a:hover {
+            color: #5a57d9;
+        }
+        .breadcrumbs span {
+            margin: 0 5px;
+            color: #999;
+        }
+        .table-responsive {
+            margin: 0;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+        
+        /* Additional Professional Touches */
+        .table td[data-label="Revenue (5%)"],
+        .table td[data-label="Total"] {
+            font-weight: 600;
+            color: #2196f3;
+        }
+        
+        .table td[data-label="Order ID"] {
+            font-family: monospace;
+            color: #666;
+        }
+        
+        .table td[data-label="Date"] {
+            color: #666;
+            font-size: 13px;
+        }
+        
+        /* Status Badges */
+        .badge {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        /* Responsive Table Improvements */
+        @media (max-width: 768px) {
+            .table td {
+                white-space: normal;
+                min-width: 100px;
+            }
+            .table th {
+                white-space: nowrap;
+            }
+        }
+        
+        /* Card Body Padding */
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        /* Table Header Alignment */
+        .table thead th {
+            text-align: left;
+            border-top: none;
+        }
+        
+        /* Alternating Row Colors */
+        .table tbody tr:nth-child(even) {
+            background-color: #fafbfc;
+        }
+        
+        /* Amount Formatting */
+        .amount {
+            font-family: 'Roboto Mono', monospace;
+            font-weight: 500;
+        }
+        
+        /* Hover Effects */
+        .table tbody tr:hover td {
+            color: #333;
+        }
+
+        /* Order Date Styling */
+        .order-date {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .date-day {
+            font-weight: 500;
+            color: #333;
+        }
+        .date-time {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* Order Date Styling */
+        .order-date-only {
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+    </style>
+
+    <!-- Add this right after the opening <body> tag -->
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+
+    <!-- Update DataTables initialization script -->
+    <script>
+        $(document).ready(function() {
+            // Common configuration for both tables
+            const commonConfig = {
+                "aLengthMenu": [
+                    [10, 25, 50, 75, -1],
+                    [10, 25, 50, 75, "All"]
+                ],
+                "pageLength": 10,
+                "dom": '<"row align-items-center"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>><"table-responsive"tr><"row align-items-center"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+                "language": {
+                    "search": "Search:",
+                    "lengthMenu": "Show _MENU_ entries"
+                },
+                responsive: true
+            };
+
+            // Initialize Monthly Revenue table
+            if (!$.fn.DataTable.isDataTable('#responsive-data-table')) {
+                $('#responsive-data-table').DataTable({
+                    ...commonConfig,
+                    "order": [[0, "desc"]] // Sort by month column
+                });
+            }
+
+            // Initialize Recent Orders table
+            if (!$.fn.DataTable.isDataTable('#responsive-data-table-2')) {
+                $('#responsive-data-table-2').DataTable({
+                    ...commonConfig,
+                    "order": [[5, "desc"]], // Sort by Order Date column
+                    "columnDefs": [
+                        {
+                            "targets": 5, // Order Date column
+                            "type": "date"
+                        }
+                    ]
+                });
+            }
+
+            // Add custom classes to DataTables elements
+            $('.dataTables_length select').addClass('form-select form-select-sm');
+            $('.dataTables_filter input').addClass('form-control form-control-sm ms-2').attr('placeholder', 'Search...');
+        });
+    </script>
+</body>
+</html> 

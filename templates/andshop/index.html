@@ -86,6 +86,23 @@
 							</div>
 							<hr>
 						</li>
+						<!-- Analytics -->
+						<li class="has-sub">
+							<a class="sidenav-item-link" href="javascript:void(0)">
+								<i class="mdi mdi-chart-line"></i>
+								<span class="nav-text">Analytics</span> <b class="caret"></b>
+							</a>
+							<div class="collapse">
+								<ul class="sub-menu" id="analytics" data-parent="#sidebar-menu">
+									<li class="">
+										<a class="sidenav-item-link" href="/store-revenue">
+											<span class="nav-text">Store Revenue</span>
+										</a>
+									</li>
+								</ul>
+							</div>
+							<hr>
+						</li>
 						<!-- Products -->
 						<li class="has-sub">
 							<a class="sidenav-item-link" href="javascript:void(0)">
@@ -197,13 +214,17 @@
 								<div class="card card-default dropdown-notify dropdown-menu-right mb-0">
 									<div class="card-header card-header-border-bottom px-3">
 										<h2>Notifications</h2>
+										<div class="notification-counter"></div>
 									</div>
 
 									<div class="card-body px-0 py-0">
 										<div class="tab-content" id="myNotifications">
-											<ul class="list-unstyled" data-simplebar style="height: 360px">
+											<ul class="list-unstyled notification-list" data-simplebar style="height: 360px; overflow-y: auto;">
 												<!-- Notifications will be dynamically inserted here -->
 											</ul>
+											<div class="text-center p-2 border-top notification-footer">
+												<a href="javascript:void(0)" class="mark-all-read">Mark all as read</a>
+											</div>
 										</div>
 									</div>
 								</div>
@@ -258,39 +279,64 @@
 			<!-- CONTENT WRAPPER -->
 			<div class="ec-content-wrapper">
 				<div class="content">
-					<!-- Top Statistics -->
-					<!-- Commented out statistics cards
 					<div class="row">
-						<div class="col-xl-3 col-sm-6 p-b-15 lbl-card">
+						<div class="col-12 p-b-15">
+							<div class="welcome-message card card-default p-4">
+								<h4>Welcome back, {{ user_info.name }}!</h4>
+								<p class="text-muted">Here's what's happening with your store today.</p>
+							</div>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-xl-3 col-sm-6 p-b-15">
 							<div class="card card-mini dash-card card-1">
 								<div class="card-body">
-									<h2 class="mb-1">{{ customer_count|default('N/A') }}</h2>
-									<p>Daily Signups</p>
-									<span class="mdi mdi-account-arrow-left"></span>
+									<h2 class="mb-1">{{ customer_count }}</h2>
+									<p>Total Customers</p>
+									<div class="chart-wrapper">
+										<canvas id="customerChart"></canvas>
+									</div>
+									<span class="mdi mdi-account-multiple"></span>
 								</div>
 							</div>
 						</div>
-						
-						<div class="col-xl-3 col-sm-6 p-b-15 lbl-card">
-							<div class="card card-mini dash-card card-3">
+						<div class="col-xl-3 col-sm-6 p-b-15">
+							<div class="card card-mini dash-card card-2">
 								<div class="card-body">
 									<h2 class="mb-1">{{ total_orders }}</h2>
-									<p>Daily Order</p>
-									<span class="mdi mdi-package-variant"></span>
+									<p>Total Orders</p>
+									<div class="chart-wrapper">
+										<canvas id="orderChart"></canvas>
+									</div>
+									<span class="mdi mdi-shopping"></span>
 								</div>
 							</div>
 						</div>
-						<div class="col-xl-3 col-sm-6 p-b-15 lbl-card">
-							<div class="card card-mini dash-card card-4">
+						<div class="col-xl-3 col-sm-6 p-b-15">
+							<div class="card card-mini dash-card card-3">
 								<div class="card-body">
-									<h2 class="mb-1">{{ total_revenue }}</h2>
-									<p>Daily Revenue</p>
+									<h2 class="mb-1">₹{{ total_revenue }}</h2>
+									<p>Total Revenue</p>
+									<div class="chart-wrapper">
+										<canvas id="revenueChart"></canvas>
+									</div>
 									<span class="mdi mdi-currency-inr"></span>
 								</div>
 							</div>
 						</div>
+						<div class="col-xl-3 col-sm-6 p-b-15">
+							<div class="card card-mini dash-card card-4">
+								<div class="card-body">
+									<h2 class="mb-1">{{ product_count }}</h2>
+									<p>Total Products</p>
+									<div class="chart-wrapper">
+										<canvas id="productChart"></canvas>
+									</div>
+									<span class="mdi mdi-package-variant"></span>
+								</div>
+							</div>
+						</div>
 					</div>
-					-->
 					<div class="row">
 						<div class="col-xl-8 col-md-12 p-b-15">
 							<!-- Sales Graph -->
@@ -428,24 +474,250 @@
 	<!-- custom js -->
 	<script src="{{ url_for('static', filename='assets/js/custom.js') }}"></script>
 
+	<style>
+	.notification-list li {
+		border-bottom: 1px solid #eee;
+		transition: background-color 0.3s;
+	}
+
+	.notification-list li:hover {
+		background-color: #f8f9fa;
+	}
+
+	.notification-list .media-message {
+		padding: 15px;
+	}
+
+	.notification-list .title {
+		color: #333;
+		font-size: 14px;
+		font-weight: 600;
+		margin-bottom: 5px;
+	}
+
+	.notification-list .last-msg {
+		color: #666;
+		font-size: 13px;
+		margin-bottom: 3px;
+	}
+
+	.notification-counter {
+		position: absolute;
+		right: 15px;
+		top: 50%;
+		transform: translateY(-50%);
+		background: #ff4444;
+		color: white;
+		border-radius: 50%;
+		padding: 2px 8px;
+		font-size: 12px;
+		display: none;
+	}
+
+	.notification-footer {
+		background: #f8f9fa;
+	}
+
+	.notification-footer a {
+		color: #3E80F6;
+		font-size: 13px;
+		text-decoration: none;
+	}
+
+	.notification-footer a:hover {
+		text-decoration: underline;
+	}
+
+	.unread-notification {
+		background-color: #f0f7ff;
+	}
+
+	.notification-badge {
+		display: inline-block;
+		padding: 2px 8px;
+		border-radius: 12px;
+		font-size: 11px;
+		font-weight: 600;
+		margin-left: 5px;
+	}
+
+	.badge-low-stock {
+		background-color: #fff3cd;
+		color: #856404;
+	}
+
+	.badge-critical {
+		background-color: #f8d7da;
+		color: #721c24;
+	}
+
+	.welcome-message {
+		background: linear-gradient(135deg, #3E80F6 0%, #1a5ee4 100%);
+		color: white;
+		border: none;
+		border-radius: 10px;
+		margin-bottom: 25px;
+	}
+
+	.welcome-message p {
+		color: rgba(255, 255, 255, 0.8);
+		margin-bottom: 0;
+	}
+
+	.card-mini {
+		position: relative;
+		overflow: hidden;
+	}
+
+	.card-mini .mdi {
+		position: absolute;
+		right: 15px;
+		bottom: 15px;
+		font-size: 2.5rem;
+		opacity: 0.2;
+	}
+
+	.card-mini .card-body {
+		position: relative;
+		z-index: 1;
+	}
+
+	.card-mini h2 {
+		font-size: 1.8rem;
+		font-weight: 700;
+		margin-bottom: 5px;
+		color: white;
+	}
+
+	.card-mini p {
+		font-size: 0.9rem;
+		color: rgba(255, 255, 255, 0.8);
+		margin-bottom: 0;
+	}
+
+	.chart-wrapper {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		height: 50px;
+		opacity: 0.2;
+	}
+
+	.card-1 {
+		background: linear-gradient(45deg, #6a11cb, #2575fc);
+	}
+
+	.card-2 {
+		background: linear-gradient(45deg, #f6d365, #fda085);
+	}
+
+	.card-3 {
+		background: linear-gradient(45deg, #0ba360, #3cba92);
+	}
+
+	.card-4 {
+		background: linear-gradient(45deg, #f77062, #fe5196);
+	}
+
+	.card-mini:hover {
+		transform: translateY(-5px);
+		box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+	}
+
+	.card-mini:hover .chart-wrapper {
+		opacity: 0.3;
+	}
+
+	.card-mini:hover .mdi {
+		opacity: 0.3;
+	}
+
+	/* Enhance table styling */
+	.table {
+		background: white;
+		border-radius: 10px;
+		overflow: hidden;
+	}
+
+	.table thead th {
+		background: #f8f9fa;
+		border-bottom: 2px solid #dee2e6;
+		font-weight: 600;
+		text-transform: uppercase;
+		font-size: 0.8rem;
+		letter-spacing: 0.5px;
+	}
+
+	.table tbody tr:hover {
+		background-color: #f8f9fa;
+	}
+
+	.vendor-thumb {
+		border-radius: 8px;
+		box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+	}
+
+	/* Enhance chart containers */
+	#monthlySalesChart, #polar {
+		padding: 20px;
+	}
+
+	.card-default {
+		border-radius: 10px;
+		box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+	}
+
+	.card-header {
+		background: white;
+		border-bottom: 1px solid #eee;
+	}
+
+	.card-header h2 {
+		font-size: 1.2rem;
+		font-weight: 600;
+		margin-bottom: 0;
+	}
+	</style>
+
 	<script>
 	function fetchAndDisplayNotifications() {
 		$.ajax({
 			url: '/get-low-stock-notifications',
 			method: 'GET',
 			success: function(notifications) {
-				var notificationList = $('#myNotifications ul');
-				notificationList.empty();  // Clear existing notifications
+				var notificationList = $('.notification-list');
+				notificationList.empty();
 				
-				notifications.forEach(function(notification) {
+				if (notifications.length > 0) {
+					$('.notification-counter').text(notifications.length).show();
+				} else {
+					$('.notification-counter').hide();
+					notificationList.append(`
+						<li class="text-center p-3">
+							<p class="text-muted mb-0">No new notifications</p>
+						</li>
+					`);
+					return;
+				}
+				
+				notifications.forEach(function(notification, index) {
+					var badgeClass = notification.critical ? 'badge-critical' : 'badge-low-stock';
 					var notificationHtml = `
-						<li>
+						<li class="unread-notification" data-notification-id="${index}">
 							<a href="javascript:void(0)" class="media media-message media-notification">
 								<div class="media-body d-flex justify-content-between">
 									<div class="message-contents">
-										<h4 class="title">${notification.product_name}</h4>
+										<h4 class="title">
+											${notification.product_name}
+											<span class="notification-badge ${badgeClass}">
+												${notification.critical ? 'Critical' : 'Low Stock'}
+											</span>
+										</h4>
 										<p class="last-msg">${notification.message}</p>
-										<p class="last-msg">Store: ${notification.store_name}</p>
+										<p class="store-info">
+											<i class="mdi mdi-store"></i> ${notification.store_name}
+										</p>
 										<span class="font-size-12 font-weight-medium text-secondary">
 											<i class="mdi mdi-clock-outline"></i> Just now
 										</span>
@@ -457,21 +729,46 @@
 					notificationList.append(notificationHtml);
 				});
 				
-				// Update notification count
-				$('.notify-toggler').find('.badge').text(notifications.length);
+				// Update notification count in badge
+				$('.notify-toggler .badge').text(notifications.length);
 			},
 			error: function(error) {
 				console.error('Error fetching notifications:', error);
+				$('.notification-list').html(`
+					<li class="text-center p-3">
+						<p class="text-danger mb-0">Error loading notifications</p>
+					</li>
+				`);
 			}
 		});
 	}
 
-	// Call this function when the page loads
 	$(document).ready(function() {
 		fetchAndDisplayNotifications();
 		
-		// Optionally, set up a timer to periodically fetch notifications
-		setInterval(fetchAndDisplayNotifications, 300000);  // Every 5 minutes
+		// Refresh notifications every 5 minutes
+		setInterval(fetchAndDisplayNotifications, 300000);
+		
+		// Handle mark as read functionality
+		$('.mark-all-read').click(function() {
+			$('.unread-notification').removeClass('unread-notification');
+			$('.notification-counter').hide();
+		});
+		
+		// Handle individual notification click
+		$(document).on('click', '.media-notification', function() {
+			$(this).closest('li').removeClass('unread-notification');
+			updateUnreadCount();
+		});
+		
+		function updateUnreadCount() {
+			var unreadCount = $('.unread-notification').length;
+			if (unreadCount > 0) {
+				$('.notification-counter').text(unreadCount).show();
+			} else {
+				$('.notification-counter').hide();
+			}
+		}
 	});
 	</script>
 
@@ -639,6 +936,110 @@
 					});
 				})
 				.catch(error => console.error('Error loading order status data:', error));
+	});
+	</script>
+
+	<script>
+	function initializeCharts() {
+		// Customer Chart
+		new Chart(document.getElementById('customerChart'), {
+			type: 'line',
+			data: {
+				labels: ['', '', '', '', ''],
+				datasets: [{
+					data: [10, 15, 8, 12, 20],
+					borderColor: 'rgba(255,255,255,0.8)',
+					borderWidth: 2,
+					fill: false,
+					pointRadius: 0
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				legend: { display: false },
+				scales: {
+					xAxes: [{ display: false }],
+					yAxes: [{ display: false }]
+				}
+			}
+		});
+
+		// Order Chart
+		new Chart(document.getElementById('orderChart'), {
+			type: 'line',
+			data: {
+				labels: ['', '', '', '', ''],
+				datasets: [{
+					data: [5, 10, 15, 12, 18],
+					borderColor: 'rgba(255,255,255,0.8)',
+					borderWidth: 2,
+					fill: false,
+					pointRadius: 0
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				legend: { display: false },
+				scales: {
+					xAxes: [{ display: false }],
+					yAxes: [{ display: false }]
+				}
+			}
+		});
+
+		// Revenue Chart
+		new Chart(document.getElementById('revenueChart'), {
+			type: 'line',
+			data: {
+				labels: ['', '', '', '', ''],
+				datasets: [{
+					data: [100, 200, 150, 300, 250],
+					borderColor: 'rgba(255,255,255,0.8)',
+					borderWidth: 2,
+					fill: false,
+					pointRadius: 0
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				legend: { display: false },
+				scales: {
+					xAxes: [{ display: false }],
+					yAxes: [{ display: false }]
+				}
+			}
+		});
+
+		// Product Chart
+		new Chart(document.getElementById('productChart'), {
+			type: 'line',
+			data: {
+				labels: ['', '', '', '', ''],
+				datasets: [{
+					data: [8, 12, 15, 10, 20],
+					borderColor: 'rgba(255,255,255,0.8)',
+					borderWidth: 2,
+					fill: false,
+					pointRadius: 0
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				legend: { display: false },
+				scales: {
+					xAxes: [{ display: false }],
+					yAxes: [{ display: false }]
+				}
+			}
+		});
+	}
+
+	$(document).ready(function() {
+		initializeCharts();
 	});
 	</script>
 

@@ -320,6 +320,7 @@
                                             </ul>
                                         {% endif %}
                                     </li>
+                                    <li><a href="#" data-bs-toggle="modal" data-bs-target="#walletModal"><i class="fa fa-credit-card"></i></a></li>
                                     <li><a href="/wishlist"><i class="fa fa-heart-o"></i></a></li>
                                     <li>
                                         <a href="/cart">
@@ -1187,6 +1188,58 @@ setInterval(checkInternetConnection, 5000);
         `;
     }
 </script>
+
+<!-- Wallet Modal -->
+<div class="modal fade" id="walletModal" tabindex="-1" aria-labelledby="walletModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="walletModalLabel">Wallet Balance</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="fa fa-wallet fa-3x mb-3" style="color: #ff6a00;"></i>
+                <h3>Current Balance</h3>
+                <h2 class="text-primary">₹{{ "%.2f"|format(wallet_balance|default(0)) }}</h2>
+                <p class="text-muted mt-2">Total refundable deposit amount from all your orders</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .modal-content {
+        border-radius: 15px;
+        border: none;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    
+    .modal-header {
+        border-bottom: none;
+        padding: 20px 25px;
+    }
+    
+    .modal-body {
+        padding: 30px;
+    }
+    
+    .modal-footer {
+        border-top: none;
+        padding: 20px 25px;
+    }
+    
+    .btn-secondary {
+        background-color: #ff6a00;
+        border: none;
+    }
+    
+    .btn-secondary:hover {
+        background-color: #e55d00;
+    }
+</style>
 
 </body>
 

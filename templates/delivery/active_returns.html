@@ -279,11 +279,33 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     
     <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyB42nHmPcpj7BmOPPdO93lXqzA3PjjXZOc",
+            authDomain: "project-dbebd.firebaseapp.com",
+            databaseURL: "https://project-dbebd-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            projectId: "project-dbebd",
+            storageBucket: "project-dbebd.appspot.com",
+            messagingSenderId: "374516311348",
+            appId: "1:374516311348:web:d916facf6720a4e275f161"
+        };
+
+        // Initialize Firebase app if it hasn't been initialized yet
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        } else {
+            firebase.app(); // if already initialized, use that one
+        }
+
+        // Get database reference
+        const database = firebase.database();
+
         document.addEventListener('DOMContentLoaded', () => {
             const returns = {{ active_returns | tojson | safe }};
             renderActiveReturns(returns);
@@ -459,37 +481,100 @@
                 return;
             }
 
-            // Send the data to your server
-            fetch('/delivery/complete-return', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    orderId: orderId,
-                    productId: productId,
-                    storeName: storeName,
-                    condition: condition,
-                    notes: notes
+            // First, get the order details to find the user_id and actual order_id
+            database.ref(`orders/${orderId}`).once('value')
+                .then(snapshot => {
+                    const order = snapshot.val();
+                    if (!order) {
+                        throw new Error('Order not found');
+                    }
+
+                    const userId = order.user_id;
+                    const actualOrderId = order.order_id; // Get the UUID order ID
+                    console.log('Searching for wallet transaction with order ID:', actualOrderId);
+                    
+                    const updates = {};
+
+                    // Remove wallet_deposit from order
+                    if (order.wallet_deposit) {
+                        updates[`orders/${orderId}/wallet_deposit`] = null;
+                    }
+
+                    // Find and update the wallet transaction
+                    return database.ref('wallet_transactions')
+                        .orderByChild('order_id')
+                        .equalTo(actualOrderId)
+                        .once('value')
+                        .then(transactionSnapshot => {
+                            if (!transactionSnapshot.exists()) {
+                                console.log('No wallet transaction found for order:', actualOrderId);
+                                return;
+                            }
+
+                            transactionSnapshot.forEach(childSnapshot => {
+                                const transaction = childSnapshot.val();
+                                console.log('Found transaction:', transaction);
+                                if (transaction.type === 'deposit' && transaction.status === 'active') {
+                                    const transactionKey = childSnapshot.key;
+                                    console.log('Updating transaction:', transactionKey);
+                                    // Update the transaction status directly
+                                    updates[`wallet_transactions/${transactionKey}/status`] = 'returned';
+                                }
+                            });
+
+                            // Send the data to your server along with completing the return
+                            return fetch('/delivery/complete-return', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    orderId: orderId,
+                                    productId: productId,
+                                    storeName: storeName,
+                                    condition: condition,
+                                    notes: notes
+                                })
+                            });
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                console.log('Server update successful, applying Firebase updates:', updates);
+                                // If server-side update was successful, update Firebase
+                                if (Object.keys(updates).length > 0) {
+                                    return database.ref().update(updates)
+                                        .then(() => {
+                                            console.log('Firebase update successful');
+                                            showToast('Return completed successfully!', 'success');
+                                            // Close the modal
+                                            const modal = bootstrap.Modal.getInstance(document.getElementById('productConditionModal'));
+                                            modal.hide();
+                                            // Refresh the page
+                                            location.reload();
+                                        })
+                                        .catch(error => {
+                                            console.error('Firebase update failed:', error);
+                                            throw new Error('Failed to update wallet transaction status');
+                                        });
+                                } else {
+                                    console.log('No Firebase updates needed');
+                                    showToast('Return completed successfully!', 'success');
+                                    // Close the modal
+                                    const modal = bootstrap.Modal.getInstance(document.getElementById('productConditionModal'));
+                                    modal.hide();
+                                    // Refresh the page
+                                    location.reload();
+                                }
+                            } else {
+                                throw new Error(data.message || 'Error completing return');
+                            }
+                        });
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showToast('Return completed successfully!', 'success');
-                    // Close the modal
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('productConditionModal'));
-                    modal.hide();
-                    // Refresh the page
-                    location.reload();
-                } else {
-                    showToast(data.message || 'Error completing return', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showToast('Error completing return. Please try again.', 'error');
-            });
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Error completing return. Please try again.', 'error');
+                });
         }
 
         // Helper function to show toast messages
