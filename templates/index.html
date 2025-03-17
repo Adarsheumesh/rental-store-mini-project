@@ -258,6 +258,33 @@
         font-weight: normal;
         margin-left: 2px;
     }
+    
+    .rating-value {
+        font-size: 13px;
+        color: #666;
+        margin-left: 5px;
+    }
+    
+    .product-rating .fa-star,
+    .rating .fa-star,
+    .pro-content .fa-star,
+    .product-rating i.fa.fa-star {
+        color: #ffd700 !important;
+    }
+    
+    .product-rating .fa-star-half-o,
+    .rating .fa-star-half-o,
+    .pro-content .fa-star-half-o,
+    .product-rating i.fa.fa-star-half-o {
+        color: #ffd700 !important;
+    }
+    
+    .product-rating .fa-star-o,
+    .rating .fa-star-o,
+    .pro-content .fa-star-o,
+    .product-rating i.fa.fa-star-o {
+        color: #ccc !important;
+    }
 </style>
 </head>
 
@@ -424,23 +451,33 @@
                             <!-- Product Content Start -->
                             <div class="pro-content">
                                 <div class="product-rating">
-                                    {% set total_rating = 0 %}
-                                    {% set review_count = 0 %}
-                                    
-                                    {% if product_reviews %}
+                                    {% set avg_rating = product.avg_rating|default(0)|float %}
+                                    {% if avg_rating == 0 and product_reviews %}
+                                        {% set review_count = 0 %}
+                                        {% set total_rating = 0 %}
                                         {% for review_id, review in product_reviews.items() %}
-                                            {% if review.rating %}
+                                            {% if review_id.startswith(product_id) and review.rating %}
                                                 {% set total_rating = total_rating + review.rating|int %}
                                                 {% set review_count = review_count + 1 %}
                                             {% endif %}
                                         {% endfor %}
+                                        {% if review_count > 0 %}
+                                            {% set avg_rating = (total_rating / review_count)|round(1) %}
+                                        {% else %}
+                                            {% set avg_rating = 5 %}
+                                        {% endif %}
                                     {% endif %}
                                     
-                                    {% set average_rating = (total_rating / review_count)|round|int if review_count > 0 else 5 %}
-                                    
-                                    {% for _ in range(average_rating) %}
-                                        <i class="fa fa-star"></i>
+                                    {% for i in range(5) %}
+                                        {% if i < avg_rating|int %}
+                                            <i class="fa fa-star"></i>
+                                        {% elif avg_rating|int == i and (avg_rating - avg_rating|int) >= 0.5 %}
+                                            <i class="fa fa-star-half-o"></i>
+                                        {% else %}
+                                            <i class="fa fa-star-o"></i>
+                                        {% endif %}
                                     {% endfor %}
+                                    <span class="rating-value">({{ avg_rating|round(1) }})</span>
                                 </div>                                
                                 <h4><a href="{{ url_for('product_detail', product_id=product_id) }}">{{ product['product_name']}}</a></h4>
                                 <p>
@@ -581,9 +618,33 @@
                                     </div>
                                     <div class="pro-content">
                                         <div class="product-rating">
-                                            {% for _ in range(product.rating|default(5)|int) %}
-                                                <i class="fa fa-star"></i>
+                                            {% set avg_rating = product.avg_rating|default(0)|float %}
+                                            {% if avg_rating == 0 and product_reviews %}
+                                                {% set review_count = 0 %}
+                                                {% set total_rating = 0 %}
+                                                {% for review_id, review in product_reviews.items() %}
+                                                    {% if review_id.startswith(product.id) and review.rating %}
+                                                        {% set total_rating = total_rating + review.rating|int %}
+                                                        {% set review_count = review_count + 1 %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {% if review_count > 0 %}
+                                                    {% set avg_rating = (total_rating / review_count)|round(1) %}
+                                                {% else %}
+                                                    {% set avg_rating = 5 %}
+                                                {% endif %}
+                                            {% endif %}
+                                            
+                                            {% for i in range(5) %}
+                                                {% if i < avg_rating|int %}
+                                                    <i class="fa fa-star"></i>
+                                                {% elif avg_rating|int == i and (avg_rating - avg_rating|int) >= 0.5 %}
+                                                    <i class="fa fa-star-half-o"></i>
+                                                {% else %}
+                                                    <i class="fa fa-star-o"></i>
+                                                {% endif %}
                                             {% endfor %}
+                                            <span class="rating-value">({{ avg_rating|round(1) }})</span>
                                         </div>
                                         <h4><a href="{{ url_for('product_detail', product_id=product.id) }}">{{ product.product_name }}</a></h4>
                                         <p><span class="price">₹{{ product.product_price }}<span class="per-day">/day</span></span>
@@ -793,6 +854,8 @@
 <script src="{{ url_for('static', filename='js/plugins.js') }}"></script>
 <!-- main js -->
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<!-- Cart utilities -->
+<script src="{{ url_for('static', filename='js/cart-utils.js') }}"></script>
 
 <div id="custom-popup" class="custom-popup" style="display: none;">
     <p id="popup-message"></p>
@@ -810,41 +873,73 @@
 $(document).ready(function() {
     $('.add-cart').on('click', function(e) {
         e.preventDefault();
-        var productId = $(this).data('product-id');
-        var quantity = 1; // Default quantity
+        e.stopPropagation(); // Stop event propagation
+        
+        // Check if this event has already been processed
+        if (e.handled !== true) {
+            e.handled = true;
+            
+            var productId = $(this).data('product-id');
+            var quantity = 1; // Default quantity
 
-        $.ajax({
-            url: "{{ url_for('add_to_cart') }}",
-            type: 'POST',
-            contentType: 'application/json',  // Set the content type to JSON
-            data: JSON.stringify({  // Stringify the data
-                product_id: productId,
-                quantity: quantity
-            }),
-            dataType: 'json',
-            success: function(response) {
-                if (response.success) {
-                    showPopup(response.message);
-                    
-                    // Update the cart count if it's returned in the response
-                    if (response.cart_count !== undefined) {
-                        $('#cart-counter').text(response.cart_count);
-                    }
-                } else {
-                    // Special case for products already in cart
-                    if (response.already_in_cart) {
-                        showPopup('Product is already in your cart', true);
-                    } else {
-                        showPopup(response.message, true);
-                    }
-                }
-            },
-            error: function(xhr, status, error) {
-                showPopup('An error occurred. Please try again.', true);
-                console.error('Error:', xhr.responseText);
+            // Debounce the request
+            if (window._lastCartRequest && 
+                window._lastCartRequest.id === productId && 
+                Date.now() - window._lastCartRequest.time < 1000) {
+                console.log('Ignoring duplicate cart request');
+                return;
             }
-        });
+            
+            // Set request tracking
+            window._lastCartRequest = {
+                id: productId,
+                time: Date.now()
+            };
+            
+            console.log('Adding to cart from index page:', { productId, quantity });
+
+            $.ajax({
+                url: "{{ url_for('add_to_cart') }}",
+                type: 'POST',
+                contentType: 'application/json',  // Set the content type to JSON
+                data: JSON.stringify({  // Stringify the data
+                    product_id: productId,
+                    quantity: quantity
+                }),
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        showPopup(response.message);
+                        
+                        // Update the cart count if it's returned in the response
+                        if (response.cart_count !== undefined) {
+                            updateCartCount(response.cart_count);
+                        }
+                    } else {
+                        // Special case for products already in cart
+                        if (response.already_in_cart) {
+                            showPopup('Product is already in your cart', true);
+                        } else {
+                            showPopup(response.message, true);
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    showPopup('An error occurred. Please try again.', true);
+                    console.error('Error:', xhr.responseText);
+                }
+            });
+        }
     });
+
+    // Function to update cart count consistently across all pages
+    function updateCartCount(count) {
+        const cartCounters = document.querySelectorAll('.cart-counter');
+        cartCounters.forEach(counter => {
+            counter.textContent = count;
+            counter.dataset.cartCount = count;
+        });
+    }
 
     $('.add-to-wishlist').on('click', function(e) {
         e.preventDefault();

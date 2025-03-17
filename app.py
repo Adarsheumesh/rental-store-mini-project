@@ -457,20 +457,40 @@ def admin_dashboard():
 
 @app.route('/index')
 def index():
+    # Get user info from session
     if 'email' in session and 'user_info' in session:
         email = session['email']
         user_info = session['user_info']
     else:
         email = None
         user_info = None
-
-    # Fetch data from the 'products' table
+    
+    # Get products from database
     try:
-        products = db.child("products").get().val()  # Fetch all products from the 'products' table   
+        products = db.child("products").get().val() or {}
     except Exception as e:
         products = None
         flash(f"Failed to retrieve products: {str(e)}", 'danger')
-
+    
+    # Get product reviews
+    product_reviews = db.child("product_reviews").get().val() or {}
+    
+    # Calculate average rating for each product and add it to the product object
+    if products:
+        for product_id, product in products.items():
+            if 'avg_rating' not in product:
+                product_specific_reviews = {}
+                # Filter reviews for this specific product
+                for review_id, review in product_reviews.items():
+                    if review_id.startswith(product_id):
+                        product_specific_reviews[review_id] = review
+                
+                avg_rating = calculate_average_rating(product_specific_reviews)
+                product['avg_rating'] = avg_rating
+                
+                # Update the product in database with the avg_rating
+                db.child("products").child(product_id).update({"avg_rating": avg_rating})
+    
     # Fetch best seller products
     try:
         # You might want to implement a logic to determine best sellers
@@ -481,18 +501,25 @@ def index():
                 product['id'] = product_id
                 best_seller_products.append(product)
     except Exception as e:
-        best_seller_products = None
-
+        best_seller_products = []
+    
+    # Get cart count
+    cart_count = 0
+    if 'user_id' in session:
+        cart_count = get_cart_count(session['user_id'])
+    
+    # Get wallet balance
     wallet_balance = 0
     if 'user_id' in session:
-        user_id = session['user_id']
-        wallet_balance = get_user_wallet_balance(user_id)
+        wallet_balance = get_user_wallet_balance(session['user_id'])
     
     return render_template('index.html', 
-                           email=email, 
-                           user_info=user_info, 
+                           email=email,
+                           user_info=user_info,
                            products=products, 
+                           product_reviews=product_reviews,
                            best_seller_products=best_seller_products,
+                           cart_count=cart_count,
                            wallet_balance=wallet_balance)
 
 
@@ -1091,6 +1118,16 @@ def product_detail(product_id):
         app.logger.info(f"Session data: {session}")
         app.logger.info(f"User info: {user_info}")
         app.logger.info(f"Cart count: {cart_count}")
+        
+        # Just before rendering the template, calculate average rating
+        # and add it to the product object
+        if 'avg_rating' not in product:
+            reviews = db.child("product_reviews").child(product_id).get().val() or {}
+            avg_rating = calculate_average_rating(reviews)
+            product['avg_rating'] = avg_rating
+            
+            # Optionally store the calculated rating in the database for future use
+            db.child("products").child(product_id).update({"avg_rating": avg_rating})
         
         return render_template('product.html',
                              product=product,
@@ -2822,27 +2859,58 @@ def submit_review():
 
         # Add the review to the database
         db.child("product_reviews").child(product_id).push(new_review)
+        
+        # Calculate the average rating after adding the review
+        reviews = db.child("product_reviews").child(product_id).get().val() or {}
+        avg_rating = calculate_average_rating(reviews)
+        
+        # Update the product's average rating in the database if needed
+        db.child("products").child(product_id).update({"avg_rating": avg_rating})
 
         print(f"Review submitted successfully: {new_review}")
-        return jsonify({'success': True, 'message': 'Review submitted successfully.'}), 200
+        return jsonify({
+            'success': True, 
+            'message': 'Review submitted successfully.',
+            'avg_rating': avg_rating
+        }), 200
     except ValueError as ve:
         print(f"ValueError: {str(ve)}")
         return jsonify({'success': False, 'message': str(ve)}), 400
     except Exception as e:
         print(f"Error submitting review: {str(e)}")
         return jsonify({'success': False, 'message': f'An error occurred while submitting the review: {str(e)}'}), 500
+
 from flask import render_template_string
+
+def calculate_average_rating(reviews):
+    """Calculate the average rating from reviews"""
+    if not reviews:
+        return 0
+    
+    total_rating = 0
+    num_reviews = 0
+    
+    for _, review in reviews.items():
+        if 'rating' in review:
+            total_rating += int(review['rating'])
+            num_reviews += 1
+    
+    return round(total_rating / num_reviews, 1) if num_reviews > 0 else 0
 
 @app.route('/get-reviews/<product_id>')
 def get_reviews(product_id):
-    reviews = db.child("product_reviews").child(product_id).get().val()
+    reviews = db.child("product_reviews").child(product_id).get().val() or {}
     product_reviews = []
+    
     if reviews:
         for review_id, review_data in reviews.items():
             product_reviews.append(review_data)
     
     # Sort reviews by date (newest first)
     product_reviews.sort(key=lambda x: x['date'], reverse=True)
+    
+    # Calculate average rating
+    avg_rating = calculate_average_rating(reviews)
     
     html = render_template_string("""
         {% if product_reviews %}
@@ -2873,6 +2941,12 @@ def get_reviews(product_id):
             <p>No reviews yet. Be the first to review this product!</p>
         {% endif %}
     """, product_reviews=product_reviews)
+    
+    return jsonify({
+        'success': True,
+        'html': html,
+        'avg_rating': avg_rating
+    })
 @app.route('/check_auth')
 def check_auth():
     if 'user_id' in session:

@@ -11887,8 +11887,8 @@
   },
   "networks": {
     "1337": {
-      "address": "0x8288027Cc729118f90Be6A020A54Ce638CeA834B",
-      "transactionHash": "0x4eea3a797cfa9d3cbaaaecdc4195c389837c7a42ba61a4923574a3e6e2c94a61"
+      "address": "0xC7B028C028cCa43b42469e16c00699a1D030d55f",
+      "transactionHash": "0x0c83326f1324d71d9e9b1e8133a007ae1d3906dade8abd0ecab85b936b474e57"
     }
   },
   "schemaVersion": "3.4.16",

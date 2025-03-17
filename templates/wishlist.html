@@ -471,6 +471,8 @@
 <script src="{{ url_for('static', filename='js/plugins.js') }}"></script>
 <!-- main js -->
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<!-- Cart utilities -->
+<script src="{{ url_for('static', filename='js/cart-utils.js') }}"></script>
 
 <script>
 $(document).ready(function() {
@@ -542,8 +544,14 @@ $(document).ready(function() {
 
     $(document).on('click', '.add-cart', function(e) {
         e.preventDefault();
-        var productId = $(this).data('product-id');
-        addToCartFromWishlist(productId);
+        e.stopPropagation(); // Stop event propagation to prevent multiple handlers
+        
+        // Check if this event has already been processed
+        if (e.handled !== true) {
+            e.handled = true;
+            var productId = $(this).data('product-id');
+            addToCartFromWishlist(productId);
+        }
     });
 
     function removeFromWishlist(productId) {
@@ -568,6 +576,22 @@ $(document).ready(function() {
     }
 
     function addToCartFromWishlist(productId) {
+        // First check if we've already processed this request (debounce)
+        if (window._lastCartRequest && 
+            window._lastCartRequest.id === productId && 
+            Date.now() - window._lastCartRequest.time < 1000) {
+            console.log('Ignoring duplicate cart request');
+            return;
+        }
+        
+        // Set request tracking
+        window._lastCartRequest = {
+            id: productId,
+            time: Date.now()
+        };
+        
+        console.log('Adding to cart from wishlist:', productId);
+        
         $.ajax({
             url: '/add-to-cart',
             type: 'POST',
@@ -589,10 +613,6 @@ $(document).ready(function() {
                 showPopup('Error adding item to cart. Please try again.');
             }
         });
-    }
-
-    function updateCartCount(count) {
-        $('#cart-counter').text(count);
     }
 
     function showPopup(message, isError = false) {

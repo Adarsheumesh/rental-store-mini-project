@@ -115,10 +115,41 @@
             cursor: pointer;
         }
         .star-rating .fa-star {
-            color: #ffd700;
+            color: #ffd700 !important;
         }
         .star-rating .far.fa-star {
             color: #ccc;
+        }
+        
+        /* Additional rating star styles */
+        .product-rating .fa-star,
+        .rating .fa-star,
+        .pro-content .fa-star,
+        .review-rating .fa-star,
+        .review-rating i.fa.fa-star {
+            color: #ffd700 !important;
+        }
+        
+        .product-rating .fa-star-half-o,
+        .rating .fa-star-half-o,
+        .pro-content .fa-star-half-o,
+        .review-rating .fa-star-half-o,
+        .review-rating i.fa.fa-star-half-o {
+            color: #ffd700 !important;
+        }
+        
+        .product-rating .fa-star-o,
+        .rating .fa-star-o,
+        .pro-content .fa-star-o,
+        .review-rating .fa-star-o,
+        .review-rating i.fa.fa-star-o {
+            color: #ccc !important;
+        }
+        
+        .avg-rating {
+            font-size: 14px;
+            color: #666;
+            margin-left: 5px;
         }
     </style>
     <style>
@@ -236,47 +267,70 @@
             
             $('.add-cart').on('click', function(e) {
                 e.preventDefault();
-                var $button = $(this);
-                var productId = $button.data('product-id');
-                var quantity = parseInt($('#quantity').val()) || 1;
+                e.stopPropagation(); // Stop event propagation
+                
+                // Check if this event has already been processed
+                if (e.handled !== true) {
+                    e.handled = true;
+                    
+                    var $button = $(this);
+                    var productId = $button.data('product-id');
+                    var quantity = parseInt($('#quantity').val()) || 1;
 
-                // Check if quantity exceeds maximum allowed
-                if (quantity > 5) {
-                    showPopup('Maximum 5 quantities per product allowed', true);
-                    $('#quantity').val(5); // Reset to maximum
-                    return;
-                }
-
-                $.ajax({
-                    url: "{{ url_for('add_to_cart') }}",
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({
-                        product_id: productId,
-                        quantity: quantity
-                    }),
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response.success) {
-                            showPopup(response.message);
-                            
-                            if (response.cart_count !== undefined) {
-                                $('#cart-counter').text(response.cart_count);
-                            }
-                        } else {
-                            // Special case for products already in cart
-                            if (response.already_in_cart) {
-                                showPopup('Product is already in your cart', true);
-                            } else {
-                                showPopup(response.message, true);
-                            }
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Error:', xhr.responseText);
-                        showPopup('An error occurred. Please try again.', true);
+                    // Check if quantity exceeds maximum allowed
+                    if (quantity > 5) {
+                        showPopup('Maximum 5 quantities per product allowed', true);
+                        $('#quantity').val(5); // Reset to maximum
+                        return;
                     }
-                });
+                    
+                    // Debounce the request
+                    if (window._lastCartRequest && 
+                        window._lastCartRequest.id === productId && 
+                        Date.now() - window._lastCartRequest.time < 1000) {
+                        console.log('Ignoring duplicate cart request');
+                        return;
+                    }
+                    
+                    // Set request tracking
+                    window._lastCartRequest = {
+                        id: productId,
+                        time: Date.now()
+                    };
+                    
+                    console.log('Adding to cart from product page:', { productId, quantity });
+
+                    $.ajax({
+                        url: "{{ url_for('add_to_cart') }}",
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({
+                            product_id: productId,
+                            quantity: quantity
+                        }),
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.success) {
+                                showPopup(response.message);
+                                
+                                if (response.cart_count !== undefined) {
+                                    updateCartCount(response.cart_count);
+                                }
+                            } else {
+                                // Special case for products already in cart
+                                if (response.already_in_cart) {
+                                    showPopup('Product is already in your cart', true);
+                                } else {
+                                    showPopup(response.message, true);
+                                }
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('Error:', xhr.responseText);
+                            showPopup('An error occurred. Please try again.', true);
+                        }
+                    });
+                }
             });
 
             $('.add-to-wishlist').on('click', function(e) {
@@ -391,68 +445,93 @@
         });
 
         // Add this function to reload reviews
-function reloadReviews() {
-    $.ajax({
-        url: '/get-reviews/' + '{{ product.id }}',
-        type: 'GET',
-        success: function(response) {
-            if (response.success) {
-                $('#product-reviews').html(response.html);
-            } else {
-                console.error('Failed to reload reviews:', response.message);
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Error reloading reviews:', error);
-        }
-    });
-}
-
-// In your form submission success handler, add this line:
-if (response.success) {
-    showPopup('Review submitted successfully!');
-    $('#review-form')[0].reset();
-    $('.star-rating i').removeClass('fa-star').addClass('fa-star-o');
-    $('#rating-value').val("0");
-    reloadReviews();  // Reload the reviews
-}
-
-function updateCartCount(newCount) {
-    const cartCounters = document.querySelectorAll('.cart-counter');
-    cartCounters.forEach(counter => {
-        counter.textContent = newCount;
-        counter.dataset.cartCount = newCount;
-    });
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const addToCartForm = document.querySelector('form[action="{{ url_for("add_to_cart", product_id=product.id) }}"]');
-    if (addToCartForm) {
-        addToCartForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-
-            fetch(this.action, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    updateCartCount(data.cart_count);
-                    // You can also show a success message here
-                    alert('Product added to cart successfully!');
-                } else {
-                    alert('Failed to add product to cart.');
+        function reloadReviews() {
+            $.ajax({
+                url: '/get-reviews/' + '{{ product.id }}',
+                type: 'GET',
+                success: function(response) {
+                    if (response.success) {
+                        $('#product-reviews').html(response.html);
+                        
+                        // Recalculate and update average rating
+                        if (response.avg_rating !== undefined) {
+                            updateAverageRating(response.avg_rating);
+                        }
+                    } else {
+                        console.error('Failed to reload reviews:', response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error reloading reviews:', error);
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while adding the product to cart.');
             });
+        }
+
+        // Function to update the star display based on average rating
+        function updateAverageRating(avgRating) {
+            const ratingContainer = $('.rating.f-left');
+            ratingContainer.empty();
+            
+            // Create stars based on average rating
+            for (let i = 0; i < 5; i++) {
+                if (i < Math.floor(avgRating)) {
+                    ratingContainer.append('<i class="fa fa-star"></i>');
+                } else if (i === Math.floor(avgRating) && (avgRating - Math.floor(avgRating)) >= 0.5) {
+                    ratingContainer.append('<i class="fa fa-star-half-o"></i>');
+                } else {
+                    ratingContainer.append('<i class="fa fa-star-o"></i>');
+                }
+            }
+            
+            // Add average rating text
+            ratingContainer.append('<span class="avg-rating">(' + avgRating.toFixed(1) + ')</span>');
+        }
+
+        // In your form submission success handler, add this line:
+        if (response.success) {
+            showPopup('Review submitted successfully!');
+            $('#review-form')[0].reset();
+            $('.star-rating i').removeClass('fa-star').addClass('fa-star-o');
+            $('#rating-value').val("0");
+            reloadReviews();  // Reload the reviews
+        }
+
+        function updateCartCount(newCount) {
+            const cartCounters = document.querySelectorAll('.cart-counter');
+            cartCounters.forEach(counter => {
+                counter.textContent = newCount;
+                counter.dataset.cartCount = newCount;
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const addToCartForm = document.querySelector('form[action="{{ url_for("add_to_cart", product_id=product.id) }}"]');
+            if (addToCartForm) {
+                addToCartForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+
+                    fetch(this.action, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            updateCartCount(data.cart_count);
+                            // You can also show a success message here
+                            showPopup('Product added to cart successfully!');
+                        } else {
+                            showPopup('Failed to add product to cart.', true);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showPopup('An error occurred while adding the product to cart.', true);
+                    });
+                });
+            }
         });
-    }
-});
     </script>
     <style>
        
@@ -591,11 +670,26 @@ document.addEventListener('DOMContentLoaded', function() {
                             <h3 class="product-header">{{ product.product_name }}</h3>
                             <div class="rating-summary fix mtb-10">
                                 <div class="rating f-left">
-                                    <i class="fa fa-star"></i>
-                                    <i class="fa fa-star"></i>
-                                    <i class="fa fa-star-o"></i>
-                                    <i class="fa fa-star-o"></i>
-                                    <i class="fa fa-star-o"></i>
+                                    <!-- Replace static stars with dynamic stars based on average rating -->
+                                    {% set avg_rating = product.avg_rating|default(0) %}
+                                    {% if not avg_rating and product_reviews %}
+                                        {% set total_rating = 0 %}
+                                        {% for review in product_reviews %}
+                                            {% set total_rating = total_rating + review.rating|int %}
+                                        {% endfor %}
+                                        {% set avg_rating = (total_rating / product_reviews|length)|round(1) %}
+                                    {% endif %}
+                                    
+                                    {% for i in range(5) %}
+                                        {% if i < avg_rating|int %}
+                                            <i class="fa fa-star"></i>
+                                        {% elif avg_rating|int == i and (avg_rating - avg_rating|int) >= 0.5 %}
+                                            <i class="fa fa-star-half-o"></i>
+                                        {% else %}
+                                            <i class="fa fa-star-o"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                    <span class="avg-rating">({{ avg_rating }})</span>
                                 </div>
                                 <div class="rating-feedback f-left">
                                     <a href="#">({% if product_reviews|length != 1 %}{% endif %} {{ product_reviews|length }} review)</a>
@@ -747,6 +841,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <h2 class="review-title">Product Rental History</h2>
                                         <div id="blockchain-badge"></div>
                                     </div>
+                                    <p class="text-muted mb-3">Showing the 10 most recent rentals</p>
                                     <div class="table-responsive">
                                         <table class="table rental-history-table">
                                             <thead>
@@ -1018,6 +1113,8 @@ document.addEventListener('DOMContentLoaded', function() {
     <script src="{{ url_for('static', filename='js/plugins.js') }}"></script>
     <!-- main js -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <!-- Cart utilities -->
+    <script src="{{ url_for('static', filename='js/cart-utils.js') }}"></script>
     <div id="custom-popup" class="custom-popup" style="display: none;">
         <p id="popup-message"></p>
     </div>
@@ -1089,7 +1186,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         return dateB - dateA;
                     });
 
-                    sortedHistory.forEach((record) => {
+                    // Limit to latest 10 rentals
+                    const limitedHistory = sortedHistory.slice(0, 10);
+
+                    limitedHistory.forEach((record) => {
                         const conditionInfo = getConditionDetails(record.condition);
                         historyHtml += `
                             <tr>
