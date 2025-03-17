@@ -60,6 +60,12 @@
         animation: fadeInOut 3s ease-in-out;
     }
 
+    .custom-popup.error {
+        background-color: #dc3545;
+        border-left: 4px solid #c82333;
+        color: white;
+    }
+
     #popup-message {
         margin: 0;
         font-size: 16px;
@@ -220,7 +226,7 @@
     
 </style>
 <style>
-    // ... existing styles ...
+    
     
     .toolhive-logo {
         text-decoration: none;
@@ -817,16 +823,24 @@ $(document).ready(function() {
             }),
             dataType: 'json',
             success: function(response) {
-                showPopup(response.message);
                 if (response.success) {
+                    showPopup(response.message);
+                    
                     // Update the cart count if it's returned in the response
                     if (response.cart_count !== undefined) {
                         $('#cart-counter').text(response.cart_count);
                     }
+                } else {
+                    // Special case for products already in cart
+                    if (response.already_in_cart) {
+                        showPopup('Product is already in your cart', true);
+                    } else {
+                        showPopup(response.message, true);
+                    }
                 }
             },
             error: function(xhr, status, error) {
-                showPopup('An error occurred. Please try again.');
+                showPopup('An error occurred. Please try again.', true);
                 console.error('Error:', xhr.responseText);
             }
         });
@@ -850,15 +864,26 @@ $(document).ready(function() {
             }
         });
     });
+
+    // Add tooltip for cart limits
+    $('.add-cart').attr('title', 'Maximum 5 products in cart, 5 quantities per product');
 });
 
-function showPopup(message) {
+function showPopup(message, isError = false) {
     console.log('Showing popup with message:', message);
     var popup = document.getElementById('custom-popup');
     var popupMessage = document.getElementById('popup-message');
     
     if (popup && popupMessage) {
         popupMessage.textContent = message;
+        
+        // Add or remove error class based on isError parameter
+        if (isError) {
+            popup.classList.add('error');
+        } else {
+            popup.classList.remove('error');
+        }
+        
         popup.style.display = 'block';
         
         // Remove the popup after the animation ends

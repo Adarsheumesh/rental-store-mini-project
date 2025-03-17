@@ -151,7 +151,7 @@
                                             <td class="product-quantity">
                                                 <div class="quantity-wrapper">
                                                     <button type="button" onclick="decrementQuantity('{{ item.product_id }}')">-</button>
-                                                    <input type="number" id="quantity_{{ item.product_id }}" name="quantity" class="quantity" value="{{ item.product_quantity }}" min="1" max="{{ item.max_quantity }}" onchange="updatePrice('{{ item.product_id }}')" />
+                                                    <input type="number" id="quantity_{{ item.product_id }}" name="quantity" class="quantity" value="{{ item.product_quantity }}" min="1" max="5" onchange="updatePrice('{{ item.product_id }}')" />
                                                     <button type="button" onclick="incrementQuantity('{{ item.product_id }}')">+</button>
                                                 </div>
                                             </td>
@@ -382,6 +382,14 @@
                         function updatePrice(itemKey) {
                             const $row = $(`tr[data-product-id="${itemKey}"]`);
                             const quantity = parseInt($row.find('.quantity').val());
+                            
+                            // Check if quantity exceeds maximum of 5
+                            if (quantity > 5) {
+                                $row.find('.quantity').val(5);
+                                showPopup('Maximum quantity per item is 5');
+                                return updatePrice(itemKey); // Recursively call with corrected value
+                            }
+                            
                             const pricePerUnit = parseFloat($row.find('.product-price .amount').text().replace('₹', ''));
                             const rentFrom = $row.find('.rent-from').val();
                             const rentTo = $row.find('.rent-to').val();
@@ -430,6 +438,10 @@
                             
                             if (quantityInput) {
                                 let quantity = parseInt(quantityInput.value) + 1;
+                                if (quantity > 5) {
+                                    showPopup('Maximum quantity per item is 5');
+                                    return;
+                                }
                                 quantityInput.value = quantity;
                                 updatePrice(itemKey);
                             }
@@ -648,6 +660,16 @@
         const checkoutButton = document.getElementById('checkoutButton');
         const cartItems = {{ cart_items|tojson }};
 
+        // Add function to count total unique products in cart
+        function getTotalUniqueProducts() {
+            return document.querySelectorAll('tr[data-cart-item-id]').length;
+        }
+
+        // Check if cart has reached maximum product limit
+        function isCartFull() {
+            return getTotalUniqueProducts() >= 5;
+        }
+
         function updateCheckoutButton() {
             const cartItems = document.querySelectorAll('tr[data-cart-item-id]');
             if (cartItems.length === 0) {
@@ -660,6 +682,20 @@
                 checkoutButton.classList.remove('disabled');
                 checkoutButton.removeAttribute('aria-disabled');
                 checkoutButton.onclick = null;
+            }
+            
+            // Add cart full indicator if at max limit
+            if (isCartFull()) {
+                if (!document.getElementById('cart-full-indicator')) {
+                    const indicator = document.createElement('div');
+                    indicator.id = 'cart-full-indicator';
+                    indicator.className = 'cart-limit-warning';
+                    indicator.textContent = 'Cart limit: 5 products maximum';
+                    document.querySelector('.cart_totals').prepend(indicator);
+                }
+            } else {
+                const indicator = document.getElementById('cart-full-indicator');
+                if (indicator) indicator.remove();
             }
         }
 
@@ -819,5 +855,33 @@
         background-color: #e9ecef;
     }
     </style>
+
+    <!-- Add styles for cart limit warning -->
+    <style>
+    .cart-limit-warning {
+        background-color: #fff3cd;
+        color: #856404;
+        padding: 8px 12px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        font-size: 14px;
+        border-left: 4px solid #ffc107;
+    }
+    </style>
+
+    <!-- Initial check for cart limit on page load -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check cart limit on page load
+        if (getTotalUniqueProducts() >= 5) {
+            showPopup("Maximum 5 products allowed in cart");
+            const indicator = document.createElement('div');
+            indicator.id = 'cart-full-indicator';
+            indicator.className = 'cart-limit-warning';
+            indicator.textContent = 'Cart limit: 5 products maximum';
+            document.querySelector('.cart_totals').prepend(indicator);
+        }
+    });
+    </script>
 </body>
 </html>

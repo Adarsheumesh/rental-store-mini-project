@@ -60,6 +60,12 @@
             animation: fadeInOut 3s ease-in-out;
         }
 
+        .custom-popup.error {
+            background-color: #dc3545;
+            border-left: 4px solid #c82333;
+            color: white;
+        }
+
         #popup-message {
             margin: 0;
             font-size: 16px;
@@ -217,11 +223,29 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         $(document).ready(function() {
+            // Add an event listener to the quantity input to validate changes
+            $('#quantity').on('change', function() {
+                const maxAllowed = 5;
+                const currentValue = parseInt($(this).val()) || 1;
+                
+                if (currentValue > maxAllowed) {
+                    $(this).val(maxAllowed);
+                    showPopup('Maximum 5 quantities per product allowed', true);
+                }
+            });
+            
             $('.add-cart').on('click', function(e) {
                 e.preventDefault();
                 var $button = $(this);
                 var productId = $button.data('product-id');
                 var quantity = parseInt($('#quantity').val()) || 1;
+
+                // Check if quantity exceeds maximum allowed
+                if (quantity > 5) {
+                    showPopup('Maximum 5 quantities per product allowed', true);
+                    $('#quantity').val(5); // Reset to maximum
+                    return;
+                }
 
                 $.ajax({
                     url: "{{ url_for('add_to_cart') }}",
@@ -235,11 +259,17 @@
                     success: function(response) {
                         if (response.success) {
                             showPopup(response.message);
+                            
                             if (response.cart_count !== undefined) {
                                 $('#cart-counter').text(response.cart_count);
                             }
                         } else {
-                            showPopup(response.message, true);
+                            // Special case for products already in cart
+                            if (response.already_in_cart) {
+                                showPopup('Product is already in your cart', true);
+                            } else {
+                                showPopup(response.message, true);
+                            }
                         }
                     },
                     error: function(xhr, status, error) {
@@ -263,15 +293,13 @@
                     success: function(response) {
                         if (response.success) {
                             showPopup(response.message, false);
-                            // You might want to update some UI element to show the item is in the wishlist
-                            $button.text('In Wishlist').addClass('in-wishlist');
                         } else {
-                            showPopup(response.message, false);
+                            showPopup(response.message, true);
                         }
                     },
                     error: function(xhr, status, error) {
                         console.error('Error:', xhr.responseText);
-                        showPopup('An error occurred. Please try again.', false);
+                        showPopup('An error occurred. Please try again.', true);
                     }
                 });
             });
@@ -337,9 +365,9 @@
                 if (popup && popupMessage) {
                     popupMessage.textContent = message;
                     if (isError) {
-                        popupMessage.classList.add('popup-error');
+                        popup.classList.add('error');
                     } else {
-                        popupMessage.classList.remove('popup-error');
+                        popup.classList.remove('error');
                     }
                     popup.style.display = 'block';
                     
@@ -427,7 +455,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
     </script>
     <style>
-        // ... existing styles ...
+       
         
         .toolhive-logo {
             text-decoration: none;
@@ -591,11 +619,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </p>
                             </div>
                             <div class="box-quantity">
-                                <input class="number" id="quantity" type="number" name="quantity" min="1" max="{{ product.product_quantity }}" value="1">
+                                <input class="number" id="quantity" type="number" name="quantity" min="1" max="{% if product.product_quantity|int > 5 %}5{% else %}{{ product.product_quantity }}{% endif %}" value="1" onkeyup="this.value=this.value>5?5:this.value">
                                 {% if product.product_quantity|int > 0 %}
                                     <button type="button" class="add-cart" data-product-id="{{ product.id }}">
                                         Add to cart
                                     </button>
+                                    <small class="text-muted d-block mt-2">Note: Maximum 5 products in cart, 5 quantities per product.</small>
                                 {% else %}
                                     <button type="button" class="add-cart notify-me" data-product-id="{{ product.id }}">
                                         Notify Me
@@ -754,7 +783,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="container">
                 <div class="usel-product">
                     <div class="group-title">
-                        <h2>upselling products</h2>
+                        <h2>Similar products</h2>
                     </div>
                     <!-- Upsell Product Activation Start -->
                     <div class="new-upsell-pro owl-carousel">

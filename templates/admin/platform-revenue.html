@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="description" content="Platform Revenue - Admin Dashboard.">
+
+	<title>Platform Revenue - Admin Dashboard</title>
+
+	<!-- GOOGLE FONTS -->
+	<link rel="preconnect" href="https://fonts.googleapis.com/">
+	<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&amp;display=swap" rel="stylesheet">
+	<link href="{{ url_for('static', filename='assets/css/materialdesignicons.min.css') }}" rel="stylesheet" />
+
+	<!-- PLUGINS CSS STYLE -->
+	<link href="{{ url_for('static', filename='assets/plugins/daterangepicker/daterangepicker.css') }}" rel="stylesheet">
+	<link href="{{ url_for('static', filename='assets/plugins/simplebar/simplebar.css') }}" rel="stylesheet" />
+
+	<!-- custom css -->
+	<link id="style.css" href="{{ url_for('static', filename='assets/css/style.css') }}" rel="stylesheet" />
+
+	<!-- FAVICON -->
+	<link href="{{ url_for('static', filename='assets/img/favicon.png') }}" rel="shortcut icon" />
+	<script type="text/javascript">
+		window.addEventListener('pageshow', function(event) {
+			if (event.persisted) {
+				// If the page is loaded from the cache, reload it
+				window.location.reload();
+			}
+		});
+	</script>
+    <style>
+        /* Custom styles for platform revenue page */
+        .revenue-card {
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            border: none;
+            transition: transform 0.3s;
+        }
+        .revenue-card:hover {
+            transform: translateY(-5px);
+        }
+        .icon-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+        }
+        .text-primary-gradient {
+            background: linear-gradient(45deg, #3057D5, #8921aa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 600;
+        }
+        .bg-gradient-primary {
+            background: linear-gradient(45deg, #3057D5, #8921aa);
+        }
+        .bg-gradient-success {
+            background: linear-gradient(45deg, #2ecc71, #27ae60);
+        }
+        .table-hover tbody tr:hover {
+            background-color: rgba(0,0,0,0.02);
+        }
+        .store-row {
+            cursor: pointer;
+        }
+        .modal-content {
+            border-radius: 8px;
+            border: none;
+        }
+        .modal-header {
+            border-bottom: 1px solid #eaeaea;
+            background-color: #f8f9fa;
+            border-radius: 8px 8px 0 0;
+        }
+        .modal-body {
+            padding: 20px;
+        }
+        .mdi-spin {
+            animation: mdi-spin 2s infinite linear;
+        }
+        @keyframes mdi-spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(359deg);
+            }
+        }
+        /* Quick date selection button styles */
+        .quick-date-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            margin-bottom: 5px;
+            width: 100%;
+        }
+        .quick-date-buttons .btn {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            flex: 1;
+            min-width: calc(33.33% - 3px);
+            white-space: nowrap;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        .quick-date-buttons .btn.active {
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        @media (max-width: 768px) {
+            .quick-date-buttons .btn {
+                min-width: calc(50% - 3px);
+            }
+        }
+        /* Other styles that were previously at the bottom */
+        #userActivityChart {
+            min-height: 350px;
+        }
+        #vendorStats {
+            min-height: 180px;
+            max-height: 200px;
+        }
+        #platformFeesChart {
+            min-height: 250px;
+            max-height: 300px;
+        }
+        .card-footer a {
+            color: #3057D5;
+            font-size: 13px;
+            font-weight: 500;
+            text-decoration: none;
+        }
+        .card-footer a:hover {
+            color: #8921aa;
+        }
+        .date-range-report span {
+            color: #666;
+            font-size: 13px;
+        }
+        .card-mini {
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            transition: transform 0.3s;
+        }
+        .card-mini:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            background-color: #fff;
+        }
+        .card-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 0;
+        }
+        .badge {
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .badge-success {
+            background-color: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+        }
+        .badge-warning {
+            background-color: rgba(255, 193, 7, 0.1);
+            color: #ffc107;
+        }
+        .badge-danger {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+        .badge-info {
+            background-color: rgba(23, 162, 184, 0.1);
+            color: #17a2b8;
+        }
+        .table-product td {
+            vertical-align: middle;
+        }
+        .recent-orders-wrapper {
+            overflow-x: auto;
+        }
+        /* Compact form styles */
+        .form-group.compact {
+            margin-bottom: 0.5rem;
+        }
+        .form-control-sm {
+            padding: 0.25rem 0.5rem;
+            height: calc(1.5em + 0.5rem + 2px);
+            font-size: 0.875rem;
+        }
+        /* Report Generation Styles */
+        .report-preview {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+        .form-check-input:checked {
+            background-color: #3057D5;
+            border-color: #3057D5;
+        }
+        .me-3 {
+            margin-right: 1rem !important;
+        }
+        .me-2 {
+            margin-right: 0.5rem !important;
+        }
+        .mb-2 {
+            margin-bottom: 0.5rem !important;
+        }
+        .form-check {
+            margin-bottom: 0.125rem;
+        }
+    </style>
+</head>
+
+<body class="ec-header-fixed ec-sidebar-fixed ec-sidebar-light ec-header-light" id="body">
+	<!-- Hidden data container for JavaScript -->
+	<div id="storesData" style="display: none;">{{ stores|tojson|safe }}</div>
+
+	<!--  WRAPPER  -->
+	<div class="wrapper">
+		
+		<!-- LEFT MAIN SIDEBAR -->
+		<div class="ec-left-sidebar ec-bg-sidebar">
+			<div id="sidebar" class="sidebar ec-sidebar-footer">
+
+				<div class="ec-brand">
+					<a href="/admin_dashboard">
+						<img class="ec-brand-icon" src="{{ url_for('static', filename='assets/img/logo/favicon.png') }}" alt="" />
+						<span class="ec-brand-name text-truncate">ADMIN</span>
+					</a>
+				</div>
+
+				<!-- begin sidebar scrollbar -->
+				<div class="ec-navigation" data-simplebar>
+					<!-- sidebar menu -->
+					<ul class="nav sidebar-inner" id="sidebar-menu">
+						<!-- Dashboard -->
+						<li>
+							<a class="sidenav-item-link" href="/admin_dashboard">
+								<i class="mdi mdi-view-dashboard-outline"></i>
+								<span class="nav-text">Dashboard</span>
+							</a>
+							<hr>
+						</li>
+
+						<!-- Vendors -->
+						<li class="has-sub">
+							<a class="sidenav-item-link" href="javascript:void(0)">
+								<i class="mdi mdi-briefcase-outline"></i>
+								<span class="nav-text">Vendors</span> <b class="caret"></b>
+							</a>
+							<div class="collapse">
+								<ul class="sub-menu" id="vendors" data-parent="#sidebar-menu">
+									<li class="">
+										<a class="sidenav-item-link" href="/vendor-list">
+											<span class="nav-text">Vendor List</span>
+										</a>
+									</li>
+									<li class="">
+										<a class="sidenav-item-link" href="/vendor-accept">
+											<span class="nav-text">Accept Vendors</span>
+										</a>
+									</li>
+								</ul>
+							</div>
+						</li>
+						
+						<!-- Delivery -->
+						<li class="has-sub">
+							<a class="sidenav-item-link" href="javascript:void(0)">
+								<i class="mdi mdi-package-variant-closed"></i>
+								<span class="nav-text">Delivery Agent</span> <b class="caret"></b>
+							</a>
+							<div class="collapse">
+								<ul class="sub-menu" id="products" data-parent="#sidebar-menu">
+									<li class="">
+										<a class="sidenav-item-link" href="/agent-add">
+											<span class="nav-text">Add Delivery Agent</span>
+										</a>										
+									</li>
+									<li class="">
+										<a class="sidenav-item-link" href="/agent-list">
+											<span class="nav-text">List Delivery Agent</span>
+										</a>
+									</li>
+								</ul>
+							</div>
+						</li>
+
+						<!-- Category -->
+						<li class="has-sub">
+							<a class="sidenav-item-link" href="javascript:void(0)">
+								<i class="mdi mdi-shape"></i>
+								<span class="nav-text">Categories</span> <b class="caret"></b>
+							</a>
+							<div class="collapse">
+								<ul class="sub-menu" id="categorys" data-parent="#sidebar-menu">
+									<li class="">
+										<a class="sidenav-item-link" href="/main-category">
+											<span class="nav-text">All Category</span>
+										</a>
+									</li>
+									<li class="">
+										<a class="sidenav-item-link" href="/add-category">
+											<span class="nav-text">Add Category</span>
+										</a>
+									</li>
+								</ul>
+							</div>
+						</li>
+
+						<!-- Platform Revenue -->
+						<li class="active">
+							<a class="sidenav-item-link" href="/platform-revenue">
+								<i class="mdi mdi-chart-line"></i>
+								<span class="nav-text">Platform Revenue</span>
+							</a>
+							<hr>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+
+		<!--  PAGE WRAPPER -->
+		<div class="ec-page-wrapper">
+
+			<!-- Header -->
+			<header class="ec-main-header" id="header">
+				<nav class="navbar navbar-static-top navbar-expand-lg">
+					<!-- Sidebar toggle button -->
+					<button id="sidebar-toggler">
+						<img src="{{ url_for('static', filename='assets/img/icons/clops.png') }}" alt="">
+					</button>
+					<!-- search form -->
+					<div class="search-form d-lg-inline-block">
+						<div class="input-group">
+							<input type="text" name="query" id="search-input" class="form-control"
+								placeholder="search.." autofocus autocomplete="off" />
+							<button type="button" name="search" id="search-btn" class="btn btn-flat">
+								<i class="mdi mdi-magnify"></i>
+							</button>
+						</div>
+						<div id="search-results-container">
+							<ul id="search-results"></ul>
+						</div>
+					</div>
+
+					<!-- navbar right -->
+					<div class="navbar-right">
+						<ul class="nav navbar-nav">
+							<!-- User Account -->
+							<li class="dropdown user-menu">
+								<button class="dropdown-toggle nav-link ec-drop" data-bs-toggle="dropdown"
+									aria-expanded="false">
+									<img src="{{ url_for('static', filename='assets/img/user/user-2.png') }}" class="user-image" alt="User Image" />
+								</button>
+								<ul class="dropdown-menu dropdown-menu-right ec-dropdown-menu">
+									<!-- User image -->
+									<li class="dropdown-header">
+										<div class="d-inline-block">
+											<h5>{{ user_info.name if user_info and user_info.name else "Admin" }}</h5>
+											<p class="pt-2">{{ user_info.email if user_info and user_info.email else "" }}</p>
+										</div>
+									</li>
+									<li class="dropdown-footer">
+										<a href="{{ url_for('logout') }}"> <i class="mdi mdi-logout"></i> Log Out </a>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</div>
+				</nav>
+			</header>
+
+			<!-- CONTENT WRAPPER -->
+			<div class="ec-content-wrapper">
+				<div class="content">
+					<!-- Breadcrumb -->
+					<div class="breadcrumb-wrapper d-flex align-items-center justify-content-between">
+						<div>
+							<h1>Platform Revenue</h1>
+							<p class="breadcrumbs">
+								<span><a href="/admin_dashboard">Dashboard</a></span>
+								<span><i class="mdi mdi-chevron-right"></i></span>Platform Revenue
+							</p>
+						</div>
+					</div>
+
+					<!-- Store Selector -->
+					<div class="row mb-4">
+						<div class="col-12">
+							<div class="card card-default">
+								<div class="card-body d-flex align-items-center justify-content-between">
+									<div class="form-group mb-0 flex-grow-1 mr-4">
+										<label for="storeSelector">Select Store</label>
+										<select id="storeSelector" class="form-control">
+											<option value="all">All Stores</option>
+											{% for store in stores %}
+											<option value="{{ store.name }}">{{ store.name }}</option>
+											{% endfor %}
+										</select>
+									</div>
+									<div>
+										<button class="btn btn-primary" id="filterBtn">Apply Filter</button>
+										<button class="btn btn-outline-secondary ml-2" id="resetBtn">Reset</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Revenue Summary Cards -->
+					<div class="row">
+						<!-- First Card - Total Platform Revenue -->
+						<div class="col-xl-6 col-sm-6 p-b-15">
+							<div class="card card-mini mb-4 revenue-card bg-white">
+								<div class="card-body d-flex align-items-center">
+									<div class="icon-circle bg-gradient-primary text-white">
+										<i class="mdi mdi-currency-inr"></i>
+									</div>
+									<div>
+										<h2 class="mb-1 text-primary-gradient">₹{{ "{:,.2f}".format(revenue_data.total_platform_revenue) }}</h2>
+										<p class="text-muted mb-0">Total Platform Revenue (2%)</p>
+										<div id="storeRevenue" class="mt-2" style="display: none;">
+											<h4 class="mb-0 text-info">₹<span id="selectedStoreRevenue">0.00</span></h4>
+											<p class="text-muted mb-0"><small>Selected Store Revenue</small></p>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Second Card - Total Orders -->
+						<div class="col-xl-6 col-sm-6 p-b-15">
+							<div class="card card-mini mb-4 revenue-card bg-white">
+								<div class="card-body d-flex align-items-center">
+									<div class="icon-circle bg-gradient-success text-white">
+										<i class="mdi mdi-shopping"></i>
+									</div>
+									<div>
+										<h2 class="mb-1">{{ revenue_data.total_orders }}</h2>
+										<p class="text-muted mb-0">Total Orders</p>
+										<div id="storeOrders" class="mt-2" style="display: none;">
+											<h4 class="mb-0 text-info"><span id="selectedStoreOrders">0</span></h4>
+											<p class="text-muted mb-0"><small>Selected Store Orders</small></p>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Store Revenue Table -->
+					<div class="row">
+						<div class="col-12">
+							<div class="card card-default">
+								<div class="card-header">
+									<h2>Revenue by Store</h2>
+								</div>
+								<div class="card-body">
+									<table id="storeRevenueTable" class="table table-hover table-product">
+										<thead>
+											<tr>
+												<th>Store Name</th>
+												<th>Total Sales</th>
+												<th>Platform Revenue (2%)</th>
+												<th>Orders</th>
+												<th>Actions</th>
+											</tr>
+										</thead>
+										<tbody>
+											{% for store in stores %}
+											<tr class="store-row">
+												<td>{{ store.name }}</td>
+												<td>₹{{ "{:,.2f}".format(store.total_sales) }}</td>
+												<td>₹{{ "{:,.2f}".format(store.platform_revenue) }}</td>
+												<td>{{ store.order_count }}</td>
+												<td>
+													<button type="button" class="btn btn-sm btn-primary" 
+														onclick="showStoreDetails('{{ store.name }}')">
+														View Details
+													</button>
+												</td>
+											</tr>
+											{% endfor %}
+										</tbody>
+									</table>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Revenue Report Generation -->
+					<div class="row">
+						<div class="col-12">
+							<div class="card card-default">
+								<div class="card-header d-flex justify-content-between align-items-center">
+									<h2>Generate Revenue Reports</h2>
+									<span class="text-muted small">Generate detailed reports for platform revenue analysis</span>
+								</div>
+								<div class="card-body">
+									<div class="row">
+										<div class="col-md-4">
+											<div class="form-group">
+												<label for="reportDateRange" class="form-label">Date Range</label>
+												<div class="mb-2">
+													<div class="btn-group btn-group-sm quick-date-buttons">
+														<button type="button" class="btn btn-outline-secondary" data-range="today">Today</button>
+														<button type="button" class="btn btn-outline-secondary" data-range="yesterday">Yesterday</button>
+														<button type="button" class="btn btn-outline-secondary" data-range="last7">Last 7d</button>
+														<button type="button" class="btn btn-outline-secondary" data-range="last30">Last 30d</button>
+														<button type="button" class="btn btn-outline-secondary" data-range="thisMonth">This Month</button>
+														<button type="button" class="btn btn-outline-secondary" data-range="lastMonth">Last Month</button>
+													</div>
+												</div>
+												<input type="text" id="reportDateRange" class="form-control date-range-picker" placeholder="Select date range">
+											</div>
+										</div>
+										<div class="col-md-4">
+											<div class="form-group">
+												<label for="reportStore" class="form-label">Store</label>
+												<select id="reportStore" class="form-control">
+													<option value="all" selected>All Stores</option>
+													{% for store in stores %}
+													<option value="{{ store.name }}">{{ store.name }}</option>
+													{% endfor %}
+												</select>
+											</div>
+										</div>
+										<div class="col-md-4">
+											<div class="form-group">
+												<label for="reportType" class="form-label">Report Type</label>
+												<select id="reportType" class="form-control">
+													<option value="summary" selected>Summary Report</option>
+													<option value="detailed">Detailed Report</option>
+													<option value="transactions">Transaction History</option>
+													<option value="growth">Growth Analysis</option>
+												</select>
+											</div>
+										</div>
+									</div>
+									
+									<div class="row mt-3">
+										<div class="col-md-6">
+											<div class="form-group">
+												<label class="form-label">Include in Report</label>
+												<div class="d-flex flex-wrap">
+													<div class="form-check me-3 mb-2">
+														<input class="form-check-input" type="checkbox" id="includeSales" checked>
+														<label class="form-check-label" for="includeSales">Sales Data</label>
+													</div>
+													<div class="form-check me-3 mb-2">
+														<input class="form-check-input" type="checkbox" id="includeOrders" checked>
+														<label class="form-check-label" for="includeOrders">Order Details</label>
+													</div>
+													<div class="form-check me-3 mb-2">
+														<input class="form-check-input" type="checkbox" id="includeCharts" checked>
+														<label class="form-check-label" for="includeCharts">Charts</label>
+													</div>
+													<div class="form-check me-3 mb-2">
+														<input class="form-check-input" type="checkbox" id="includeComparison">
+														<label class="form-check-label" for="includeComparison">Year-over-Year Comparison</label>
+													</div>
+												</div>
+											</div>
+										</div>
+										<div class="col-md-6">
+											<div class="form-group">
+												<label class="form-label">Format</label>
+												<div class="d-flex">
+													<div class="form-check me-3">
+														<input class="form-check-input" type="radio" name="reportFormat" id="formatPDF" value="pdf" checked>
+														<label class="form-check-label" for="formatPDF">PDF</label>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+									
+									<div class="row mt-3">
+										<div class="col-12">
+											<button id="generateReportBtn" class="btn btn-primary me-2">
+												<i class="mdi mdi-file-document"></i> Generate Report
+											</button>
+											<button id="scheduleReportBtn" class="btn btn-outline-secondary">
+												<i class="mdi mdi-calendar-clock"></i> Schedule Reports
+											</button>
+											
+											<div class="alert alert-info mt-3 p-2 d-none" id="reportGeneratingAlert">
+												<i class="mdi mdi-loading mdi-spin me-2"></i> Generating report... Please wait.
+											</div>
+										</div>
+									</div>
+									
+									<!-- Report Preview Section -->
+									<div class="mt-4 d-none" id="reportPreviewSection">
+										<hr>
+										<h4 class="mb-3">Report Preview</h4>
+										<div class="bg-light p-3 report-preview">
+											<div id="reportPreviewContent"></div>
+										</div>
+										<div class="mt-3">
+											<a href="#" id="downloadReportBtn" class="btn btn-success">
+												<i class="mdi mdi-download"></i> Download Report
+											</a>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+
+				</div> <!-- End Content -->
+			</div> <!-- End Content Wrapper -->
+
+			<!-- Footer -->
+			<footer class="footer mt-auto">
+				<div class="copyright bg-white">
+					<p>
+						Copyright © 2023. All right reserved.
+					</p>
+				</div>
+			</footer>
+
+		</div> <!-- End Page Wrapper -->
+	</div> <!-- End Wrapper -->
+
+	<!-- Store Details Modal -->
+	<div class="modal fade" id="storeDetailsModal" tabindex="-1" role="dialog" aria-hidden="true">
+		<div class="modal-dialog modal-lg" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="storeDetailsTitle">Store Revenue Details</h5>
+					<button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div class="modal-body">
+					<div id="storeOrdersContainer"></div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Common Javascript -->
+	<script src="{{ url_for('static', filename='assets/plugins/jquery/jquery-3.5.1.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/js/bootstrap.bundle.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/simplebar/simplebar.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/jquery-zoom/jquery.zoom.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/slick/slick.min.js') }}"></script>
+
+	<!-- Chart -->
+	<script src="{{ url_for('static', filename='assets/plugins/charts/Chart.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/js/chart.js') }}"></script>
+
+	<!-- Date Range Picker -->
+	<script src="{{ url_for('static', filename='assets/plugins/daterangepicker/moment.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/daterangepicker/daterangepicker.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/js/date-range.js') }}"></script>
+	
+	<!-- custom js -->
+	<script src="{{ url_for('static', filename='assets/js/custom.js') }}"></script>
+
+	<script>
+		// Store details viewing
+		function showStoreDetails(storeName) {
+			// Get store data safely using a function to avoid template issues
+			const storeData = getStoreData(storeName);
+			if (!storeData) return;
+
+			// Update modal title
+			document.getElementById('storeDetailsTitle').textContent = `${storeName} - Revenue Details`;
+			
+			// Create orders table
+			let tableHTML = `
+				<table class="table table-striped">
+					<thead>
+						<tr>
+							<th>Order ID</th>
+							<th>Date</th>
+							<th>Subtotal</th>
+							<th>Platform Revenue (2%)</th>
+						</tr>
+					</thead>
+					<tbody>
+			`;
+			
+			// Add order rows
+			if (storeData.orders && storeData.orders.length > 0) {
+				storeData.orders.forEach(order => {
+					tableHTML += `
+						<tr>
+							<td>${order.order_id}</td>
+							<td>${order.date}</td>
+							<td>₹${parseFloat(order.subtotal).toFixed(2)}</td>
+							<td>₹${parseFloat(order.platform_revenue).toFixed(2)}</td>
+						</tr>
+					`;
+				});
+			} else {
+				tableHTML += '<tr><td colspan="4" class="text-center">No orders found</td></tr>';
+			}
+			
+			tableHTML += `
+					</tbody>
+				</table>
+			`;
+			
+			// Update modal content
+			document.getElementById('storeOrdersContainer').innerHTML = tableHTML;
+			
+			// Show modal
+			var modal = new bootstrap.Modal(document.getElementById('storeDetailsModal'));
+			modal.show();
+		}
+
+		// Helper function to get store data from the global variable
+		function getStoreData(storeName) {
+			// Initialize storesData with the JSON data from server
+			var storesData = JSON.parse(document.getElementById('storesData').textContent);
+			return storesData.find(function(store) {
+				return store.name === storeName;
+			});
+		}
+
+		// Store filtering functionality
+		document.addEventListener('DOMContentLoaded', function() {
+			// Get DOM elements
+			const storeSelector = document.getElementById('storeSelector');
+			const filterBtn = document.getElementById('filterBtn');
+			const resetBtn = document.getElementById('resetBtn');
+			const table = document.getElementById('storeRevenueTable');
+			const tableHeader = document.querySelector('.card-header h2');
+			const storeRevenue = document.getElementById('storeRevenue');
+			const storeOrders = document.getElementById('storeOrders');
+			const selectedStoreRevenue = document.getElementById('selectedStoreRevenue');
+			const selectedStoreOrders = document.getElementById('selectedStoreOrders');
+			
+			// Format currency value
+			function formatCurrency(value) {
+				return parseFloat(value).toLocaleString('en-IN', {
+					maximumFractionDigits: 2,
+					minimumFractionDigits: 2
+				});
+			}
+			
+			// Filter table rows based on selected store
+			function filterTable(selectedStore) {
+				const rows = table.querySelectorAll('tbody tr');
+				
+				rows.forEach(function(row) {
+					const storeName = row.cells[0].textContent.trim();
+					if (selectedStore === 'all' || storeName === selectedStore) {
+						row.style.display = '';
+					} else {
+						row.style.display = 'none';
+					}
+				});
+				
+				// Update table header
+				if (selectedStore === 'all') {
+					tableHeader.textContent = 'Revenue by Store';
+					
+					// Hide store-specific revenue and orders
+					if (storeRevenue) storeRevenue.style.display = 'none';
+					if (storeOrders) storeOrders.style.display = 'none';
+				} else {
+					tableHeader.textContent = 'Revenue by Store (Filtered: ' + selectedStore + ')';
+					
+					// Find store data and update UI
+					if (storeRevenue && storeOrders && selectedStoreRevenue && selectedStoreOrders) {
+						const storeData = findStoreData(selectedStore);
+						if (storeData) {
+							selectedStoreRevenue.textContent = formatCurrency(storeData.platform_revenue);
+							selectedStoreOrders.textContent = storeData.order_count;
+							storeRevenue.style.display = 'block';
+							storeOrders.style.display = 'block';
+						}
+					}
+				}
+			}
+			
+			// Find store data from the table
+			function findStoreData(storeName) {
+				const rows = table.querySelectorAll('tbody tr');
+				for (let i = 0; i < rows.length; i++) {
+					const row = rows[i];
+					const name = row.cells[0].textContent.trim();
+					if (name === storeName) {
+						return {
+							name: name,
+							platform_revenue: parseFloat(row.cells[2].textContent.replace(/[₹,]/g, '')),
+							order_count: parseInt(row.cells[3].textContent.trim(), 10)
+						};
+					}
+				}
+				return null;
+			}
+			
+			// Event listeners
+			if (filterBtn) {
+				filterBtn.addEventListener('click', function() {
+					filterTable(storeSelector.value);
+				});
+			}
+			
+			if (resetBtn) {
+				resetBtn.addEventListener('click', function() {
+					if (storeSelector) storeSelector.value = 'all';
+					filterTable('all');
+				});
+			}
+			
+			// Initialize with all stores selected
+			filterTable('all');
+		});
+	</script>
+
+	<!-- Report Generation JavaScript -->
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			// Initialize date range picker for report generation
+			$('#reportDateRange').daterangepicker({
+				opens: 'left',
+				maxDate: new Date(),
+				ranges: {
+					'Last 7 Days': [moment().subtract(6, 'days'), moment()],
+					'Last 30 Days': [moment().subtract(29, 'days'), moment()],
+					'This Month': [moment().startOf('month'), moment().endOf('month')],
+					'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')],
+					'Last Quarter': [moment().subtract(3, 'month').startOf('month'), moment()]
+				},
+				startDate: moment().subtract(29, 'days'),
+				endDate: moment()
+			});
+			
+			// Quick date selection buttons
+			const quickDateButtons = document.querySelectorAll('.quick-date-buttons button');
+			const dateRangePicker = $('#reportDateRange').data('daterangepicker');
+			
+			quickDateButtons.forEach(button => {
+				button.addEventListener('click', function() {
+					// Remove active class from all buttons
+					quickDateButtons.forEach(btn => btn.classList.remove('active', 'btn-primary'));
+					
+					// Add active class to clicked button
+					this.classList.add('active', 'btn-primary');
+					this.classList.remove('btn-outline-secondary');
+					
+					// Set date range based on button data-range attribute
+					const range = this.getAttribute('data-range');
+					let startDate, endDate;
+					
+					switch(range) {
+						case 'today':
+							startDate = moment().startOf('day');
+							endDate = moment().endOf('day');
+							break;
+						case 'yesterday':
+							startDate = moment().subtract(1, 'days').startOf('day');
+							endDate = moment().subtract(1, 'days').endOf('day');
+							break;
+						case 'last7':
+							startDate = moment().subtract(6, 'days').startOf('day');
+							endDate = moment().endOf('day');
+							break;
+						case 'last30':
+							startDate = moment().subtract(29, 'days').startOf('day');
+							endDate = moment().endOf('day');
+							break;
+						case 'thisMonth':
+							startDate = moment().startOf('month');
+							endDate = moment().endOf('month');
+							break;
+						case 'lastMonth':
+							startDate = moment().subtract(1, 'month').startOf('month');
+							endDate = moment().subtract(1, 'month').endOf('month');
+							break;
+						default:
+							return;
+					}
+					
+					// Update the date range picker
+					dateRangePicker.setStartDate(startDate);
+					dateRangePicker.setEndDate(endDate);
+					
+					// Update the input display
+					$('#reportDateRange').val(startDate.format('MM/DD/YYYY') + ' - ' + endDate.format('MM/DD/YYYY'));
+				});
+			});
+			
+			// Reset button active state when date range picker is changed manually
+			$('#reportDateRange').on('apply.daterangepicker', function(ev, picker) {
+				// Check if the selected range matches any of our quick buttons
+				const selectedStartDate = picker.startDate.format('YYYY-MM-DD');
+				const selectedEndDate = picker.endDate.format('YYYY-MM-DD');
+				let matchFound = false;
+				
+				quickDateButtons.forEach(button => {
+					const range = button.getAttribute('data-range');
+					let buttonStartDate, buttonEndDate;
+					
+					switch(range) {
+						case 'today':
+							buttonStartDate = moment().startOf('day').format('YYYY-MM-DD');
+							buttonEndDate = moment().endOf('day').format('YYYY-MM-DD');
+							break;
+						case 'yesterday':
+							buttonStartDate = moment().subtract(1, 'days').startOf('day').format('YYYY-MM-DD');
+							buttonEndDate = moment().subtract(1, 'days').endOf('day').format('YYYY-MM-DD');
+							break;
+						case 'last7':
+							buttonStartDate = moment().subtract(6, 'days').startOf('day').format('YYYY-MM-DD');
+							buttonEndDate = moment().endOf('day').format('YYYY-MM-DD');
+							break;
+						case 'last30':
+							buttonStartDate = moment().subtract(29, 'days').startOf('day').format('YYYY-MM-DD');
+							buttonEndDate = moment().endOf('day').format('YYYY-MM-DD');
+							break;
+						case 'thisMonth':
+							buttonStartDate = moment().startOf('month').format('YYYY-MM-DD');
+							buttonEndDate = moment().endOf('month').format('YYYY-MM-DD');
+							break;
+						case 'lastMonth':
+							buttonStartDate = moment().subtract(1, 'month').startOf('month').format('YYYY-MM-DD');
+							buttonEndDate = moment().subtract(1, 'month').endOf('month').format('YYYY-MM-DD');
+							break;
+						default:
+							return;
+					}
+					
+					if (selectedStartDate === buttonStartDate && selectedEndDate === buttonEndDate) {
+						button.classList.add('active', 'btn-primary');
+						button.classList.remove('btn-outline-secondary');
+						matchFound = true;
+					} else {
+						button.classList.remove('active', 'btn-primary');
+						button.classList.add('btn-outline-secondary');
+					}
+				});
+				
+				// If no match was found, reset all buttons
+				if (!matchFound) {
+					quickDateButtons.forEach(button => {
+						button.classList.remove('active', 'btn-primary');
+						button.classList.add('btn-outline-secondary');
+					});
+				}
+			});
+			
+			// DOM elements
+			const generateReportBtn = document.getElementById('generateReportBtn');
+			const scheduleReportBtn = document.getElementById('scheduleReportBtn');
+			const reportPreviewSection = document.getElementById('reportPreviewSection');
+			const reportPreviewContent = document.getElementById('reportPreviewContent');
+			const reportGeneratingAlert = document.getElementById('reportGeneratingAlert');
+			const downloadReportBtn = document.getElementById('downloadReportBtn');
+			
+			// Replace dynamically selected format with constant PDF value
+			const reportFormat = "pdf";
+			
+			// Generate report function
+			function generateReport() {
+				// Show generating message
+				reportGeneratingAlert.classList.remove('d-none');
+				reportPreviewSection.classList.add('d-none');
+				
+				// Get selected values
+				const reportStore = document.getElementById('reportStore').value;
+				const reportType = document.getElementById('reportType').value;
+				const dateRange = $('#reportDateRange').data('daterangepicker');
+				const startDate = dateRange.startDate.format('YYYY-MM-DD');
+				const endDate = dateRange.endDate.format('YYYY-MM-DD');
+				const includeSales = document.getElementById('includeSales').checked;
+				const includeOrders = document.getElementById('includeOrders').checked;
+				const includeCharts = document.getElementById('includeCharts').checked;
+				const includeComparison = document.getElementById('includeComparison').checked;
+				
+				// Fetch real data from server for the preview
+				fetch(`/get-revenue-preview?type=${reportType}&store=${reportStore}&start_date=${startDate}&end_date=${endDate}`)
+					.then(response => {
+						if (!response.ok) {
+							throw new Error('Failed to fetch preview data');
+						}
+						return response.json();
+					})
+					.then(data => {
+						// Helper function to safely format numbers that might be strings
+						const safeNumberFormat = (value) => {
+							const num = parseFloat(value);
+							return isNaN(num) ? '0.00' : num.toLocaleString('en-IN', {maximumFractionDigits: 2});
+						};
+						
+						// Hide generating message and show preview
+						reportGeneratingAlert.classList.add('d-none');
+						reportPreviewSection.classList.remove('d-none');
+						
+						// Generate preview HTML based on the real data from server
+						let previewHTML = '';
+						
+						// Create a summary of the report parameters
+						previewHTML += `
+							<div class="mb-4">
+								<h4 class="border-bottom pb-2 mb-3">Revenue Report - ${reportType.charAt(0).toUpperCase() + reportType.slice(1)}</h4>
+								<div class="row">
+									<div class="col-md-6">
+										<p><strong>Date Range:</strong> ${dateRange.startDate.format('MMM D, YYYY')} - ${dateRange.endDate.format('MMM D, YYYY')}</p>
+										<p><strong>Store:</strong> ${reportStore === 'all' ? 'All Stores' : reportStore}</p>
+										<p><strong>Report Type:</strong> ${reportType.charAt(0).toUpperCase() + reportType.slice(1)}</p>
+									</div>
+									<div class="col-md-6">
+										<p><strong>Included:</strong> 
+											${includeSales ? '<span class="badge bg-success me-1">Sales Data</span>' : ''}
+											${includeOrders ? '<span class="badge bg-success me-1">Order Details</span>' : ''}
+											${includeCharts ? '<span class="badge bg-success me-1">Charts</span>' : ''}
+											${includeComparison ? '<span class="badge bg-success me-1">Year Comparison</span>' : ''}
+										</p>
+										<p><strong>Format:</strong> PDF</p>
+										<p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+									</div>
+								</div>
+							</div>
+						`;
+						
+						// Add summary metrics with real data
+						previewHTML += `
+							<div class="row mb-4">
+								<div class="col-md-4">
+									<div class="card bg-light">
+										<div class="card-body text-center">
+											<h5 class="card-title">Total Revenue</h5>
+											<h3 class="text-primary">₹${safeNumberFormat(data.total_sales)}</h3>
+										</div>
+									</div>
+								</div>
+								<div class="col-md-4">
+									<div class="card bg-light">
+										<div class="card-body text-center">
+											<h5 class="card-title">Total Orders</h5>
+											<h3 class="text-primary">${data.order_count || 0}</h3>
+										</div>
+									</div>
+								</div>
+								<div class="col-md-4">
+									<div class="card bg-light">
+										<div class="card-body text-center">
+											<h5 class="card-title">Platform Fee (2%)</h5>
+											<h3 class="text-primary">₹${safeNumberFormat(data.platform_revenue)}</h3>
+										</div>
+									</div>
+								</div>
+							</div>
+						`;
+						
+						// Add a placeholder chart if selected
+						if (includeCharts) {
+							previewHTML += `
+								<div class="mb-4">
+									<h5 class="border-bottom pb-2 mb-3">Revenue Trend</h5>
+									<div class="text-center p-3 bg-light">
+										<p class="text-muted">Chart will be generated in the downloaded report</p>
+									</div>
+								</div>
+							`;
+						}
+						
+						// Add order details if selected and available
+						if (includeOrders && data.orders && data.orders.length > 0) {
+							previewHTML += `
+								<div class="mb-4">
+									<h5 class="border-bottom pb-2 mb-3">Sample Orders</h5>
+									<div class="table-responsive">
+										<table class="table table-striped table-sm">
+											<thead>
+												<tr>
+													<th>Order ID</th>
+													<th>Date</th>
+													<th>Store</th>
+													<th>Amount</th>
+													<th>Platform Fee</th>
+												</tr>
+											</thead>
+											<tbody>
+												${data.orders.map(order => `
+												<tr>
+													<td>${order.order_id}</td>
+													<td>${order.date}</td>
+													<td>${order.store}</td>
+													<td>₹${safeNumberFormat(order.total)}</td>
+													<td>₹${safeNumberFormat(order.platform_fee)}</td>
+												</tr>
+												`).join('')}
+											</tbody>
+										</table>
+									</div>
+									<p class="text-muted small">Note: Showing ${data.orders.length} orders out of ${data.orders.length} total orders in the report.</p>
+								</div>
+							`;
+						} else if (includeOrders) {
+							previewHTML += `
+								<div class="mb-4">
+									<h5 class="border-bottom pb-2 mb-3">Sample Orders</h5>
+									<p class="text-muted">No orders found in the selected date range.</p>
+								</div>
+							`;
+						}
+						
+						// Add a disclaimer/footer
+						previewHTML += `
+							<div class="mt-5 pt-3 border-top">
+								<p class="text-muted small">This report was generated from Toolhive Admin Dashboard. Data is based on the specified date range and filters.</p>
+							</div>
+						`;
+						
+						// Set the preview content
+						reportPreviewContent.innerHTML = previewHTML;
+						
+						// Update download button with the format and URL
+						const downloadUrl = `/download-revenue-report?type=${reportType}&store=${reportStore}&start_date=${startDate}&end_date=${endDate}`;
+						downloadReportBtn.textContent = `Download PDF Report`;
+						downloadReportBtn.href = downloadUrl;
+						
+						// Fire a custom event to notify report generation is complete
+						const event = new CustomEvent('reportGenerated', {
+							detail: {
+								reportType: reportType,
+								store: reportStore,
+								startDate: startDate,
+								endDate: endDate
+							}
+						});
+						document.dispatchEvent(event);
+					})
+					.catch(error => {
+						console.error('Error:', error);
+						reportGeneratingAlert.classList.add('d-none');
+						reportPreviewSection.classList.add('d-none');
+						alert('Error generating report preview. Please try again.');
+					});
+			}
+			
+			// Schedule report modal
+			function showScheduleReportModal() {
+				// The implementation of the modal would depend on your Bootstrap setup
+				alert('Schedule Report functionality will be implemented soon. This would allow you to set up recurring reports.');
+			}
+			
+			// Download report function (simulated)
+			function downloadReport(e) {
+				e.preventDefault();
+				
+				const reportStore = document.getElementById('reportStore').value;
+				const reportType = document.getElementById('reportType').value;
+				const dateRange = $('#reportDateRange').data('daterangepicker');
+				const startDate = dateRange.startDate.format('YYYY-MM-DD');
+				const endDate = dateRange.endDate.format('YYYY-MM-DD');
+				
+				// Create URL with all parameters
+				const downloadUrl = `/download-revenue-report?type=${reportType}&store=${reportStore}&start_date=${startDate}&end_date=${endDate}`;
+				
+				// Show loading message
+				const originalText = downloadReportBtn.innerHTML;
+				downloadReportBtn.innerHTML = '<i class="mdi mdi-loading mdi-spin"></i> Preparing Download...';
+				downloadReportBtn.disabled = true;
+				
+				// In a real implementation, we would either:
+				// 1. Redirect to the download URL
+				window.location.href = downloadUrl;
+				
+				// 2. Or use AJAX to trigger the download and show a progress indicator
+				// setTimeout to simulate server processing time and reset the button
+				setTimeout(() => {
+					downloadReportBtn.innerHTML = originalText;
+					downloadReportBtn.disabled = false;
+				}, 2000);
+			}
+			
+			// Add event listeners
+			if (generateReportBtn) {
+				generateReportBtn.addEventListener('click', generateReport);
+			}
+			
+			if (scheduleReportBtn) {
+				scheduleReportBtn.addEventListener('click', showScheduleReportModal);
+			}
+			
+			if (downloadReportBtn) {
+				downloadReportBtn.addEventListener('click', downloadReport);
+			}
+			
+			// Custom event listener for report generation completion
+			document.addEventListener('reportGenerated', function(e) {
+				console.log('Report generated:', e.detail);
+				// Could be used for analytics or other post-generation actions
+			});
+		});
+	</script>
+
+</body>
+
+
+<!-- Mirrored from andit.co/projects/html/andshop/andshop-dashboard/index.php by HTTrack Website Copier/3.x [XR&CO'2014], Sat, 25 Feb 2023 08:14:07 GMT -->
+</html> 

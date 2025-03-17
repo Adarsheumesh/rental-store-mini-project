@@ -22,6 +22,7 @@ import string
 from decimal import Decimal
 import pdfkit  # You'll need to install this: pip install pdfkit
 import io
+from io import BytesIO, StringIO
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 import google.generativeai as genai
@@ -223,7 +224,7 @@ def login():
             user_id = user_info['users'][0]['localId']
 
             # Get all users and find the matching one by firebase_uid
-            all_users = db.child("users").get().val()
+            all_users = db.child("users").get().val() or {}
             user_data = None
             user_key = None
 
@@ -361,10 +362,6 @@ def google_callback():
 
 @app.route('/admin_dashboard')
 def admin_dashboard():
-    if 'user_id' not in session:
-        flash('Please log in first', 'error')
-        return redirect(url_for('login'))
-
     try:
         user_id = session['user_id']
         user_info = session.get('user_info', {})
@@ -377,29 +374,85 @@ def admin_dashboard():
         # Get all users from Firebase
         all_users = db.child("users").get().val() or {}
         
+        # Get all orders
+        all_orders = db.child("orders").get().val() or {}
+        
+        # Get all products
+        all_products = db.child("products").get().val() or {}
+        
         # Initialize stats
         user_stats = {'active': 0, 'inactive': 0}
         vendor_stats = {'active': 0, 'pending': 0, 'rejected': 0}
         
-        # Calculate statistics
-        for user in all_users.values():
+        # Calculate user statistics
+        for uid, user in all_users.items():
+            # Skip if user doesn't have a user_type (data integrity check)
+            if 'user_type' not in user:
+                continue
+                
             if user.get('user_type') == 'vendor':
-                vendor_status = user.get('vendor_status', 'pending')
-                vendor_stats[vendor_status] = vendor_stats.get(vendor_status, 0) + 1
+                vendor_status = user.get('vendor_status', 'pending').lower()
+                
+                # Map various possible status values to our three categories
+                if vendor_status in ['approved', 'active']:
+                    if user.get('status', '').lower() == 'active':
+                        vendor_stats['active'] += 1
+                    else:
+                        # Approved but inactive vendors
+                        vendor_stats['pending'] += 1
+                elif vendor_status in ['rejected', 'declined', 'denied']:
+                    vendor_stats['rejected'] += 1
+                else:
+                    # Default to pending for any other status
+                    vendor_stats['pending'] += 1
             
-            if user.get('status') == 'active':
+            # Count all users regardless of type
+            user_status = user.get('status', '').lower()
+            if user_status == 'active':
                 user_stats['active'] += 1
             else:
                 user_stats['inactive'] += 1
-
+        
+        # Calculate total revenue and orders
+        total_revenue = 0
+        total_orders = len(all_orders)
+        total_users = len(all_users)
+        total_products = len(all_products)
+        
+        # Format revenue for display
+        formatted_revenue = "₹{:,.2f}".format(total_revenue)
+        
+        # Get unique store names for the dropdown
+        stores = set()
+        
+        # Extract store names from products
+        for product_id, product in all_products.items():
+            if product and "store_name" in product and product["store_name"]:
+                stores.add(product["store_name"])
+        
+        # Extract store names from vendor accounts
+        for user_id, user in all_users.items():
+            if user and user.get("user_type") == "vendor" and "store_name" in user and user["store_name"]:
+                stores.add(user["store_name"])
+        
+        # Convert to sorted list
+        stores = sorted(list(stores))
+        
+        print(f"DEBUG - Vendor Stats: {vendor_stats}")  # Debug output to server logs
+        
         return render_template('Admin/index.html',
-                             user_info=user_info,
-                             user_stats=user_stats,
-                             vendor_stats=vendor_stats)
-
+                            user_info=user_info,
+                            user_stats=user_stats,
+                            vendor_stats=vendor_stats,
+                            total_revenue=formatted_revenue,
+                            total_orders=total_orders,
+                            total_users=total_users,
+                            total_products=total_products,
+                            stores=stores)
+                               
     except Exception as e:
-        app.logger.error(f"Error in admin_dashboard: {str(e)}")
-        flash('An error occurred while loading the dashboard', 'error')
+        print(f"Error in admin_dashboard: {str(e)}")
+        flash('Failed to load dashboard', 'error')
         return redirect(url_for('login'))
 
 @app.route('/index')
@@ -531,6 +584,15 @@ def account():
     user_info = session.get('user_info')
 
     try:
+        # Get wallet balance
+        wallet_balance = get_user_wallet_balance(user_id)
+
+        # Get cart count
+        cart_count = 0
+        cart = db.child("carts").child(user_id).get().val()
+        if cart:
+            cart_count = sum(item.get('quantity', 0) for item in cart.values())
+
         # Fetch orders for the current user
         orders_data = db.child("orders").order_by_child("user_id").equal_to(user_id).get()
         
@@ -565,8 +627,13 @@ def account():
         print(f"Error fetching orders: {str(e)}")
         flash('An error occurred while fetching your orders.', 'danger')
         orders = []
+        wallet_balance = 0
 
-    return render_template('account.html', user_info=user_info, orders=orders)
+    return render_template('account.html', 
+                         user_info=user_info, 
+                         orders=orders,
+                         wallet_balance=wallet_balance,
+                         cart_count=cart_count)
 
 def get_product_details(product_id):
     try:
@@ -980,8 +1047,11 @@ def product_detail(product_id):
         
         # Get user info from session
         user_info = None
+        wallet_balance = 0
         if 'user_id' in session:
-            user_info = db.child("users").child(session['user_id']).get().val()
+            user_id = session['user_id']
+            user_info = db.child("users").child(user_id).get().val()
+            wallet_balance = get_user_wallet_balance(user_id)
         
         # Get cart count
         cart_count = 0
@@ -1014,6 +1084,10 @@ def product_detail(product_id):
             review['user_name'] = user.get('name', 'Anonymous') if user else 'Anonymous'
             product_reviews.append(review)
         
+        # Get similar products based on category
+        category = product.get('main_category')
+        upsell_products = get_upsell_products(limit=4, exclude_id=product_id, category=category)
+        
         app.logger.info(f"Session data: {session}")
         app.logger.info(f"User info: {user_info}")
         app.logger.info(f"Cart count: {cart_count}")
@@ -1024,6 +1098,7 @@ def product_detail(product_id):
                              cart_count=cart_count,
                              user_purchased=user_purchased,
                              product_reviews=product_reviews,
+                             upsell_products=upsell_products,
                              session=session)
                              
     except Exception as e:
@@ -1031,12 +1106,21 @@ def product_detail(product_id):
         app.logger.error(f"Traceback: {traceback.format_exc()}")
         return render_template('error.html', message=str(e)), 500
 
-def get_upsell_products(limit=5, exclude_id=None):
+def get_upsell_products(limit=5, exclude_id=None, category=None):
     try:
         all_products = db.child("products").get().val()
         if all_products:
-            # Convert to list and shuffle
+            # Convert to list
             products_list = list(all_products.items())
+            
+            # Filter products by category if provided
+            if category:
+                products_list = [
+                    (key, product) for key, product in products_list 
+                    if product.get('main_category') == category
+                ]
+            
+            # Shuffle the filtered list
             random.shuffle(products_list)
             
             # Filter out the current product and limit the number of products
@@ -1051,6 +1135,7 @@ def get_upsell_products(limit=5, exclude_id=None):
     except Exception as e:
         app.logger.error(f"Error fetching upsell products: {str(e)}")
         return []
+
 @app.route('/products')
 def product_list():
     if 'user_info' not in session:
@@ -1372,14 +1457,22 @@ def add_to_cart():
 
         # Check if the product already exists in the cart
         existing_item = db.child("cart").order_by_child("user_id").equal_to(user_id).get().val()
+        
+        product_in_cart = False
         if existing_item:
+            # Count unique products in cart
+            unique_products_count = len(existing_item)
+            
             for item_key, item in existing_item.items():
                 if item.get('product_id') == product_id:
-                    # Update quantity if the product is already in the cart
-                    new_quantity = item['quantity'] + quantity
-                    db.child("cart").child(item_key).update({"quantity": new_quantity})
+                    product_in_cart = True
+                    # Instead of updating quantity, just inform that the product is already in cart
                     cart_count = get_cart_count(user_id)
-                    return jsonify({'success': True, 'message': f'Cart updated. New quantity: {new_quantity}', 'cart_count': cart_count}), 200
+                    return jsonify({'success': False, 'message': 'Product is already in cart', 'cart_count': cart_count, 'already_in_cart': True}), 200
+            
+            # If product is not in cart and we already have 5 products, prevent adding
+            if not product_in_cart and unique_products_count >= 5:
+                return jsonify({'success': False, 'message': 'Maximum 5 products allowed in cart. Please remove some items before adding more.'}), 200
             
         # If the product is not in the cart, add it
         cart_item = {
@@ -2117,6 +2210,15 @@ def wishlist():
     app.logger.info(f"User name: {user_name}")
     app.logger.info(f"User email: {email}")
 
+    # Get wallet balance
+    wallet_balance = get_user_wallet_balance(user_id)
+
+    # Get cart count
+    cart_count = 0
+    cart = db.child("carts").child(user_id).get().val()
+    if cart:
+        cart_count = sum(item.get('quantity', 0) for item in cart.values())
+
     # Fetch wishlist items (you'll need to implement this function)
     wishlist_items = get_wishlist_items_from_database(user_id)
 
@@ -2124,7 +2226,9 @@ def wishlist():
                            user_name=user_name,
                            email=email,
                            user_info=user_info,  # Pass the entire user_info dictionary
-                           wishlist_items=wishlist_items)
+                           wishlist_items=wishlist_items,
+                           wallet_balance=wallet_balance,
+                           cart_count=cart_count)
 
 @app.route('/get-wishlist-items')
 def get_wishlist_items():
@@ -2289,16 +2393,23 @@ def download_order_pdf(order_id):
             product_data.get('product_name', 'Product Not Found') if product_data else 'Product Not Found',
             store_name,
             str(item.get('quantity', 0)),
-            f"₹{float(product_data.get('product_price', 0)):.2f}" if product_data else '₹0.00',
+            f"Rs {float(product_data.get('product_price', 0)):.2f}" if product_data else 'Rs 0.00',
             item.get('rent_from', 'N/A'),
             item.get('rent_to', 'N/A'),
             str(item.get('rental_days', 0)),
-            f"₹{float(item.get('item_total', 0)):.2f}"
+            f"Rs {float(item.get('total_price', 0)):.2f}"
         ])
 
-    # Add total row
-    total_price = float(order.get('order_total', 0))
-    data.append(["Total", "", "", "", "", "", "", f"₹{total_price:.2f}"])
+    # Get subtotal from order (to be displayed as total)
+    subtotal = float(order.get('subtotal', 0))
+    
+    # Add deposit information if available
+    wallet_deposit = order.get('wallet_deposit', 0)
+    if wallet_deposit:
+        data.append(["Deposit", "", "", "", "", "", "", f"Rs {float(wallet_deposit):.2f}"])
+    
+    # Add total row (displaying subtotal as total)
+    data.append(["Total", "", "", "", "", "", "", f"Rs {subtotal:.2f}"])
 
     table = Table(data, colWidths=[1.2*inch, 1.2*inch, 0.5*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.5*inch, 0.8*inch])
     table.setStyle(TableStyle([
@@ -3171,15 +3282,29 @@ def cancel_order_item():
             return jsonify({'success': False, 'message': 'Item not found in order'}), 404
 
         # Update the item status
+        cancelled_quantity = 0
         if item['quantity'] == 1 or cancel_quantity >= item['quantity']:
             item['status'] = 'cancelled'
             new_status = 'cancelled'
             remaining_quantity = 0
+            cancelled_quantity = item['quantity']
+            # Set the item's total_price to 0 since it's fully cancelled
+            item['total_price'] = 0
         else:
+            # Store the original quantity for reference
+            original_quantity = item['quantity']
+            # Calculate the price per unit
+            price_per_unit = item['total_price'] / original_quantity
+            # Reduce the quantity by the cancelled amount
             item['quantity'] -= cancel_quantity
+            # Update the total price proportionally
+            item['total_price'] = price_per_unit * item['quantity']
             item['status'] = 'partially_cancelled'
             remaining_quantity = item['quantity']
             new_status = 'partially_cancelled'
+            cancelled_quantity = cancel_quantity
+            # Add cancelled_quantity property to the item
+            item['cancelled_quantity'] = cancel_quantity
 
         # Update the order in the database
         db.child("orders").child(order_id).update({
@@ -3187,20 +3312,30 @@ def cancel_order_item():
             'updated_at': datetime.now().isoformat()
         })
 
-        # Recalculate the order total
-        new_order_total = sum(item.get('item_total', 0) for item in items if item.get('status') != 'cancelled')
+        # Recalculate the subtotal based on the total_price of all items
+        new_subtotal = sum(item.get('total_price', 0) for item in items)
         
-        # Update the order total in the database
+        # Make sure subtotal is never negative
+        if new_subtotal < 0:
+            new_subtotal = 0
+        
+        # Calculate new order_total = subtotal + wallet_deposit
+        wallet_deposit = order.get('wallet_deposit', 0)
+        new_order_total = new_subtotal + wallet_deposit
+        
+        # Update both subtotal and order_total in the database
         db.child("orders").child(order_id).update({
+            'subtotal': new_subtotal,
             'order_total': new_order_total
         })
-        
+
         # Remove wallet deposit if all items are cancelled
         all_cancelled = all(item.get('status') == 'cancelled' for item in items)
         if all_cancelled:
             # Update order to remove wallet deposit
             db.child("orders").child(order_id).update({
-                'wallet_deposit': 0
+                'wallet_deposit': 0,
+                'order_total': 0  # Also set order_total to 0 when everything is cancelled
             })
             
             # Update wallet transaction status to cancelled
@@ -3225,9 +3360,12 @@ def cancel_order_item():
             'success': True,
             'status': new_status,
             'quantity': remaining_quantity,
+            'cancelled_quantity': cancelled_quantity,
+            'item_price': item.get('total_price', 0),
             'rent_from': item.get('rent_from', 'N/A'),
             'rent_to': item.get('rent_to', 'N/A'),
             'rental_days': item.get('rental_days', 'N/A'),
+            'subtotal': new_subtotal,
             'order_total': new_order_total
         })
 
@@ -4637,6 +4775,704 @@ def store_revenue():
                          revenue_data=revenue_data,
                          store_name=store_name,
                          user_info=user_info)
+
+# Add the new platform revenue route
+@app.route('/platform-revenue')
+def platform_revenue():
+    if 'user_id' not in session:
+        flash('Please log in to access this page.', 'warning')
+        return redirect(url_for('login'))
+
+    try:
+        user_id = session['user_id']
+        user_info = db.child("users").child(user_id).get().val()
+        
+        # Verify user is admin
+        if not user_info or user_info.get('user_type') != 'Admin':
+            flash('Unauthorized access.', 'danger')
+            return redirect(url_for('index'))
+
+        # Get all orders
+        orders = db.child("orders").get().val() or {}
+        
+        # Initialize data structures
+        revenue_data = {
+            'total_orders': 0,
+            'total_platform_revenue': 0,
+            'stores': defaultdict(lambda: {
+                'total_sales': 0,
+                'platform_revenue': 0,
+                'order_count': 0,
+                'orders': []
+            })
+        }
+
+        # Get all store names (including those without orders/revenue)
+        all_store_names = set()
+        
+        # Explicitly add 'storred' to ensure it's in our list
+        all_store_names.add('storred')
+        
+        # Get stores from users table - fix the query to avoid Firebase indexing error
+        all_users = db.child("users").get().val() or {}
+        for user_id, user_data in all_users.items():
+            if user_data and isinstance(user_data, dict):
+                if user_data.get('user_type') == 'Vendor':
+                    store_name = user_data.get('store_name')
+                    if store_name:
+                        all_store_names.add(store_name)
+                        # Initialize store data if not already in revenue_data
+                        if store_name not in revenue_data['stores']:
+                            revenue_data['stores'][store_name] = {
+                                'total_sales': 0,
+                                'platform_revenue': 0,
+                                'order_count': 0,
+                                'orders': []
+                            }
+        
+        # Also get store names from products
+        all_products = db.child("products").get().val() or {}
+        for product_id, product in all_products.items():
+            if product and isinstance(product, dict):
+                store_name = product.get('store_name')
+                if store_name:
+                    all_store_names.add(store_name)
+                    if store_name not in revenue_data['stores']:
+                        revenue_data['stores'][store_name] = {
+                            'total_sales': 0,
+                            'platform_revenue': 0,
+                            'order_count': 0,
+                            'orders': []
+                        }
+
+        # Process orders
+        for order_id, order in orders.items():
+            try:
+                items = order.get('items', [])
+                if isinstance(items, dict):
+                    items = list(items.values())
+                elif not isinstance(items, list):
+                    items = []
+
+                # Group items by store
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+
+                    store_name = item.get('store_name', 'Unknown Store')
+                    all_store_names.add(store_name)  # Add to our set of store names
+                    
+                    subtotal = float(item.get('total_price', 0))
+                    platform_revenue = subtotal * 0.02  # 2% platform fee
+
+                    # Update store data
+                    store_data = revenue_data['stores'][store_name]
+                    store_data['total_sales'] += subtotal
+                    store_data['platform_revenue'] += platform_revenue
+                    store_data['order_count'] += 1
+
+                    # Add order details
+                    created_at_str = order.get('created_at', '')
+                    if created_at_str:
+                        try:
+                            created_at = datetime.strptime(created_at_str, '%Y-%m-%dT%H:%M:%S.%f')
+                        except ValueError:
+                            try:
+                                created_at = datetime.strptime(created_at_str, '%Y-%m-%d %H:%M')
+                            except ValueError:
+                                app.logger.error(f"Could not parse date: {created_at_str}")
+                                continue
+
+                        store_data['orders'].append({
+                            'order_id': order.get('order_id', order_id),
+                            'date': created_at.strftime('%Y-%m-%d %H:%M'),
+                            'subtotal': subtotal,
+                            'platform_revenue': platform_revenue
+                        })
+
+                    # Update totals
+                    revenue_data['total_orders'] += 1
+                    revenue_data['total_platform_revenue'] += platform_revenue
+
+            except Exception as e:
+                app.logger.error(f"Error processing order {order_id}: {str(e)}")
+                continue
+
+        # Convert stores data to sorted list
+        stores_list = []
+        for store_name in all_store_names:
+            store_data = revenue_data['stores'].get(store_name, {
+                'total_sales': 0,
+                'platform_revenue': 0,
+                'order_count': 0,
+                'orders': []
+            })
+            
+            stores_list.append({
+                'name': store_name,
+                'total_sales': store_data.get('total_sales', 0),
+                'platform_revenue': store_data.get('platform_revenue', 0),
+                'order_count': store_data.get('order_count', 0),
+                'orders': sorted(store_data.get('orders', []), key=lambda x: x.get('date', ''), reverse=True)
+            })
+
+        # Sort stores by platform revenue
+        stores_list.sort(key=lambda x: x['platform_revenue'], reverse=True)
+
+        return render_template('Admin/platform-revenue.html', 
+                             user_info=user_info,
+                             revenue_data=revenue_data,
+                             stores=stores_list)
+
+    except Exception as e:
+        app.logger.error(f"Error in platform_revenue: {str(e)}")
+        flash('An error occurred while loading the page.', 'danger')
+        return redirect(url_for('admin_dashboard'))
+
+def generate_revenue_pdf(report_type, store_filter, start_date, end_date, 
+                        total_sales, platform_revenue, order_count, 
+                        store_breakdown, filtered_orders, filename):
+    try:
+        # Create a BytesIO object to store the PDF
+        output_buffer = BytesIO()
+        
+        # Create PDF using ReportLab
+        pdf = canvas.Canvas(output_buffer, pagesize=letter)
+        width, height = letter
+        
+        # Set title
+        pdf.setFont("Helvetica-Bold", 16)
+        title = f"{report_type.capitalize()} Revenue Report"
+        pdf.drawCentredString(width/2, height - 50, title)
+        
+        # Set report metadata
+        pdf.setFont("Helvetica", 12)
+        pdf.drawString(100, height - 80, f"Period: {start_date} to {end_date}")
+        pdf.drawString(100, height - 100, f"Store: {store_filter if store_filter != 'all' else 'All Stores'}")
+        
+        # Summary section
+        pdf.setFont("Helvetica-Bold", 14)
+        pdf.drawString(100, height - 130, "Summary")
+        
+        pdf.setFont("Helvetica", 12)
+        pdf.drawString(120, height - 150, f"Total Sales (INR): {total_sales:,.2f}")
+        # Make platform revenue more prominent
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(120, height - 170, f"Platform Revenue (2%) (INR): {platform_revenue:,.2f}")
+        pdf.setFont("Helvetica", 12)
+        pdf.drawString(120, height - 190, f"Total Orders: {order_count}")
+        
+        # Store breakdown section if applicable
+        y_position = height - 220
+        if store_filter == 'all' and store_breakdown:
+            pdf.setFont("Helvetica-Bold", 14)
+            pdf.drawString(100, y_position, "Store Breakdown")
+            y_position -= 20
+            
+            # Table header
+            pdf.setFont("Helvetica-Bold", 10)
+            pdf.drawString(100, y_position, "Store Name")
+            pdf.drawString(280, y_position, "Sales (INR)")
+            pdf.drawString(380, y_position, "Platform Fee (INR)")
+            pdf.drawString(500, y_position, "Orders")
+            y_position -= 20
+            
+            # Table content
+            pdf.setFont("Helvetica", 10)
+            for store_name, data in store_breakdown.items():
+                if y_position < 100:  # Check if we need a new page
+                    pdf.showPage()
+                    y_position = height - 50
+                    pdf.setFont("Helvetica", 10)
+                
+                pdf.drawString(100, y_position, store_name)
+                pdf.drawString(280, y_position, f"{data['sales']:,.2f}")
+                pdf.drawString(380, y_position, f"{data['platform_revenue']:,.2f}")
+                pdf.drawString(500, y_position, str(data['orders']))
+                y_position -= 20
+        
+        # Transactions section - show for all report types, not just detailed or transactions
+        if filtered_orders:
+            if y_position < 100:  # Check if we need a new page
+                pdf.showPage()
+                y_position = height - 50
+            
+            pdf.setFont("Helvetica-Bold", 14)
+            pdf.drawString(100, y_position, "Recent Orders")
+            y_position -= 20
+            
+            # Table header - Adjust column positions to prevent overlap
+            pdf.setFont("Helvetica-Bold", 10)
+            pdf.drawString(100, y_position, "Order ID")
+            pdf.drawString(180, y_position, "Date")
+            pdf.drawString(240, y_position, "Store")
+            pdf.drawString(340, y_position, "Subtotal (INR)")
+            pdf.drawString(450, y_position, "Platform Fee (INR)")
+            y_position -= 20
+            
+            
+            # Always show at least 20 orders if available (up to a max of 50 for PDF readability)
+            orders_to_show = min(max(20, len(filtered_orders)), 50)
+            
+            # Table content - limited for PDF readability
+            pdf.setFont("Helvetica", 8)
+            for i, order in enumerate(filtered_orders[:orders_to_show]):
+                if y_position < 100:  # Check if we need a new page
+                    pdf.showPage()
+                    y_position = height - 50
+                    pdf.setFont("Helvetica", 8)
+                    
+                    # Repeat header on new page
+                    pdf.setFont("Helvetica-Bold", 10)
+                    pdf.drawString(100, y_position, "Order ID")
+                    pdf.drawString(180, y_position, "Date")
+                    pdf.drawString(240, y_position, "Store")
+                    pdf.drawString(380, y_position, "Subtotal (INR)")
+                    pdf.drawString(480, y_position, "Platform Fee (INR)")
+                    y_position -= 20
+                    pdf.setFont("Helvetica", 8)
+                
+                # Truncate order ID if too long
+                order_id_short = order['order_id'][:10] + '...' if len(order['order_id']) > 12 else order['order_id']
+                pdf.drawString(100, y_position, order_id_short)
+                pdf.drawString(180, y_position, order['date'])
+                
+                # Truncate store name if too long
+                store_name = order['store'][:20] + '...' if len(order['store']) > 20 else order['store']
+                pdf.drawString(240, y_position, store_name)
+                
+                pdf.drawString(380, y_position, f"{order['total']:,.2f}")
+                pdf.drawString(480, y_position, f"{order['platform_fee']:,.2f}")
+                y_position -= 15
+                
+            # Note if transactions were limited
+            if len(filtered_orders) > orders_to_show:
+                pdf.drawString(100, y_position - 20, f'Note: Showing {orders_to_show} of {len(filtered_orders)} orders')
+        
+        # Save PDF
+        pdf.save()
+        
+        # Move to the beginning of the buffer
+        output_buffer.seek(0)
+        
+        # Return the PDF file
+        return send_file(
+            output_buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'{filename}.pdf'
+        )
+    
+    except Exception as e:
+        app.logger.error(f"Error generating PDF report: {str(e)}")
+        raise e
+
+def generate_revenue_excel(report_type, store_filter, start_date, end_date, 
+                          total_sales, platform_revenue, order_count, 
+                          store_breakdown, filtered_orders, filename):
+    try:
+        # Import pandas inside the function to avoid global import
+        import pandas as pd
+        from io import BytesIO
+        
+        # Create a BytesIO object to store the Excel file
+        output = BytesIO()
+        
+        # Create Excel workbook and worksheets
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            workbook = writer.book
+            
+            # Summary worksheet
+            summary_data = {
+                'Metric': ['Date Range', 'Store Filter', 'Total Sales', 'Platform Revenue (2%)', 'Total Orders'],
+                'Value': [
+                    f'{start_date} to {end_date}',
+                    store_filter if store_filter != 'all' else 'All Stores',
+                    f'₹{total_sales:,.2f}',
+                    f'₹{platform_revenue:,.2f}',
+                    order_count
+                ]
+            }
+            summary_df = pd.DataFrame(summary_data)
+            summary_df.to_excel(writer, sheet_name='Summary', index=False)
+            
+            # Store breakdown worksheet (if applicable)
+            if store_filter == 'all' and store_breakdown:
+                breakdown_data = []
+                for store_name, data in store_breakdown.items():
+                    breakdown_data.append({
+                        'Store Name': store_name,
+                        'Sales (₹)': data['sales'],
+                        'Platform Revenue (₹)': data['platform_revenue'],
+                        'Orders': data['orders']
+                    })
+                
+                if breakdown_data:
+                    breakdown_df = pd.DataFrame(breakdown_data)
+                    breakdown_df.to_excel(writer, sheet_name='Store Breakdown', index=False)
+            
+            # Transactions worksheet (if applicable)
+            if report_type in ['detailed', 'transactions'] and filtered_orders:
+                orders_df = pd.DataFrame(filtered_orders)
+                orders_df.to_excel(writer, sheet_name='Transactions', index=False)
+            
+            # Apply formatting
+            for sheet in writer.sheets.values():
+                sheet.set_column('A:A', 15)
+                sheet.set_column('B:B', 25)
+        
+        # Reset buffer position
+        output.seek(0)
+        
+        # Return the Excel file
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=f'{filename}.xlsx'
+        )
+    
+    except Exception as e:
+        app.logger.error(f"Error generating Excel report: {str(e)}")
+        raise e
+
+def generate_revenue_csv(report_type, store_filter, start_date, end_date, 
+                        total_sales, platform_revenue, order_count, 
+                        store_breakdown, filtered_orders, filename):
+    try:
+        import csv
+        from io import StringIO, BytesIO
+        
+        # Create a StringIO object to store the CSV content
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write headers and summary
+        writer.writerow(['Revenue Report'])
+        writer.writerow([f'Report Type: {report_type.capitalize()}'])
+        writer.writerow([f'Date Range: {start_date} to {end_date}'])
+        writer.writerow([f'Store: {store_filter if store_filter != "all" else "All Stores"}'])
+        writer.writerow([])
+        
+        # Summary section
+        writer.writerow(['Summary'])
+        writer.writerow(['Total Sales', f'₹{total_sales:,.2f}'])
+        writer.writerow(['Platform Revenue (2%)', f'₹{platform_revenue:,.2f}'])
+        writer.writerow(['Total Orders', str(order_count)])
+        writer.writerow([])
+        
+        # Store breakdown section (if applicable)
+        if store_filter == 'all' and store_breakdown:
+            writer.writerow(['Store Breakdown'])
+            writer.writerow(['Store Name', 'Sales (₹)', 'Platform Fee (₹)', 'Orders'])
+            
+            for store_name, data in store_breakdown.items():
+                writer.writerow([
+                    store_name,
+                    f"₹{data['sales']:,.2f}",
+                    f"₹{data['platform_revenue']:,.2f}",
+                    data['orders']
+                ])
+            
+            writer.writerow([])
+        
+        # Transactions section (if applicable)
+        if report_type in ['detailed', 'transactions'] and filtered_orders:
+            writer.writerow(['Transactions'])
+            writer.writerow(['Order ID', 'Date', 'Store', 'Subtotal (₹)', 'Platform Fee (₹)', 'Status'])
+            
+            for order in filtered_orders:
+                writer.writerow([
+                    order['order_id'],
+                    order['date'],
+                    order['store'],
+                    f"₹{order['total']:,.2f}",
+                    f"₹{order['platform_fee']:,.2f}",
+                    order['status']
+                ])
+        
+        # Reset buffer position
+        output.seek(0)
+        
+        # Convert to BytesIO for sending
+        output_bytes = BytesIO()
+        output_bytes.write(output.getvalue().encode('utf-8'))
+        output_bytes.seek(0)
+        
+        # Return the CSV file
+        return send_file(
+            output_bytes,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name=f'{filename}.csv'
+        )
+    
+    except Exception as e:
+        app.logger.error(f"Error generating CSV report: {str(e)}")
+        raise e
+
+# Add download-revenue-report route
+@app.route('/download-revenue-report', methods=['GET'])
+def download_revenue_report():
+    if 'user_id' not in session:
+        flash('Please login to continue', 'error')
+        return redirect(url_for('login'))
+    
+    user_id = session['user_id']
+    user_info = db.child("users").child(user_id).get().val()
+    
+    # Check if user is admin
+    if not user_info or user_info.get('user_type') != 'Admin':
+        flash('Unauthorized access', 'error')
+        return redirect(url_for('index'))
+    
+    try:
+        # Get report parameters from request
+        report_type = request.args.get('type', 'summary')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        store_filter = request.args.get('store', 'all')
+        
+        if not start_date or not end_date:
+            flash('Start date and end date are required', 'error')
+            return redirect(url_for('store_revenue'))
+        
+        # Convert date strings to datetime objects for comparison
+        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+        
+        # Get all orders
+        all_orders = db.child("orders").get().val() or {}
+        
+        # Initialize report data
+        total_sales = 0
+        platform_revenue = 0
+        order_count = 0
+        store_breakdown = {}
+        filtered_orders = []
+        
+        # Filter and process orders
+        for order_id, order in all_orders.items():
+            try:
+                # Check if order has a timestamp
+                if 'created_at' in order:
+                    order_date_str = order.get('created_at', '')
+                    
+                    # Parse order date
+                    if 'T' in order_date_str:
+                        order_date = datetime.strptime(order_date_str.split('T')[0], '%Y-%m-%d')
+                    else:
+                        order_date = datetime.strptime(order_date_str, '%Y-%m-%d')
+                    
+                    # Skip orders outside date range
+                    if order_date < start_date_obj or order_date > end_date_obj:
+                        continue
+                    
+                    # Get order details - store name extraction
+                    store_name = "Unknown Store"
+                    
+                    # Try to get store name directly from order
+                    if 'store_name' in order:
+                        store_name = order.get('store_name')
+                    # Otherwise try to extract from order items
+                    elif 'items' in order:
+                        items = order.get('items', {})
+                        # Handle both dictionary and list formats for items
+                        if isinstance(items, dict):
+                            # If the first item has a store_name, use that
+                            first_item = next(iter(items.values()), {})
+                            if isinstance(first_item, dict) and 'store_name' in first_item:
+                                store_name = first_item.get('store_name')
+                        elif isinstance(items, list) and len(items) > 0:
+                            # If the first item has a store_name, use that
+                            if isinstance(items[0], dict) and 'store_name' in items[0]:
+                                store_name = items[0].get('store_name')
+                    
+                    # Skip if not the selected store
+                    if store_filter != 'all' and store_name != store_filter:
+                        continue
+                    
+                    # Get subtotal and calculate platform fee
+                    subtotal = float(order.get('subtotal', 0))
+                    platform_fee = subtotal * 0.02  # 2% platform fee
+                    
+                    # Update totals
+                    total_sales += subtotal
+                    platform_revenue += platform_fee
+                    order_count += 1
+                    
+                    # Update store breakdown
+                    if store_name not in store_breakdown:
+                        store_breakdown[store_name] = {
+                            'sales': 0,
+                            'platform_revenue': 0,
+                            'orders': 0
+                        }
+                    
+                    store_breakdown[store_name]['sales'] += subtotal
+                    store_breakdown[store_name]['platform_revenue'] += platform_fee
+                    store_breakdown[store_name]['orders'] += 1
+                    
+                    # Add to filtered orders
+                    filtered_orders.append({
+                        'order_id': order_id,
+                        'date': order_date.strftime('%Y-%m-%d'),
+                        'customer_name': order.get('customer_name', 'Unknown Customer'),
+                        'store': store_name,
+                        'total': subtotal,
+                        'platform_fee': platform_fee,
+                        'status': order.get('status', 'unknown')
+                    })
+            except Exception as e:
+                app.logger.error(f"Error processing order {order_id}: {str(e)}")
+                continue
+        
+        # Sort orders by date (newest first)
+        filtered_orders.sort(key=lambda x: x['date'], reverse=True)
+        
+        # Generate a filename with the report type and date range
+        date_range = f"{start_date}-to-{end_date}"
+        store_part = store_filter if store_filter != 'all' else 'all-stores'
+        filename = f"revenue-report-{report_type}-{store_part}-{date_range}"
+        
+        # Generate PDF report only
+        return generate_revenue_pdf(report_type, store_filter, start_date, end_date, 
+                            total_sales, platform_revenue, order_count, 
+                            store_breakdown, filtered_orders, filename)
+    
+    except Exception as e:
+        app.logger.error(f"Error generating revenue report: {str(e)}")
+        flash(f"Error generating report: {str(e)}", 'error')
+        return redirect(url_for('store_revenue'))
+
+@app.route('/get-revenue-preview', methods=['GET'])
+def get_revenue_preview():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    user_id = session['user_id']
+    user_info = db.child("users").child(user_id).get().val()
+    
+    # Check if user is admin
+    if not user_info or user_info.get('user_type') != 'Admin':
+        return jsonify({'error': 'Unauthorized access'}), 403
+    
+    try:
+        # Get report parameters from request
+        report_type = request.args.get('type', 'summary')
+        store_filter = request.args.get('store', 'all')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        if not start_date or not end_date:
+            return jsonify({'error': 'Start date and end date are required'}), 400
+        
+        # Convert date strings to datetime objects for comparison
+        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+        
+        # Get all orders
+        all_orders = db.child("orders").get().val() or {}
+        
+        # Initialize report data
+        total_sales = 0
+        platform_revenue = 0
+        order_count = 0
+        store_breakdown = {}
+        filtered_orders = []
+        
+        # Filter and process orders
+        for order_id, order in all_orders.items():
+            try:
+                # Check if order has a timestamp
+                if 'created_at' in order:
+                    order_date_str = order.get('created_at', '')
+                    
+                    # Parse order date
+                    if 'T' in order_date_str:
+                        order_date = datetime.strptime(order_date_str.split('T')[0], '%Y-%m-%d')
+                    else:
+                        order_date = datetime.strptime(order_date_str, '%Y-%m-%d')
+                    
+                    # Skip orders outside date range
+                    if order_date < start_date_obj or order_date > end_date_obj:
+                        continue
+                    
+                    # Get order details - store name extraction
+                    store_name = "Unknown Store"
+                    
+                    # Try to get store name directly from order
+                    if 'store_name' in order:
+                        store_name = order.get('store_name')
+                    # Otherwise try to extract from order items
+                    elif 'items' in order:
+                        items = order.get('items', {})
+                        # Handle both dictionary and list formats for items
+                        if isinstance(items, dict):
+                            # If the first item has a store_name, use that
+                            first_item = next(iter(items.values()), {})
+                            if isinstance(first_item, dict) and 'store_name' in first_item:
+                                store_name = first_item.get('store_name')
+                        elif isinstance(items, list) and len(items) > 0:
+                            # If the first item has a store_name, use that
+                            if isinstance(items[0], dict) and 'store_name' in items[0]:
+                                store_name = items[0].get('store_name')
+                    
+                    # Skip if not the selected store
+                    if store_filter != 'all' and store_name != store_filter:
+                        continue
+                    
+                    # Get subtotal and calculate platform fee
+                    subtotal = float(order.get('subtotal', 0))
+                    platform_fee = subtotal * 0.02  # 2% platform fee
+                    
+                    # Update totals
+                    total_sales += subtotal
+                    platform_revenue += platform_fee
+                    order_count += 1
+                    
+                    # Update store breakdown
+                    if store_name not in store_breakdown:
+                        store_breakdown[store_name] = {
+                            'sales': 0,
+                            'platform_revenue': 0,
+                            'orders': 0
+                        }
+                    
+                    store_breakdown[store_name]['sales'] += subtotal
+                    store_breakdown[store_name]['platform_revenue'] += platform_fee
+                    store_breakdown[store_name]['orders'] += 1
+                    
+                    # Add to filtered orders
+                    filtered_orders.append({
+                        'order_id': order_id,
+                        'date': order_date.strftime('%Y-%m-%d'),
+                        'store': store_name,
+                        'total': subtotal,
+                        'platform_fee': platform_fee,
+                        'status': order.get('status', 'unknown')
+                    })
+            except Exception as e:
+                app.logger.error(f"Error processing order {order_id} for preview: {str(e)}")
+                continue
+        
+        # Sort orders by date (newest first)
+        filtered_orders.sort(key=lambda x: x['date'], reverse=True)
+        
+        # Prepare the response data
+        preview_data = {
+            'total_sales': total_sales,
+            'platform_revenue': platform_revenue,
+            'order_count': order_count,
+            'store_breakdown': store_breakdown,
+            'orders': filtered_orders[:10]  # Limit to 10 orders for the preview
+        }
+        
+        return jsonify(preview_data)
+        
+    except Exception as e:
+        app.logger.error(f"Error generating revenue preview: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

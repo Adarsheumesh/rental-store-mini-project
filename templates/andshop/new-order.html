@@ -31,6 +31,45 @@
 	<!-- FAVICON -->
 	<link href="{{ url_for('static', filename='assets/img/favicon.png') }}" rel="shortcut icon" />
 
+	<!-- Custom styles for download button -->
+	<style>
+		.ec-breadcrumb-action .btn-primary {
+			background-color: #4e73df;
+			border-color: #4e73df;
+			color: white;
+			padding: 8px 16px;
+			border-radius: 5px;
+			font-weight: 500;
+			text-decoration: none;
+			display: inline-flex;
+			align-items: center;
+			transition: all 0.2s ease;
+		}
+		
+		.ec-breadcrumb-action .btn-primary:hover {
+			background-color: #375ad3;
+			border-color: #375ad3;
+			transform: translateY(-1px);
+			box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+		}
+		
+		.ec-breadcrumb-action .btn-primary i {
+			font-size: 18px;
+			margin-right: 6px;
+		}
+		
+		.breadcrumb-wrapper {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 20px;
+		}
+	</style>
+
+	<!-- PDF Generation Libraries -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
 	<script type="text/javascript">
 		window.addEventListener('pageshow', function(event) {
 			if (event.persisted) {
@@ -221,7 +260,11 @@
 								<span><i class="mdi mdi-chevron-right"></i></span>All Orders
 							</p>
 						</div>
-
+						<div class="ec-breadcrumb-action">
+							<a href="#" class="btn btn-primary" id="downloadOrdersReport">
+								<i class="mdi mdi-download me-1"></i> Download Orders Report
+							</a>
+						</div>
 					</div>
 					<div class="row">
 						<div class="col-12">
@@ -388,6 +431,78 @@
 	    </div>
 	  </div>
 	</div>
+
+	<!-- PDF Report Generation Scripts -->
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			// Initialize jsPDF
+			const { jsPDF } = window.jspdf;
+			
+			// Download Orders Report
+			document.getElementById('downloadOrdersReport').addEventListener('click', function() {
+				// Create new PDF document
+				const doc = new jsPDF();
+				const vendorName = "{{ user_info.name }}";
+				const currentDate = new Date().toLocaleDateString();
+				
+				// Add title and header
+				doc.setFontSize(20);
+				doc.text('Orders Report', 105, 15, { align: 'center' });
+				
+				doc.setFontSize(12);
+				doc.text(`Vendor: ${vendorName}`, 14, 25);
+				doc.text(`Generated: ${currentDate}`, 14, 32);
+				
+				// Extract order data
+				const orders = [];
+				{% for order in orders %}
+				{% if order.store_name == user_info.store_name %}
+				{% set product = products.get(order.product_id, {}) %}
+				orders.push([
+					'{{ product.get("product_name", "Unknown Product") }}',
+					'{{ product.get("main_category", "N/A") }}',
+					`Rs ${parseFloat({{ order.total_price|default(0) }}).toFixed(2)}`,
+					'{{ order.rent_from }}',
+					'{{ order.rent_to }}',
+					'{{ order.get("status", "Unknown")|title }}',
+					{{ order.quantity|default(0) }}
+				]);
+				{% endif %}
+				{% endfor %}
+				
+				// Create table with order data
+				doc.autoTable({
+					head: [['Product Name', 'Category', 'Price (Rs)', 'Rented From', 'Rented To', 'Status', 'Quantity']],
+					body: orders,
+					startY: 40,
+					theme: 'grid',
+					styles: { fontSize: 10, cellPadding: 3 },
+					headStyles: { fillColor: [66, 139, 202] }
+				});
+				
+				// Order summary
+				const totalOrders = orders.length;
+				
+				const finalY = doc.lastAutoTable.finalY + 10;
+				doc.setFontSize(12);
+				doc.text(`Summary:`, 14, finalY);
+				doc.text(`Total Orders: ${totalOrders}`, 14, finalY + 7);
+				
+				// Calculate total revenue if price data is available
+				let totalRevenue = 0;
+				{% for order in orders %}
+				{% if order.store_name == user_info.store_name %}
+				totalRevenue += parseFloat({{ order.total_price|default(0) }});
+				{% endif %}
+				{% endfor %}
+				
+				doc.text(`Total Revenue: Rs ${totalRevenue.toFixed(2)}`, 14, finalY + 14);
+				
+				// Save PDF
+				doc.save(`${vendorName.replace(/\s+/g, '_')}_Orders_Report_${currentDate.replace(/\//g, '-')}.pdf`);
+			});
+		});
+	</script>
 </body>
 
 

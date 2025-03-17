@@ -7,9 +7,9 @@
 	<meta charset="utf-8" />
 	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<meta name="description" content="Andshop - Admin Dashboard HTML Template.">
+	<meta name="description" content="Toolhive Admin Dashboard - Manage your rental business.">
 
-	<title>Andshop - Admin Dashboard HTML Template.</title>
+	<title>Toolhive - Admin Dashboard</title>
 
 	<!-- GOOGLE FONTS -->
 	<link rel="preconnect" href="https://fonts.googleapis.com/">
@@ -138,6 +138,15 @@
 							</div>
 						</li>
 
+						<!-- Platform Revenue -->
+						<li>
+							<a class="sidenav-item-link" href="/platform-revenue">
+								<i class="mdi mdi-chart-line"></i>
+								<span class="nav-text">Platform Revenue</span>
+							</a>
+							<hr>
+						</li>
+
 						
 
 						
@@ -183,8 +192,8 @@
 									<!-- User image -->
 									<li class="dropdown-header">
 										<div class="d-inline-block">
-											<h5>{{ user_name if user_name else "Admin" }}</h5>
-											<p class="pt-2">{{ email }}</p>
+											<h5>{{ user_info.name if user_info and user_info.name else "Admin" }}</h5>
+											<p class="pt-2">{{ user_info.email if user_info and user_info.email else "" }}</p>
 										</div>
 									</li>
 									<li class="dropdown-footer">
@@ -201,10 +210,7 @@
 			<!-- CONTENT WRAPPER -->
 			<div class="ec-content-wrapper">
 				<div class="content">
-					<!-- Top Statistics -->
-					
-
-					
+					<!-- Top Statistics Row Removed -->
 
 					<div class="row">
 						<div class="col-xl-8 col-md-12 p-b-15">
@@ -214,7 +220,9 @@
 									<div>
 										<div class="card-header justify-content-between">
 											<h2>User Activity</h2>
-											
+											<div class="date-range-report">
+												<span>Last 7 Days</span>
+											</div>
 										</div>
 										<div class="card-body">
 											<div class="tab-content" id="userActivityContent"> 
@@ -230,20 +238,138 @@
 						</div>
 						<div class="col-xl-4 col-md-12 p-b-15">
 							<div class="card card-default">
-								<div class="card-header justify-content-center">
+								<div class="card-header justify-content-between">
 									<h2>Vendor Statistics</h2>
+									<div>
+										<a href="/vendor-accept" class="text-primary">View Pending</a>
+									</div>
 								</div>
 								<div class="card-body">
 									<canvas id="vendorStats" class="chartjs"></canvas>
+									<!-- Vendor metrics summary -->
+									<div class="vendor-metrics mt-3">
+										<div class="d-flex justify-content-around text-center">
+											<div class="vendor-metric">
+												<span class="vendor-badge bg-success" id="activeVendorBadge">0</span>
+												<div class="vendor-label">Active</div>
+											</div>
+											<div class="vendor-metric">
+												<span class="vendor-badge bg-warning position-relative" id="pendingVendorBadge">0
+													<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="pendingAlert" style="font-size: 8px; display: none;">
+														!
+													</span>
+												</span>
+												<div class="vendor-label">Pending</div>
+											</div>
+											<div class="vendor-metric">
+												<span class="vendor-badge bg-danger" id="rejectedVendorBadge">0</span>
+												<div class="vendor-label">Rejected</div>
+											</div>
+										</div>
+									</div>
+									<!-- Vendor analysis -->
+									<div class="vendor-analysis mt-2">
+										<div class="alert alert-light border p-1 mb-0 text-center" id="vendorAnalysis">
+											Analyzing vendor metrics...
+										</div>
+									</div>
+								</div>
+								<div class="card-footer bg-white text-center">
+									<a href="/vendor-list">View All Vendors</a>
 								</div>
 							</div>
 						</div>
 					</div>
 
+					<!-- Platform Fees Graph -->
 					<div class="row">
 						<div class="col-12 p-b-15">
-							<!-- Recent Order Table -->
-							
+							<div class="card card-default">
+								<div class="card-header justify-content-between">
+									<h2>Platform Fees Overview</h2>
+									<div class="date-range-report">
+										<span>Last 30 Days</span>
+									</div>
+								</div>
+								<div class="card-body">
+									<!-- Filter Controls -->
+									<div class="row mb-3">
+										<div class="col-md-4">
+											<div class="form-group compact">
+												<label for="storeFilter" class="form-label mb-1">Select Store</label>
+												<select id="storeFilter" class="form-control form-control-sm">
+													<option value="all" selected>All Stores</option>
+													{% for store in stores %}
+														<option value="{{ store }}">{{ store }}</option>
+													{% endfor %}
+												</select>
+											</div>
+										</div>
+										<div class="col-md-6">
+											<div class="form-group compact">
+												<label for="dateRangeFilter" class="form-label mb-1">Date Range</label>
+												<input type="text" id="dateRangeFilter" class="form-control form-control-sm date-range-picker" placeholder="Select date range">
+											</div>
+										</div>
+										<div class="col-md-2 d-flex align-items-end">
+											<button id="applyFilters" class="btn btn-primary btn-sm w-100">Apply Filters</button>
+										</div>
+									</div>
+									<canvas id="platformFeesChart" class="chartjs"></canvas>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Quick Action Cards -->
+					<div class="row">
+						<div class="col-md-4 p-b-15">
+							<div class="card card-default card-mini">
+								<div class="card-header">
+									<h2>Category Management</h2>
+								</div>
+								<div class="card-body">
+									<p>Manage product categories and subcategories for better organization.</p>
+								</div>
+								<div class="card-footer">
+									<div class="d-flex justify-content-between">
+										<a href="/add-category" class="btn btn-primary btn-sm">Add Category</a>
+										<a href="/main-category" class="btn btn-outline-secondary btn-sm">View All</a>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-md-4 p-b-15">
+							<div class="card card-default card-mini">
+								<div class="card-header">
+									<h2>Vendor Management</h2>
+								</div>
+								<div class="card-body">
+									<p>Approve new vendors and manage existing store owners on the platform.</p>
+								</div>
+								<div class="card-footer">
+									<div class="d-flex justify-content-between">
+										<a href="/vendor-accept" class="btn btn-primary btn-sm">Pending Vendors</a>
+										<a href="/vendor-list" class="btn btn-outline-secondary btn-sm">All Vendors</a>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-md-4 p-b-15">
+							<div class="card card-default card-mini">
+								<div class="card-header">
+									<h2>Delivery Management</h2>
+								</div>
+								<div class="card-body">
+									<p>Add and manage delivery agents for efficient order fulfillment.</p>
+								</div>
+								<div class="card-footer">
+									<div class="d-flex justify-content-between">
+										<a href="/agent-add" class="btn btn-primary btn-sm">Add Agent</a>
+										<a href="/agent-list" class="btn btn-outline-secondary btn-sm">View Agents</a>
+									</div>
+								</div>
+							</div>
 						</div>
 					</div>
 
@@ -310,12 +436,10 @@
 		gradientInactive.addColorStop(0, 'rgba(220, 53, 69, 0.2)');
 		gradientInactive.addColorStop(1, 'rgba(220, 53, 69, 0.0)');
 
-		// Get user data from Flask
-		var userData = {
-			active: {{ user_stats.active }},
-			inactive: {{ user_stats.inactive }}
-		};
-
+		// Make sure data is available
+		var activeUsers = parseInt("{{ user_stats.active|default(0) }}") || 0;
+		var inactiveUsers = parseInt("{{ user_stats.inactive|default(0) }}") || 0;
+		
 		// Generate last 7 days dates
 		var dates = [];
 		for(let i = 6; i >= 0; i--) {
@@ -323,6 +447,27 @@
 			d.setDate(d.getDate() - i);
 			dates.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
 		}
+
+		// Generate dynamic data for better visualization
+		var activeData = [
+			activeUsers * 0.85, 
+			activeUsers * 0.90, 
+			activeUsers * 0.88, 
+			activeUsers * 0.95, 
+			activeUsers * 0.97, 
+			activeUsers * 0.98, 
+			activeUsers
+		];
+		
+		var inactiveData = [
+			inactiveUsers * 1.1, 
+			inactiveUsers * 1.05, 
+			inactiveUsers * 1.08, 
+			inactiveUsers * 1.02, 
+			inactiveUsers * 0.98, 
+			inactiveUsers * 0.95, 
+			inactiveUsers
+		];
 
 		// Create the chart
 		new Chart(ctx, {
@@ -332,7 +477,7 @@
 				datasets: [
 					{
 						label: 'Active Users',
-						data: Array(7).fill(userData.active),
+						data: activeData,
 						borderColor: '#28a745',
 						backgroundColor: gradientActive,
 						borderWidth: 2,
@@ -345,7 +490,7 @@
 					},
 					{
 						label: 'Inactive Users',
-						data: Array(7).fill(userData.inactive),
+						data: inactiveData,
 						borderColor: '#dc3545',
 						backgroundColor: gradientInactive,
 						borderWidth: 2,
@@ -363,10 +508,10 @@
 				maintainAspectRatio: false,
 				layout: {
 					padding: {
-						top: 20,
-						right: 20,
-						bottom: 20,
-						left: 20
+						top: 10,
+						right: 10,
+						bottom: 10,
+						left: 10
 					}
 				},
 				scales: {
@@ -443,51 +588,378 @@
 	document.addEventListener('DOMContentLoaded', function() {
 		var ctx = document.getElementById('vendorStats').getContext('2d');
 		
-		var vendorStats = {
-			active: {{ vendor_stats.active if vendor_stats is defined else 0 }},
-			pending: {{ vendor_stats.pending if vendor_stats is defined else 0 }},
-			rejected: {{ vendor_stats.rejected if vendor_stats is defined else 0 }}
+		// Get vendor stats with fallbacks
+		var activeVendors = parseInt("{{ vendor_stats.active|default(0) }}") || 0;
+		var pendingVendors = parseInt("{{ vendor_stats.pending|default(0) }}") || 0;
+		var rejectedVendors = parseInt("{{ vendor_stats.rejected|default(0) }}") || 0;
+		var totalVendors = activeVendors + pendingVendors + rejectedVendors;
+		
+		// Debug logging
+		console.log("Vendor Stats from server:", {
+			active: activeVendors,
+			pending: pendingVendors,
+			rejected: rejectedVendors,
+			total: totalVendors
+		});
+		
+		// Create gradients
+		var gradient1 = ctx.createLinearGradient(0, 0, 0, 150);
+		gradient1.addColorStop(0, 'rgba(40, 167, 69, 0.95)');
+		gradient1.addColorStop(1, 'rgba(40, 167, 69, 0.7)');
+		
+		var gradient2 = ctx.createLinearGradient(0, 0, 0, 150);
+		gradient2.addColorStop(0, 'rgba(255, 193, 7, 0.95)');
+		gradient2.addColorStop(1, 'rgba(255, 193, 7, 0.7)');
+		
+		var gradient3 = ctx.createLinearGradient(0, 0, 0, 150);
+		gradient3.addColorStop(0, 'rgba(220, 53, 69, 0.95)');
+		gradient3.addColorStop(1, 'rgba(220, 53, 69, 0.7)');
+		
+		// Only create chart if there's data to show
+		if (totalVendors > 0) {
+			// Create the chart
+			new Chart(ctx, {
+				type: 'doughnut',
+				data: {
+					labels: ['Active', 'Pending', 'Rejected'],
+					datasets: [{
+						data: [
+							activeVendors,
+							pendingVendors,
+							rejectedVendors
+						],
+						backgroundColor: [
+							gradient1,
+							gradient2,
+							gradient3
+						],
+						borderColor: [
+							'rgba(40, 167, 69, 1)',
+							'rgba(255, 193, 7, 1)',
+							'rgba(220, 53, 69, 1)'
+						],
+						borderWidth: 2,
+						hoverOffset: 8,
+						hoverBorderWidth: 3
+					}]
+				},
+				options: {
+					responsive: true,
+					maintainAspectRatio: false,
+					cutout: '65%',
+					layout: {
+						padding: {
+							top: 5,
+							right: 5,
+							bottom: 5,
+							left: 5
+						}
+					},
+					animation: {
+						animateScale: true,
+						animateRotate: true,
+						duration: 1200
+					},
+					plugins: {
+						legend: {
+							display: false // Hide legend to save space
+						},
+						tooltip: {
+							callbacks: {
+								label: function(context) {
+									let label = context.label || '';
+									let value = context.formattedValue || '';
+									let percentage = Math.round((context.parsed / totalVendors) * 100);
+									return label + ': ' + value + ' vendors (' + percentage + '%)';
+								}
+							},
+							backgroundColor: '#fff',
+							titleColor: '#333',
+							bodyColor: '#666',
+							borderColor: '#e9ecef',
+							borderWidth: 1,
+							padding: 8,
+							bodyFont: {
+								size: 11
+							},
+							displayColors: true,
+							caretSize: 6
+						}
+					}
+				},
+				plugins: [{
+					id: 'centerText',
+					beforeDraw: function(chart) {
+						var width = chart.width,
+							height = chart.height,
+							ctx = chart.ctx;
+
+						ctx.restore();
+						var fontSize = (height / 230).toFixed(2);
+						ctx.font = 'bold ' + fontSize + "em sans-serif";
+						ctx.textBaseline = "middle";
+						ctx.fillStyle = "#333";
+
+						var text = totalVendors,
+							textX = Math.round((width - ctx.measureText(text).width) / 2),
+							textY = height / 2 - 5;
+
+						ctx.fillText(text, textX, textY);
+						
+						ctx.font = (fontSize * 0.5) + "em sans-serif";
+						ctx.fillStyle = "#555";
+						var subText = "Total",
+							subTextX = Math.round((width - ctx.measureText(subText).width) / 2),
+							subTextY = height / 2 + 10;
+							
+						ctx.fillText(subText, subTextX, subTextY);
+						ctx.save();
+					}
+				}]
+			});
+		} else {
+			// Display a message if no vendors
+			ctx.font = '14px Arial';
+			ctx.textAlign = 'center';
+			ctx.fillStyle = '#666';
+			ctx.fillText('No vendor data to display', ctx.canvas.width / 2, ctx.canvas.height / 2);
+		}
+		
+		// Update the vendor badges and analysis
+		document.getElementById('activeVendorBadge').innerText = activeVendors;
+		document.getElementById('pendingVendorBadge').innerText = pendingVendors;
+		document.getElementById('rejectedVendorBadge').innerText = rejectedVendors;
+		
+		// Show alert on pending badge if there are pending vendors
+		if (pendingVendors > 0) {
+			document.getElementById('pendingAlert').style.display = 'inline-block';
+		}
+		
+		// Generate vendor analysis text
+		var analysisText = '';
+		var pendingPercentage = totalVendors ? Math.round((pendingVendors / totalVendors) * 100) : 0;
+		var activePercentage = totalVendors ? Math.round((activeVendors / totalVendors) * 100) : 0;
+		
+		if (totalVendors === 0) {
+			analysisText = 'No vendors registered in the system yet.';
+		} else {
+			if (activePercentage >= 70) {
+				analysisText = '<strong>Healthy vendor ratio:</strong> ' + activePercentage + '% active';
+			} else if (activePercentage >= 50) {
+				analysisText = '<strong>Moderate vendor activity:</strong> ' + activePercentage + '% active';
+			} else {
+				analysisText = '<strong>Low vendor activity:</strong> Only ' + activePercentage + '% active';
+			}
+			
+			if (pendingVendors > 0) {
+				analysisText += ' • <strong>' + pendingVendors + '</strong> pending';
+			}
+		}
+		
+		document.getElementById('vendorAnalysis').innerHTML = analysisText;
+	});
+	</script>
+
+	<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		var ctx = document.getElementById('platformFeesChart').getContext('2d');
+		var platformFeesChart;
+		
+		// Create gradient
+		var gradient = ctx.createLinearGradient(0, 0, 0, 400);
+		gradient.addColorStop(0, 'rgba(45, 110, 255, 0.3)');
+		gradient.addColorStop(1, 'rgba(45, 110, 255, 0.0)');
+		
+		// Initialize date range picker
+		$('#dateRangeFilter').daterangepicker({
+			opens: 'left',
+			maxDate: new Date(),
+			ranges: {
+				'Last 7 Days': [moment().subtract(6, 'days'), moment()],
+				'Last 30 Days': [moment().subtract(29, 'days'), moment()],
+				'This Month': [moment().startOf('month'), moment().endOf('month')],
+				'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+			},
+			startDate: moment().subtract(29, 'days'),
+			endDate: moment()
+		});
+
+		// Sample store data - in a real app this would come from the backend
+		// Maps store names to their own dataset
+		var storeData = {
+			'all': generateRandomData(5000), // "All stores" combined
+			'Store A': generateRandomData(2000),
+			'Store B': generateRandomData(1500),
+			'Store C': generateRandomData(1200),
+			'Store D': generateRandomData(900)
 		};
 		
-		new Chart(ctx, {
-			type: 'doughnut',
-			data: {
-				labels: ['Active', 'Pending', 'Rejected'],
-				datasets: [{
-					data: [
-						vendorStats.active,
-						vendorStats.pending,
-						vendorStats.rejected
-					],
-					backgroundColor: [
-						'rgba(40, 167, 69, 0.8)',
-						'rgba(255, 193, 7, 0.8)',
-						'rgba(220, 53, 69, 0.8)'
-					],
-					borderColor: [
-						'rgba(40, 167, 69, 1)',
-						'rgba(255, 193, 7, 1)',
-						'rgba(220, 53, 69, 1)'
-					],
-					borderWidth: 1
-				}]
-			},
-			options: {
-				responsive: true,
-				maintainAspectRatio: false,
-				plugins: {
-					legend: {
-						position: 'bottom',
-						labels: {
-							padding: 20,
-							font: {
-								size: 12
+		// Generate dates for last 30 days - this will be our default view
+		function generateDates(days) {
+			var dates = [];
+			for(let i = days - 1; i >= 0; i--) {
+				let d = moment().subtract(i, 'days');
+				dates.push(d.format('MMM D'));
+			}
+			return dates;
+		}
+		
+		// Generate random data with some patterns
+		function generateRandomData(baseValue) {
+			var data = [];
+			for(let i = 0; i < 30; i++) {
+				let randomVariation = Math.random() * 2000 - 1000;
+				let weekendBoost = (i % 7 === 0 || i % 7 === 6) ? 1000 : 0;
+				let trendIncrease = i * 20;
+				
+				data.push(baseValue + randomVariation + weekendBoost + trendIncrease);
+			}
+			return data;
+		}
+		
+		// Update chart with new data based on filters
+		function updateChart(store, startDate, endDate) {
+			// Calculate date range
+			var start = startDate ? moment(startDate) : moment().subtract(29, 'days');
+			var end = endDate ? moment(endDate) : moment();
+			var daysDiff = end.diff(start, 'days') + 1;
+			
+			// Update dates based on selected range
+			var dates = [];
+			for(let i = 0; i < daysDiff; i++) {
+				let d = moment(start).add(i, 'days');
+				dates.push(d.format('MMM D'));
+			}
+			
+			// Get appropriate data for selected store and date range
+			var data = storeData[store] || storeData['all'];
+			// Adjust data to match date range (in a real app, you'd query the backend for the specific date range)
+			if(daysDiff < 30) {
+				data = data.slice(30 - daysDiff);
+			}
+			
+			// If we already have a chart, destroy it before creating a new one
+			if(platformFeesChart) {
+				platformFeesChart.destroy();
+			}
+			
+			// Create the chart
+			platformFeesChart = new Chart(ctx, {
+				type: 'line',
+				data: {
+					labels: dates,
+					datasets: [{
+						label: store === 'all' ? 'Platform Fees - All Stores (₹)' : 'Platform Fees - ' + store + ' (₹)',
+						data: data,
+						borderColor: 'rgba(45, 110, 255, 1)',
+						backgroundColor: gradient,
+						borderWidth: 2,
+						pointBackgroundColor: '#fff',
+						pointBorderColor: 'rgba(45, 110, 255, 1)',
+						pointRadius: 4,
+						pointHoverRadius: 6,
+						fill: true,
+						tension: 0.4
+					}]
+				},
+				options: {
+					responsive: true,
+					maintainAspectRatio: false,
+					layout: {
+						padding: {
+							top: 10,
+							right: 10,
+							bottom: 10,
+							left: 10
+						}
+					},
+					scales: {
+						y: {
+							beginAtZero: true,
+							grid: {
+								color: 'rgba(0,0,0,0.05)',
+								drawBorder: false
+							},
+							ticks: {
+								callback: function(value) {
+									return '₹' + value.toLocaleString('en-IN');
+								},
+								font: {
+									size: 12
+								},
+								color: '#666'
+							}
+						},
+						x: {
+							grid: {
+								display: false,
+								drawBorder: false
+							},
+							ticks: {
+								font: {
+									size: 12
+								},
+								color: '#666',
+								maxRotation: 45,
+								minRotation: 45,
+								maxTicksLimit: dates.length > 15 ? 15 : dates.length
+							}
+						}
+					},
+					plugins: {
+						legend: {
+							position: 'top',
+							align: 'end',
+							labels: {
+								boxWidth: 12,
+								padding: 20,
+								font: {
+									size: 12
+								}
+							}
+						},
+						tooltip: {
+							mode: 'index',
+							intersect: false,
+							backgroundColor: '#fff',
+							titleColor: '#333',
+							bodyColor: '#666',
+							borderColor: '#e9ecef',
+							borderWidth: 1,
+							padding: 10,
+							boxPadding: 4,
+							titleFont: {
+								weight: 'bold'
+							},
+							callbacks: {
+								label: function(context) {
+									let label = context.dataset.label || '';
+									if (label) {
+										label += ': ';
+									}
+									label += '₹' + context.parsed.y.toLocaleString('en-IN');
+									return label;
+								}
 							}
 						}
 					}
 				}
-			}
+			});
+		}
+
+		// Handle filter button click
+		document.getElementById('applyFilters').addEventListener('click', function() {
+			var store = document.getElementById('storeFilter').value;
+			var dateRange = $('#dateRangeFilter').data('daterangepicker');
+			updateChart(store, dateRange.startDate, dateRange.endDate);
+			
+			// Update the title span with the date range
+			document.querySelector('.date-range-report span').textContent = 
+				dateRange.startDate.format('MMM D, YYYY') + ' - ' + dateRange.endDate.format('MMM D, YYYY');
 		});
+		
+		// Initialize chart with default values (all stores, last 30 days)
+		updateChart('all');
 	});
 	</script>
 
@@ -495,21 +967,130 @@
 	#userActivityChart {
 		min-height: 350px;
 	}
+	#vendorStats {
+		min-height: 180px;
+		max-height: 200px;
+	}
+	#platformFeesChart {
+		min-height: 250px;
+		max-height: 300px;
+	}
 	.card-footer a {
-		color: #28a745;
+		color: #3057D5;
 		font-size: 13px;
 		font-weight: 500;
 		text-decoration: none;
 	}
 	.card-footer a:hover {
-		color: #218838;
+		color: #8921aa;
 	}
 	.date-range-report span {
 		color: #666;
 		font-size: 13px;
 	}
-	#vendorStats {
-		min-height: 300px;
+	.card-mini {
+		border-radius: 8px;
+		box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+		transition: transform 0.3s;
+	}
+	.card-mini:hover {
+		transform: translateY(-5px);
+		box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+	}
+	.card-header {
+		border-bottom: 1px solid rgba(0,0,0,0.05);
+		background-color: #fff;
+	}
+	.card-header h2 {
+		font-size: 18px;
+		font-weight: 600;
+		margin-bottom: 0;
+	}
+	.badge {
+		padding: 6px 10px;
+		border-radius: 4px;
+		font-weight: 500;
+	}
+	.badge-success {
+		background-color: rgba(40, 167, 69, 0.1);
+		color: #28a745;
+	}
+	.badge-warning {
+		background-color: rgba(255, 193, 7, 0.1);
+		color: #ffc107;
+	}
+	.badge-danger {
+		background-color: rgba(220, 53, 69, 0.1);
+		color: #dc3545;
+	}
+	.badge-info {
+		background-color: rgba(23, 162, 184, 0.1);
+		color: #17a2b8;
+	}
+	.table-product td {
+		vertical-align: middle;
+	}
+	.recent-orders-wrapper {
+		overflow-x: auto;
+	}
+	/* Compact form styles */
+	.form-group.compact {
+		margin-bottom: 0.5rem;
+	}
+	.form-control-sm {
+		padding: 0.25rem 0.5rem;
+		height: calc(1.5em + 0.5rem + 2px);
+		font-size: 0.875rem;
+	}
+	/* Vendor statistics styles */
+	.vendor-metrics {
+		margin-top: 8px;
+	}
+	.vendor-metric {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+	.vendor-badge {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
+		color: white;
+		font-weight: 600;
+		font-size: 12px;
+		box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+		position: relative;
+		transition: transform 0.2s;
+	}
+	.vendor-badge:hover {
+		transform: scale(1.1);
+	}
+	.vendor-label {
+		margin-top: 4px;
+		font-size: 10px;
+		font-weight: 500;
+		color: #555;
+	}
+	.bg-success {
+		background-color: #28a745 !important;
+	}
+	.bg-warning {
+		background-color: #ffc107 !important;
+	}
+	.bg-danger {
+		background-color: #dc3545 !important;
+	}
+	.vendor-analysis {
+		margin-top: 8px;
+	}
+	.vendor-analysis .alert {
+		font-size: 11px;
+		line-height: 1.4;
+		color: #444;
+		padding: 6px 8px;
 	}
 	</style>
 

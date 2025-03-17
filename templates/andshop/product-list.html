@@ -19,9 +19,7 @@
 		href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700;800&amp;family=Poppins:wght@300;400;500;600;700;800;900&amp;family=Roboto:wght@400;500;700;900&amp;display=swap"
 		rel="stylesheet">
 
-	<link href="../../../../cdn.jsdelivr.net/npm/%40mdi/font%404.4.95/css/materialdesignicons.min.php"
-		rel="stylesheet" />
-		<link href="{{ url_for('static', filename='assets/css/materialdesignicons.min.css') }}" rel="stylesheet" />
+	<link href="{{ url_for('static', filename='assets/css/materialdesignicons.min.css') }}" rel="stylesheet" />
 
 		<!-- PLUGINS CSS STYLE -->
 		<link href="{{ url_for('static', filename='assets/plugins/simplebar/simplebar.css') }}" rel="stylesheet">
@@ -30,7 +28,7 @@
 		<link id="style.css" href="{{ url_for('static', filename='assets/css/style.css') }}" rel="stylesheet" />
 	
 		<!-- FAVICON -->
-		<link rel="icon" href="{{ url_for('static', filename='images/favicon.png') }}" type="image/png">
+		<link rel="icon" href="{{ url_for('static', filename='assets/img/favicon.png') }}" type="image/png">
 
 		<script type="text/javascript">
 			window.addEventListener('pageshow', function(event) {
@@ -54,7 +52,7 @@
 
 				<div class="ec-brand">
 					<a href="/vendor_dashboard">
-						<img class="ec-brand-icon" src="assets/img/logo/favicon.png" alt="" />
+						<img class="ec-brand-icon" src="{{ url_for('static', filename='assets/img/logo/favicon.png') }}" alt="" />
 						<span class="ec-brand-name text-truncate">ANDSHOP</span>
 					</a>
 				</div>
@@ -164,7 +162,7 @@
 				<nav class="navbar navbar-static-top navbar-expand-lg">
 					<!-- Sidebar toggle button -->
 					<button id="sidebar-toggler">
-						<img src="assets/img/icons/clops.png" alt="">
+						<img src="{{ url_for('static', filename='assets/img/icons/clops.png') }}" alt="">
 					</button>
 					<!-- search form -->
 					<div class="search-form d-lg-inline-block">
@@ -219,13 +217,15 @@
 				<div class="content">
 					<div class="breadcrumb-wrapper d-flex align-items-center justify-content-between">
 						<div>
-							<h1>All products</h1>
+							<h1>All Products</h1>
 							<p class="breadcrumbs"><span><a href="/vendor_dashboard">Home</a></span>
 								<span><i class="mdi mdi-chevron-right"></i></span>Product
 							</p>
 						</div>
 						<div>
-							<a href="/product-add" class="btn btn-primary"> Add Porduct</a>
+							<a href="/product-add" class="btn btn-primary">
+								<i class="mdi mdi-plus-circle-outline me-1"></i> Add Product
+							</a>
 						</div>
 					</div>
 					<div class="row">
@@ -233,38 +233,37 @@
 							<div class="card card-default">
 								<div class="card-body">
 									<div class="table-responsive">
-										<table id="responsive-data-table" class="table" style="width:100%">
-											<thead>
+										<table id="responsive-data-table" class="table table-striped table-hover table-sm align-middle">
+											<thead class="table-light">
 												<tr>
 													<th>Photo</th>
 													<th>Product name</th>
 													<th>Category</th>
-													<th>Price</th>
+													<th>Price (per day)</th>
 													<th>Stock</th>
-													<th>Action</th>
+													<th class="text-center">Action</th>
 												</tr>
 											</thead>
 											<tbody>
 												{% for product_id, product in products.items() %}
 												<tr>
 													<td><img class="tbl-thumb" src="{{ product['product_image'] }}" alt="Product Image" /></td>
-													<td>{{ product['product_name'] }}</td>
-													<td>{{ product['main_category'] }}</td>
-													<td>{{ product['product_price'] }}</td>
-													<td>{{ product['product_quantity'] }}</td>
+													<td class="product-name-cell"><span class="product-name">{{ product['product_name'] }}</span></td>
+													<td><span class="category-badge">{{ product['main_category'] }}</span></td>
+													<td><span class="price-tag">₹{{ product['product_price'] }}</span><span class="price-period">/day</span></td>
+													<td><span class="stock-indicator">{{ product['product_quantity'] }}</span></td>
 													<td>
-														<div class="btn-group mb-1">
-															<button type="button" class="btn btn-outline-success">Info</button>
-															<button type="button" class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
-																	data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-display="static">
-																<span class="sr-only">Info</span>
+														<div class="action-buttons d-flex">
+															<a href="{{ url_for('update_product', product_id=product_id) }}" class="edit-btn btn btn-sm btn-primary me-2" title="Edit Product">
+																<i class="mdi mdi-pencil"></i> Edit
+															</a>
+															<button type="button" class="delete-btn btn btn-sm btn-danger" 
+																	onclick="confirmDelete('{{ product_id }}')" title="Delete Product">
+																<i class="mdi mdi-delete"></i> Delete
 															</button>
-															<div class="dropdown-menu">
-																<a class="dropdown-item ,btn btn-outline-danger" href="{{ url_for('update_product', product_id=product_id) }}">Edit</a>
-																<form method="POST" action="{{ url_for('delete_product', product_id=product_id) }}" style="display:inline;">
-																	<button type="submit" class="btn btn-outline-danger">Delete</button>
-																</form>																
-															</div>
+															<form id="delete-form-{{ product_id }}" method="POST" action="{{ url_for('delete_product', product_id=product_id) }}" style="display: none;">
+																<!-- Hidden form for deletion -->
+															</form>
 														</div>
 													</td>
 												</tr>
@@ -293,17 +292,198 @@
 	</div> <!-- End Wrapper -->
 
 	<!-- Common Javascript -->
-	<script src="assets/plugins/jquery/jquery-3.5.1.min.js"></script>
 	<script src="{{ url_for('static', filename='assets/plugins/jquery/jquery-3.5.1.min.js') }}"></script>
     <script src="{{ url_for('static', filename='assets/js/bootstrap.bundle.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='assets/plugins/simplebar/simplebar.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='assets/plugins/jquery-zoom/jquery.zoom.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='assets/plugins/slick/slick.min.js') }}"></script>
 
 	<!-- Option Switcher -->
 	<script src="{{ url_for('static', filename='assets/plugins/options-sidebar/optionswitcher.js') }}"></script>
 	<!-- custom js -->
 	<script src="{{ url_for('static', filename='assets/js/custom.js') }}"></script>
+	
+	<!-- Action buttons styling and functionality -->
+	<style>
+		/* Product image */
+		.tbl-thumb {
+			width: 60px;
+			height: 60px;
+			object-fit: cover;
+			border-radius: 5px;
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+			transition: transform 0.2s ease;
+		}
+		
+		.tbl-thumb:hover {
+			transform: scale(1.05);
+		}
+		
+		/* Action buttons */
+		.action-buttons {
+			display: flex;
+			justify-content: center;
+			gap: 8px;
+		}
+		
+		.action-buttons .btn-sm {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			padding: 6px 10px;
+			transition: all 0.2s ease;
+			border-radius: 4px;
+			font-weight: 500;
+			font-size: 0.85rem;
+		}
+		
+		.action-buttons .btn i {
+			margin-right: 5px;
+			font-size: 14px;
+		}
+		
+		.action-buttons .btn:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 3px 5px rgba(0,0,0,0.1);
+		}
+		
+		/* Card styling */
+		.card {
+			border: none;
+			border-radius: 8px;
+			box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+		}
+		
+		.card-body {
+			padding: 1.25rem;
+		}
+		
+		/* Table enhancements */
+		.table-responsive {
+			border-radius: 6px;
+			overflow: hidden;
+		}
+		
+		.table {
+			margin-bottom: 0;
+			border-collapse: separate;
+			border-spacing: 0;
+		}
+		
+		.table th {
+			letter-spacing: 0.5px;
+			font-size: 13px;
+			font-weight: 600;
+			padding: 12px 15px;
+		}
+		
+		.table td {
+			padding: 12px 15px;
+			vertical-align: middle;
+		}
+		
+		/* Header action button */
+		.breadcrumb-wrapper .btn-primary {
+			display: flex;
+			align-items: center;
+			padding: 8px 16px;
+			transition: all 0.2s ease;
+		}
+		
+		.breadcrumb-wrapper .btn-primary i {
+			margin-right: 6px;
+			font-size: 16px;
+		}
+		
+		.breadcrumb-wrapper .btn-primary:hover {
+			transform: translateY(-1px);
+			box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+		}
+		
+		/* Product name styling */
+		.product-name {
+			font-weight: 500;
+			color: #333;
+		}
+		
+		/* Price tag styling */
+		.price-tag {
+			font-weight: 600;
+			color: #28a745;
+		}
+		
+		/* Price period styling */
+		.price-period {
+			font-size: 0.8rem;
+			color: #6c757d;
+			font-weight: normal;
+		}
+		
+		/* Category badge */
+		.category-badge {
+			background-color: #f1f5ff;
+			color: #4e73df;
+			padding: 5px 10px;
+			border-radius: 4px;
+			font-size: 0.8rem;
+			display: inline-block;
+		}
+		
+		/* Stock indicator */
+		.stock-indicator {
+			font-weight: 500;
+		}
+		
+		/* Product name truncation for long names */
+		.product-name-cell {
+			max-width: 200px;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+	</style>
+	
+	<!-- Data-Tables -->
+	<script src="{{ url_for('static', filename='assets/plugins/data-tables/jquery.datatables.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/data-tables/datatables.bootstrap5.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/data-tables/datatables.responsive.min.js') }}"></script>
+	
+	<script>
+		// Product deletion confirmation
+		function confirmDelete(productId) {
+			if (confirm(`Are you sure you want to delete this product?`)) {
+				document.getElementById(`delete-form-${productId}`).submit();
+			}
+		}
+		
+		$(document).ready(function() {
+			// Check if DataTable is already initialized to prevent the warning
+			if (!$.fn.DataTable.isDataTable('#responsive-data-table')) {
+				// Initialize the Bootstrap data table
+				$('#responsive-data-table').DataTable({
+					"aLengthMenu": [
+						[10, 25, 50, 75, -1],
+						[10, 25, 50, 75, "All"]
+					],
+					"pageLength": 10,
+					"dom": '<"row align-items-center mb-3"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>><"table-responsive"tr><"row align-items-center"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+					"language": {
+						"search": "Search:",
+						"lengthMenu": "Show _MENU_ entries",
+						"info": "Showing _START_ to _END_ of _TOTAL_ products",
+						"infoEmpty": "Showing 0 to 0 of 0 products",
+						"zeroRecords": "No matching products found"
+					},
+					"ordering": true,
+					"columnDefs": [
+						{ "orderable": false, "targets": [0, 5] } // Disable sorting on image and action columns
+					],
+					responsive: true
+				});
+				
+				// Add custom styling to DataTables elements
+				$('.dataTables_length select').addClass('form-select form-select-sm');
+				$('.dataTables_filter input').addClass('form-control form-control-sm ms-2').attr('placeholder', 'Search products...');
+			}
+		});
+	</script>
 </body>
 
 

@@ -21,150 +21,112 @@ function showOrderDetails(orderId) {
             if (response.success) {
                 $('#moreDetailsContent').removeClass('d-none');
                 
-                // Get the order and first item
+                // Get the order and its items
                 const order = response.order;
-                const item = order.items[0];
+                const items = order.items || [];
                 
-                // Check if order is cancelled
-                const isCancelled = item.status.toLowerCase() === 'cancelled' || 
-                                   item.status.toLowerCase() === 'partially_cancelled';
+                let html = `<div class="p-3"><h4>Order Details</h4>`;
                 
-                // Check if order can be cancelled (ordered status and within 10 minutes)
-                const isOrdered = item.status.toLowerCase() === 'ordered';
-                const orderTime = new Date(order.created_at);
-                const currentTime = new Date();
-                const timeDiffMinutes = (currentTime - orderTime) / (1000 * 60);
-                const canCancel = isOrdered && timeDiffMinutes <= 10;
-                
-                let html = '';
-                
-                if (isCancelled) {
-                    // Special display for cancelled orders
-                    html = `
-                        <div class="p-3">
-                            <h4>Order Details</h4>
-                            
-                            <div class="order-cancelled mb-4 text-center">
-                                <div class="cancelled-icon mb-3">
-                                    <i class="fa fa-times-circle fa-4x text-danger"></i>
-                                </div>
-                                <h5 class="mb-3">Order ${item.status.toLowerCase() === 'partially_cancelled' ? 'Partially ' : ''}Cancelled</h5>
-                                <p class="text-muted">
-                                    ${item.status.toLowerCase() === 'partially_cancelled' 
-                                        ? `Cancelled Quantity: ${item.cancelled_quantity || 'N/A'}, Remaining: ${item.quantity || 'N/A'}`
-                                        : `This order was cancelled on ${item.cancelled_at ? new Date(item.cancelled_at).toLocaleString() : 'N/A'}`
-                                    }
-                                </p>
-                                ${item.cancellation_reason ? `<p><strong>Reason:</strong> ${item.cancellation_reason}</p>` : ''}
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    // Create progress bar based on status for non-cancelled orders
-                    const statuses = ['ordered', 'in_transit', 'out_for_delivery', 'delivered', 'return_initiated', 'returned'];
-                    const currentStatusIndex = statuses.indexOf(item.status.toLowerCase());
-                    
-                    html = `
-                        <div class="p-3">
-                            <h4>Order Details</h4>
-                            
-                            <div class="order-progress mb-4">
-                                <h5 class="mb-3">Order Progress</h5>
-                                <div class="progress-track">
-                                    <div class="progress-steps">
-                                        <div class="step ${currentStatusIndex >= 0 ? 'completed' : ''}">
-                                            <div class="step-icon">
-                                                <i class="fa fa-shopping-cart"></i>
-                                            </div>
-                                            <p class="step-text">Ordered</p>
-                                            <small class="step-date">${order.created_at ? new Date(order.created_at).toLocaleString() : ''}</small>
-                                        </div>
-                                        <div class="step ${currentStatusIndex >= 1 ? 'completed' : ''}">
-                                            <div class="step-icon">
-                                                <i class="fa fa-truck"></i>
-                                            </div>
-                                            <p class="step-text">In Transit</p>
-                                            <small class="step-date">${item.in_transit_at ? new Date(item.in_transit_at).toLocaleString() : ''}</small>
-                                        </div>
-                                        <div class="step ${currentStatusIndex >= 2 ? 'completed' : ''}">
-                                            <div class="step-icon">
-                                                <i class="fa fa-shipping-fast"></i>
-                                            </div>
-                                            <p class="step-text">Out for Delivery</p>
-                                            <small class="step-date">${item.out_for_delivery_at ? new Date(item.out_for_delivery_at).toLocaleString() : ''}</small>
-                                        </div>
-                                        <div class="step ${currentStatusIndex >= 3 ? 'completed' : ''}">
-                                            <div class="step-icon">
-                                                <i class="fa fa-box"></i>
-                                            </div>
-                                            <p class="step-text">Delivered</p>
-                                            <small class="step-date">${item.delivered_at ? new Date(item.delivered_at).toLocaleString() : ''}</small>
-                                        </div>
-                                        <div class="step ${currentStatusIndex >= 4 ? 'completed' : ''}">
-                                            <div class="step-icon">
-                                                <i class="fa fa-undo"></i>
-                                            </div>
-                                            <p class="step-text">Return Initiated</p>
-                                            <small class="step-date">${item.return_initiated_at ? new Date(item.return_initiated_at).toLocaleString() : ''}</small>
-                                        </div>
-                                        <div class="step ${currentStatusIndex >= 5 ? 'completed' : ''}">
-                                            <div class="step-icon">
-                                                <i class="fa fa-check-circle"></i>
-                                            </div>
-                                            <p class="step-text">Returned</p>
-                                            <small class="step-date">${item.return_completed_at ? new Date(item.return_completed_at).toLocaleString() : ''}</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-                
-                // Add common order information section for all order types
+                // Order summary information
                 html += `
-                    <div class="order-info mt-4">
+                    <div class="order-summary mb-4">
                         <div class="row">
                             <div class="col-md-6">
-                                <h5>Order Details</h5>
-                                <p><strong>Order ID:</strong> ${order.order_id}</p>
-                                <p><strong>Order Date:</strong> ${new Date(order.created_at).toLocaleString()}</p>
-                                <p><strong>Product:</strong> ${item.product_name}</p>
-                                <p><strong>Total Amount:</strong> ₹${order.order_total.toFixed(2)}</p>
-                                <p><strong>Store:</strong> ${item.store_name || 'Rentedd'}</p>
+                                <p><strong>Order ID:</strong> ${order.order_id || 'N/A'}</p>
+                                <p><strong>Order Date:</strong> ${order.created_at ? new Date(order.created_at).toLocaleString() : 'N/A'}</p>
+                                <p><strong>Total:</strong> ₹${parseFloat(order.subtotal || 0).toFixed(2)}</p>
                             </div>
                             <div class="col-md-6">
-                                <h5>Delivery Details</h5>
-                                <p><strong>Shipping Address:</strong> ${order.shipping_address || 'Not available'}</p>
-                                <p><strong>Payment ID:</strong> ${order.payment_id || 'Not available'}</p>
-                                <p><strong>Status:</strong> <span class="badge ${isCancelled ? 'bg-danger' : 'bg-primary'}">${item.status}</span></p>
-                                <p><strong>Quantity:</strong> ${item.quantity}</p>
-                                <p><strong>Rental Period:</strong> ${item.rent_from} to ${item.rent_to}</p>
+                                <p><strong>Shipping Address:</strong> ${order.shipping_address || 'N/A'}</p>
                             </div>
                         </div>
                     </div>
                 `;
                 
-                // Add cancel button if order can be cancelled
-                if (canCancel) {
+                // Items list with individual statuses
+                html += `<h5 class="mb-3">Order Items</h5>`;
+                
+                html += `<div class="order-items mb-4">`;
+                
+                // Process each item separately with its own status
+                items.forEach((item, index) => {
+                    const isItemCancelled = item.status && item.status.toLowerCase() === 'cancelled';
+                    const isItemPartialCancelled = item.status && item.status.toLowerCase() === 'partially_cancelled';
+                    const isItemReturned = item.status && item.status.toLowerCase() === 'returned';
+                    const isItemReturnInitiated = item.status && item.status.toLowerCase() === 'return_initiated';
+                    
                     html += `
-                        <div class="mt-4 text-center">
-                            <p class="text-muted small">You can cancel this order within 10 minutes of placing it.</p>
-                            <button class="btn btn-danger cancel-order-btn" 
-                                    data-order-id="${order.order_id}" 
-                                    data-product-id="${item.product_id || ''}"
-                                    data-product-name="${item.product_name || ''}">
-                                <i class="fa fa-times"></i> Cancel Order
-                            </button>
+                        <div class="order-item p-3 mb-3 ${isItemCancelled ? 'bg-light' : ''}" style="border: 1px solid #eee; border-radius: 5px;">
+                            <div class="row align-items-center">
+                                <div class="col-md-2">
+                                    <img src="${item.image_url || '/static/img/default-product.jpg'}" 
+                                         alt="${item.product_name || 'Product'}" 
+                                         class="img-fluid" style="max-width: 80px;">
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>${item.product_name || 'Unknown Product'}</h6>
+                                    <p class="mb-0">Quantity: ${item.quantity || 1}</p>
+                                    <p class="mb-0">Duration: ${item.rental_days || 1} days</p>
+                                </div>
+                                <div class="col-md-3">
+                                    <p class="mb-1"><strong>Rental Period:</strong></p>
+                                    <p class="mb-0">From: ${item.rent_from || 'N/A'}</p>
+                                    <p class="mb-0">To: ${item.rent_to || 'N/A'}</p>
+                                </div>
+                                <div class="col-md-3 text-center">
+                                    ${isItemCancelled ? 
+                                        `<span class="badge bg-danger p-2">Cancelled</span>` : 
+                                      isItemPartialCancelled ?
+                                        `<span class="badge bg-warning text-dark p-2">Partially Cancelled</span><br>
+                                         <small>Cancelled: ${item.cancelled_quantity || 'N/A'}, Remaining: ${item.quantity || 'N/A'}</small>` :
+                                      isItemReturned ?
+                                        `<span class="badge bg-success p-2">Returned</span>` :
+                                      isItemReturnInitiated ?
+                                        `<span class="badge bg-warning text-dark p-2">Return Initiated</span>` :
+                                        `<span class="badge bg-primary p-2">${item.status || 'Active'}</span>`
+                                    }
+                                </div>
+                            </div>
                         </div>
                     `;
-                } else if (isOrdered) {
+                });
+                
+                html += `</div>`; // End order-items
+                
+                // Check if any item can be cancelled (status is ordered and within 10 minutes)
+                const orderTime = new Date(order.created_at);
+                const currentTime = new Date();
+                const timeDiffMinutes = (currentTime - orderTime) / (1000 * 60);
+                const canCancel = timeDiffMinutes <= 10;
+                
+                // Add cancel buttons for individual items that can be cancelled
+                if (canCancel) {
+                    html += `<div class="mt-4 text-center">`;
+                    
+                    items.forEach((item, index) => {
+                        if (item.status && (item.status.toLowerCase() === 'ordered' || item.status.toLowerCase() === 'partially_cancelled')) {
+                            html += `
+                                <button class="btn btn-outline-danger m-1 cancel-order-btn" 
+                                        data-order-id="${order.order_id}" 
+                                        data-product-id="${item.product_id || ''}"
+                                        data-product-name="${item.product_name || ''}">
+                                    <i class="fa fa-times"></i> Cancel ${item.status.toLowerCase() === 'partially_cancelled' ? 'Remaining' : ''} ${item.product_name || 'Item'}
+                                </button>
+                            `;
+                        }
+                    });
+                    
+                    html += `<p class="text-muted small mt-2">You can cancel items within 10 minutes of placing the order.</p>`;
+                    html += `</div>`;
+                } else {
                     html += `
                         <div class="mt-4 text-center">
                             <p class="text-muted small">Orders can only be cancelled within 10 minutes of placing them.</p>
                         </div>
                     `;
                 }
+                
+                html += `</div>`; // End p-3 container
                 
                 $('#moreDetailsContent').html(html);
                 
@@ -173,6 +135,12 @@ function showOrderDetails(orderId) {
                     const orderId = $(this).data('order-id');
                     const productId = $(this).data('product-id');
                     const productName = $(this).data('product-name');
+                    
+                    // Find the item and get its quantity
+                    const item = items.find(i => i.product_id === productId);
+                    
+                    // If the item is partially cancelled, make sure we're using the remaining quantity
+                    const quantity = item ? parseInt(item.quantity) || 1 : 1;
                     
                     // Populate the cancel item modal
                     $('#cancelItemOrderId').text(orderId);
@@ -187,6 +155,24 @@ function showOrderDetails(orderId) {
                         }).appendTo('#cancelItemModal .modal-body');
                     } else {
                         $('#cancelItemProductId').val(productId);
+                    }
+                    
+                    // Populate quantity selector if quantity > 1
+                    const $quantitySelector = $('#cancelQuantitySelector');
+                    const $cancelQuantity = $('#cancelQuantity');
+                    
+                    $cancelQuantity.empty();
+                    
+                    if (quantity > 1) {
+                        // Show quantity selector and populate options
+                        $quantitySelector.show();
+                        
+                        for (let i = 1; i <= quantity; i++) {
+                            $cancelQuantity.append(`<option value="${i}">${i}</option>`);
+                        }
+                    } else {
+                        // Hide quantity selector for single items
+                        $quantitySelector.hide();
                     }
                     
                     // Hide the details modal and show the cancel modal

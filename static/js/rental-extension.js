@@ -90,22 +90,57 @@ function submitExtension() {
     document.getElementById('extendRentalLoading').classList.remove('d-none');
     document.getElementById('extendRentalError').classList.add('d-none');
 
-    // First get current wallet deposit - use the global database reference
-    database.ref(`orders/${orderId}/wallet_deposit`).once('value')
+    // Get current order data to update all necessary values
+    database.ref(`orders/${orderId}`).once('value')
         .then(snapshot => {
-            const currentDeposit = snapshot.val();
-            const newDeposit = currentDeposit - extensionCost;
+            const orderData = snapshot.val();
+            if (!orderData) {
+                throw new Error('Order not found');
+            }
 
-            console.log("Current deposit:", currentDeposit, "New deposit:", newDeposit);
+            // Get current values
+            const currentItem = orderData.items[itemIndex];
+            const currentRentalDays = currentItem.rental_days;
+            const currentItemTotal = currentItem.total_price;
+            const currentWalletDeposit = orderData.wallet_deposit;
+            const currentSubtotal = orderData.subtotal;
+            const currentOrderTotal = orderData.order_total;
+
+            // Calculate new values
+            const newRentalDays = currentRentalDays + days;
+            const newItemTotal = currentItemTotal + extensionCost;
+            const newWalletDeposit = currentWalletDeposit - extensionCost;
+            const newSubtotal = currentSubtotal + extensionCost;
+            const newOrderTotal = currentOrderTotal + extensionCost;
+
+            console.log("Current values:", {
+                rentalDays: currentRentalDays,
+                itemTotal: currentItemTotal,
+                walletDeposit: currentWalletDeposit,
+                subtotal: currentSubtotal,
+                orderTotal: currentOrderTotal
+            });
+            
+            console.log("New values:", {
+                rentalDays: newRentalDays,
+                itemTotal: newItemTotal,
+                walletDeposit: newWalletDeposit,
+                subtotal: newSubtotal,
+                orderTotal: newOrderTotal
+            });
 
             // Prepare updates
             const updates = {
                 [`orders/${orderId}/items/${itemIndex}/rent_to`]: newRentTo,
-                [`orders/${orderId}/wallet_deposit`]: newDeposit,
-                [`orders/${orderId}/items/${itemIndex}/rental_days`]: parseInt(document.getElementById('maxDays').value) + days
+                [`orders/${orderId}/items/${itemIndex}/rental_days`]: newRentalDays,
+                [`orders/${orderId}/items/${itemIndex}/total_price`]: newItemTotal,
+                [`orders/${orderId}/wallet_deposit`]: newWalletDeposit,
+                [`orders/${orderId}/subtotal`]: newSubtotal,
+                [`orders/${orderId}/order_total`]: newOrderTotal,
+                [`orders/${orderId}/updated_at`]: new Date().toISOString()
             };
 
-            // Update Firebase - use the global database reference
+            // Update Firebase
             return database.ref().update(updates);
         })
         .then(() => {

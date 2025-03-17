@@ -370,15 +370,63 @@
 						</div>
 
 						<div class="col-xl-4 col-md-12 p-b-15">
-							<!-- Doughnut Chart -->
+							<!-- Order Status Cards -->
 							<div class="card card-default">
 								<div class="card-header justify-content-center">
 									<h2>Orders Overview</h2>
 								</div>
-								<div class="card-body">
-									<canvas id="polar"></canvas>
+								<div class="card-body pt-2">
+									<div class="row">
+										<div class="col-6 mb-3">
+											<div class="card card-mini dash-card order-card-1">
+												<div class="card-body">
+													<h2 class="mb-1" id="ordered-count">0</h2>
+													<p>Ordered</p>
+													<div class="chart-wrapper">
+														<canvas id="orderedChart"></canvas>
+													</div>
+													<span class="mdi mdi-cart-outline"></span>
+												</div>
+											</div>
+										</div>
+										<div class="col-6 mb-3">
+											<div class="card card-mini dash-card order-card-2">
+												<div class="card-body">
+													<h2 class="mb-1" id="delivered-count">0</h2>
+													<p>Delivered</p>
+													<div class="chart-wrapper">
+														<canvas id="deliveredChart"></canvas>
+													</div>
+													<span class="mdi mdi-truck-delivery"></span>
+												</div>
+											</div>
+										</div>
+										<div class="col-6">
+											<div class="card card-mini dash-card order-card-3">
+												<div class="card-body">
+													<h2 class="mb-1" id="returned-count">0</h2>
+													<p>Returned</p>
+													<div class="chart-wrapper">
+														<canvas id="returnedChart"></canvas>
+													</div>
+													<span class="mdi mdi-package-return"></span>
+												</div>
+											</div>
+										</div>
+										<div class="col-6">
+											<div class="card card-mini dash-card order-card-4">
+												<div class="card-body">
+													<h2 class="mb-1" id="cancelled-count">0</h2>
+													<p>Cancelled</p>
+													<div class="chart-wrapper">
+														<canvas id="cancelledChart"></canvas>
+													</div>
+													<span class="mdi mdi-cancel"></span>
+												</div>
+											</div>
+										</div>
+									</div>
 								</div>
-								
 							</div>
 						</div>
 					</div>
@@ -678,6 +726,60 @@
 		font-weight: 600;
 		margin-bottom: 0;
 	}
+
+	/* Order status cards styling */
+	.order-card-1 {
+		background: linear-gradient(45deg, #3E80F6, #5a94f7);
+	}
+	
+	.order-card-2 {
+		background: linear-gradient(45deg, #20D489, #4adfaa);
+	}
+	
+	.order-card-3 {
+		background: linear-gradient(45deg, #FFBA4B, #ffc970);
+	}
+	
+	.order-card-4 {
+		background: linear-gradient(45deg, #F85778, #fa798f);
+	}
+	
+	.card-mini {
+		position: relative;
+		overflow: hidden;
+		transition: all 0.3s ease;
+		border-radius: 8px;
+	}
+	
+	.card-mini .mdi {
+		position: absolute;
+		right: 15px;
+		bottom: 15px;
+		font-size: 2.5rem;
+		opacity: 0.2;
+	}
+	
+	.card-mini h2 {
+		font-size: 1.8rem;
+		font-weight: 700;
+		margin-bottom: 5px;
+		color: white;
+	}
+	
+	.card-mini p {
+		font-size: 0.9rem;
+		color: rgba(255, 255, 255, 0.8);
+		margin-bottom: 0;
+	}
+	
+	.chart-wrapper {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		height: 50px;
+		opacity: 0.2;
+	}
 	</style>
 
 	<script>
@@ -878,65 +980,115 @@
 			fetch('/get-order-status-counts')
 				.then(response => response.json())
 				.then(data => {
-					const ctx = document.getElementById('polar').getContext('2d');
-					new Chart(ctx, {
-						type: 'doughnut',
-						data: {
-							labels: ['Ordered', 'Delivered', 'Returned', 'Cancelled'],
-							datasets: [{
-								data: [
-									data.ordered || 0,
-									data.delivered || 0,
-									data.returned || 0,
-									data.cancelled || 0
-								],
-								backgroundColor: [
-									'#3E80F6',   // Blue for Ordered
-									'#20D489',   // Green for Delivered
-									'#FFBA4B',   // Orange for Returned
-									'#F85778'    // Red for Cancelled
-								],
-								borderWidth: 0,
-								cutout: '75%'    // Makes the doughnut thinner
-							}]
-						},
-						options: {
-							responsive: true,
-							maintainAspectRatio: false,
-							plugins: {
-								legend: {
-									position: 'right',
-									labels: {
-										padding: 20,
-										usePointStyle: true,
-										font: {
-											size: 12
-										}
-									}
-								},
-								tooltip: {
-									backgroundColor: 'rgba(255, 255, 255, 0.9)',
-									titleColor: '#000',
-									bodyColor: '#000',
-									borderColor: '#e0e6ed',
-									borderWidth: 1,
-									padding: 10,
-									callbacks: {
-										label: function(context) {
-											const label = context.label || '';
-											const value = context.raw || 0;
-											const total = context.dataset.data.reduce((a, b) => a + b, 0);
-											const percentage = ((value / total) * 100).toFixed(1);
-											return `${label}: ${value} (${percentage}%)`;
-										}
-									}
-								}
-							}
-						}
-					});
+					// Update the order status counts in the cards
+					document.getElementById('ordered-count').textContent = data.ordered || 0;
+					document.getElementById('delivered-count').textContent = data.delivered || 0;
+					document.getElementById('returned-count').textContent = data.returned || 0;
+					document.getElementById('cancelled-count').textContent = data.cancelled || 0;
+					
+					// Initialize order status mini charts
+					initializeOrderStatusCharts();
 				})
 				.catch(error => console.error('Error loading order status data:', error));
 	});
+	
+	function initializeOrderStatusCharts() {
+		// Ordered Chart
+		new Chart(document.getElementById('orderedChart'), {
+			type: 'line',
+			data: {
+				labels: ['', '', '', '', ''],
+				datasets: [{
+					data: [5, 8, 12, 8, 10],
+					borderColor: 'rgba(255,255,255,0.8)',
+					borderWidth: 2,
+					fill: false,
+					pointRadius: 0
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				legend: { display: false },
+				scales: {
+					xAxes: [{ display: false }],
+					yAxes: [{ display: false }]
+				}
+			}
+		});
+		
+		// Delivered Chart
+		new Chart(document.getElementById('deliveredChart'), {
+			type: 'line',
+			data: {
+				labels: ['', '', '', '', ''],
+				datasets: [{
+					data: [3, 6, 9, 12, 15],
+					borderColor: 'rgba(255,255,255,0.8)',
+					borderWidth: 2,
+					fill: false,
+					pointRadius: 0
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				legend: { display: false },
+				scales: {
+					xAxes: [{ display: false }],
+					yAxes: [{ display: false }]
+				}
+			}
+		});
+		
+		// Returned Chart
+		new Chart(document.getElementById('returnedChart'), {
+			type: 'line',
+			data: {
+				labels: ['', '', '', '', ''],
+				datasets: [{
+					data: [2, 1, 3, 2, 4],
+					borderColor: 'rgba(255,255,255,0.8)',
+					borderWidth: 2,
+					fill: false,
+					pointRadius: 0
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				legend: { display: false },
+				scales: {
+					xAxes: [{ display: false }],
+					yAxes: [{ display: false }]
+				}
+			}
+		});
+		
+		// Cancelled Chart
+		new Chart(document.getElementById('cancelledChart'), {
+			type: 'line',
+			data: {
+				labels: ['', '', '', '', ''],
+				datasets: [{
+					data: [1, 2, 0, 3, 1],
+					borderColor: 'rgba(255,255,255,0.8)',
+					borderWidth: 2,
+					fill: false,
+					pointRadius: 0
+				}]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				legend: { display: false },
+				scales: {
+					xAxes: [{ display: false }],
+					yAxes: [{ display: false }]
+				}
+			}
+		});
+	}
 	</script>
 
 	<script>
