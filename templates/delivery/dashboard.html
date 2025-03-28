@@ -289,7 +289,7 @@
                     <td>${order.store_name}</td>
                     <td>${formatDate(order.rent_from)} - ${formatDate(order.rent_to)}</td>
                     <td>${order.shipping_address}</td>
-                    <td>${formatCurrency(order.order_total)}</td>
+                    <td>${formatCurrency(order.total_price)}</td>
                     <td>
                         <span class="badge ${getStatusBadgeClass(order.status)}">
                             ${order.status}

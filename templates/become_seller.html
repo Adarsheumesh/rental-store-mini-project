@@ -3,9 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
-    <title>Become a Seller | Jantrik</title>
-    <meta name="description" content="Default Description">
-    <meta name="keywords" content="E-commerce" />
+    <title>Become a Seller | ToolHive</title>
+    <meta name="description" content="Join ToolHive as a seller and start your rental business">
+    <meta name="keywords" content="E-commerce, rental, tools" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- place favicon.ico in the root directory -->
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/icon/favicon.png') }}">
@@ -202,28 +202,296 @@
         }
     </style>
     <style>
-        // ... existing styles ...
-        
-        .toolhive-logo {
+        /* Modern Card Styling */
+        .seller-card {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+
+        .seller-card .card-header {
+            background: #ff6a00;
+            padding: 25px;
+            border: none;
+            text-align: center;
+        }
+
+        .seller-card .card-header h4 {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+            text-transform: none;
+        }
+
+        .seller-card .card-body {
+            padding: 40px;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            background: #f1f4f8;
+            height: 6px;
+            border-radius: 3px;
+            margin: 0 0 30px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: linear-gradient(to right, #ff6a00, #ff8533);
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        /* Step Title */
+        .step-title {
+            color: #2c3e50;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        /* Form Controls */
+        .form-label {
+            color: #2c3e50;
+            font-weight: 500;
+            font-size: 15px;
+            margin-bottom: 10px;
+        }
+
+        .form-control {
+            height: 48px;
+            border: 2px solid #e1e8ef;
+            border-radius: 10px;
+            padding: 10px 15px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            background-color: #f8fafc;
+        }
+
+        .form-control:focus {
+            border-color: #ff6a00;
+            box-shadow: 0 0 0 0.2rem rgba(255, 106, 0, 0.15);
+            background-color: #ffffff;
+        }
+
+        textarea.form-control {
+            height: auto;
+            min-height: 100px;
+        }
+
+        .form-select {
+            height: 48px;
+            border: 2px solid #e1e8ef;
+            border-radius: 10px;
+            padding: 10px 15px;
+            font-size: 15px;
+            background-color: #f8fafc;
+            transition: all 0.3s ease;
+        }
+
+        .form-select:focus {
+            border-color: #ff6a00;
+            box-shadow: 0 0 0 0.2rem rgba(255, 106, 0, 0.15);
+            background-color: #ffffff;
+        }
+
+        /* Buttons */
+        .btn {
+            height: 48px;
+            padding: 0 25px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 15px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #ff6a00;
+            border: none;
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background: #ff8533;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #e1e8ef;
+            border: none;
+            color: #2c3e50;
+        }
+
+        .btn-secondary:hover {
+            background: #d1dbe4;
+            color: #2c3e50;
+        }
+
+        .btn i {
+            font-size: 18px;
+        }
+
+        .btn-primary i {
+            margin-left: 8px;
+        }
+
+        .btn-secondary i {
+            margin-right: 8px;
+        }
+
+        /* Form Groups */
+        .mb-4 {
+            margin-bottom: 25px;
+        }
+
+        /* Helper Text */
+        .text-muted {
+            font-size: 13px;
+            color: #6c757d;
+            margin-top: 6px;
+        }
+
+        /* Validation States */
+        .form-control.is-invalid {
+            border-color: #dc3545;
+            background-image: none;
+        }
+
+        .invalid-feedback {
+            color: #dc3545;
+            font-size: 13px;
+            margin-top: 6px;
+        }
+
+        /* Pending Application State */
+        .pending-container {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .pending-icon {
+            font-size: 64px;
+            color: #ff6a00;
+            margin-bottom: 25px;
+        }
+
+        .pending-title {
+            color: #2c3e50;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .pending-message {
+            color: #6c757d;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Step Animation */
+        .step {
+            opacity: 0;
+            transform: translateX(20px);
+            transition: all 0.3s ease;
+        }
+
+        .step.active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* Terms Checkbox */
+        .form-check {
+            margin-top: 20px;
+        }
+
+        .form-check-input {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            border: 2px solid #e1e8ef;
+        }
+
+        .form-check-input:checked {
+            background-color: #ff6a00;
+            border-color: #ff6a00;
+        }
+
+        .form-check-label {
+            padding-left: 8px;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+
+        .form-check-label a {
+            color: #ff6a00;
             text-decoration: none;
-            display: block;
-            padding: 10px 0;
         }
-    
-        .logo-text {
-            font-size: 32px;
+
+        .form-check-label a:hover {
+            text-decoration: underline;
+        }
+
+        /* Header Navigation */
+        .header-nav {
+            padding: 15px 0;
+            background: #ffffff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .nav-logo {
+            font-size: 24px;
             font-weight: 700;
-            color: #333;
-            font-family: 'Lily Script One', cursive;
+            color: #2c3e50;
+            text-decoration: none;
         }
-    
-        .logo-text .highlight {
+
+        .nav-logo:hover {
             color: #ff6a00;
         }
-    
+
+        /* Background */
+        .become-seller-area {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f4f8 100%);
+            min-height: calc(100vh - 80px);
+            padding: 60px 0;
+        }
+
+        /* Responsive Adjustments */
         @media (max-width: 768px) {
-            .logo-text {
-                font-size: 24px;
+            .seller-card .card-body {
+                padding: 25px;
+            }
+
+            .seller-card .card-header h4 {
+                font-size: 20px;
+            }
+
+            .step-title {
+                font-size: 18px;
+            }
+
+            .btn {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+
+            .d-flex {
+                flex-direction: column;
             }
         }
     </style>
@@ -236,133 +504,134 @@
     <!-- Wrapper Start -->
     <div class="wrapper homepage">
         <!-- Header Area Start -->
-        <header>
-            <!-- Header Bottom Start -->
-            <div class="header-bottom header-sticky">
-                <div class="container">
-                    <div class="row justify-content-between align-items-center">
-                        <!--  logo Start-->
-                        <div class="col-auto">
-                            <div class="logo">
-                                <a href="/index" class="toolhive-logo">
-                                    <span class="logo-text">Tool<span class="highlight">Hive</span></span>
-                                </a>
-                            </div>                          
-                        </div>
-                        <!--  logo End -->
-                        
-                        <!--  Cart Box  Start -->
-                        <div class="col-auto">
-                            <div class="cart-box text-end d-flex align-items-center">
-                                <!-- Become a Seller button -->
-                                <div class="become-seller me-3">
-                                    <a href="{{ url_for('become_seller') }}" class="btn btn-become-seller">
-                                        <i class="fa fa-store me-2"></i>Become a Seller
-                                    </a>
-                                </div>
-
-                                <ul>
-                                    <!-- User account dropdown -->
-                                    <li class="user-account-dropdown">
-                                        {% if name and name != 'Unknown' %}
-                                            <a href="#" class="user-toggle">
-                                                <i class="fa fa-user-circle"></i> Hello, {{ name }} <i class="fa fa-angle-down"></i>
-                                            </a>
-                                            <ul class="ht-dropdown user-menu">
-                                                <li><a href="{{ url_for('account') }}"><i class="fa fa-user"></i> My Account</a></li>
-                                                <li><a href="{{ url_for('wishlist') }}"><i class="fa fa-heart"></i> Wishlist</a></li>
-                                                <li class="divider"></li>
-                                                <li><a href="{{ url_for('logout') }}"><i class="fa fa-sign-out"></i> Logout</a></li>
-                                            </ul>
-                                        {% else %}
-                                            <a href="{{ url_for('login') }}" class="user-toggle">
-                                                <i class="fa fa-user"></i> Login / Register <i class="fa fa-angle-down"></i>
-                                            </a>
-                                            <ul class="ht-dropdown user-menu">
-                                                <li><a href="{{ url_for('login') }}"><i class="fa fa-sign-in"></i> Login</a></li>
-                                                <li><a href="{{ url_for('register') }}"><i class="fa fa-user-plus"></i> Register</a></li>
-                                            </ul>
-                                        {% endif %}
-                                    </li>
-                                    <li><a href="{{ url_for('wishlist') }}"><i class="fa fa-heart-o"></i></a></li>
-                                    <li><a href="{{ url_for('cart') }}"><i class="fa fa-shopping-basket"></i><span class="cart-counter">{{ cart_count }}</span></a></li>
-                                </ul>
-                            </div>
-                        </div>
-                        <!--  Cart Box  End-->
+        <header class="header-nav">
+            <div class="container">
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="/index" class="nav-logo">Tool<span style="color: #ff6a00;">Hive</span></a>
+                    <div class="d-flex align-items-center">
+                        <span class="me-3">Hello, {{ name }}</span>
+                        <a href="{{ url_for('account') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fa fa-user me-2"></i>Account
+                        </a>
                     </div>
-                    <!-- Row End -->
                 </div>
-                <!-- Container End -->
             </div>
-            <!-- Header Bottom End -->
         </header>
         <!-- Header Area End -->
 
-      
-
         <!-- Become a Seller Form Start -->
-        <div class="become-seller-area py-4" style="background: linear-gradient(135deg, #f6f9fc 0%, #f1f4f8 100%);">
+        <div class="become-seller-area">
             <div class="container">
                 <div class="row justify-content-center">
                     <div class="col-md-8">
-                        <div class="card shadow-lg border-0">
-                            <div class="card-header bg-primary text-white py-3" style="background: linear-gradient(135deg, #4e54c8, #8f94fb);">
-                                <h4 class="text-center mb-0">Become a Seller</h4>
+                        <div class="seller-card">
+                            <div class="card-header">
+                                <h4>Start Your Rental Business with ToolHive</h4>
                             </div>
                             <div class="card-body">
                                 {% if application_pending %}
-                                    <div class="text-center">
-                                        <i class="fa fa-clock-o fa-4x mb-3" style="color: #ffd700;"></i>
-                                        <h2 class="mb-3">Application Pending</h2>
-                                        <p class="lead">Your vendor application is currently under review. We'll notify you once it's approved.</p>
-                                        <a href="{{ url_for('account') }}" class="btn btn-primary mt-3">Go to Account</a>
+                                    <div class="pending-container">
+                                        <i class="fa fa-clock-o pending-icon"></i>
+                                        <h2 class="pending-title">Application Under Review</h2>
+                                        <p class="pending-message">
+                                            Thank you for your interest in becoming a ToolHive vendor. Our team is currently reviewing your application. We'll notify you via email once it's approved.
+                                        </p>
+                                        <a href="{{ url_for('account') }}" class="btn btn-primary">
+                                            Return to Account
+                                        </a>
                                     </div>
                                 {% else %}
-                                    <div class="progress-bar" id="progress-bar"></div>
-                                    <p class="text-center mb-4" id="step-title">Step 1 of 3: Basic Information</p>
+                                    <div class="progress-container">
+                                        <div class="progress-bar" id="progress-bar"></div>
+                                    </div>
+                                    <p class="step-title" id="step-title">Step 1: Basic Information</p>
+                                    
                                     <form id="seller-form" method="POST" action="{{ url_for('become_seller') }}" class="needs-validation" novalidate>
                                         <!-- Step 1: Basic Information -->
                                         <div class="step active">
-                                            <div class="mb-3">
+                                            <div class="mb-4">
                                                 <label for="store_name" class="form-label">Store Name</label>
-                                                <input type="text" class="form-control" id="store_name" name="store_name" required maxlength="15">
+                                                <input type="text" class="form-control" id="store_name" name="store_name" 
+                                                       placeholder="Enter your store name" required maxlength="15">
                                                 <div id="storeNameError" class="invalid-feedback"></div>
                                             </div>
-                                            <div class="mb-3">
+                                            <div class="mb-4">
                                                 <label for="name" class="form-label">Your Name</label>
-                                                <input type="text" class="form-control" id="name" name="name" value="{{ name }}" required maxlength="20">
+                                                <input type="text" class="form-control" id="name" name="name" 
+                                                       value="{{ name }}" required maxlength="20">
                                                 <div id="nameError" class="invalid-feedback"></div>
                                             </div>
                                         </div>
 
                                         <!-- Step 2: Contact Details -->
                                         <div class="step">
-                                            <div class="mb-3">
+                                            <div class="mb-4">
                                                 <label for="phone" class="form-label">Phone Number</label>
-                                                <input type="tel" class="form-control" id="phone" name="phone" value="{{ phone }}" required maxlength="10" pattern="\d{10}">
+                                                <input type="tel" class="form-control" id="phone" name="phone" 
+                                                       value="{{ phone }}" required maxlength="10" pattern="\d{10}"
+                                                       placeholder="Enter your 10-digit phone number">
                                                 <div id="phoneError" class="invalid-feedback"></div>
                                             </div>
-                                            <div class="mb-3">
-                                                <label for="address" class="form-label">Address</label>
-                                                <textarea class="form-control" id="address" name="address" rows="3" required maxlength="20">{{ district }}</textarea>
-                                                <div id="addressError" class="invalid-feedback"></div>
+                                            <div class="mb-4">
+                                                <label for="business_address" class="form-label">Business Address</label>
+                                                <textarea class="form-control" id="business_address" name="business_address" 
+                                                          rows="3" required maxlength="200" 
+                                                          placeholder="Enter your complete business address">{{ user_info.get('shipping_address', '') }}</textarea>
+                                                <div id="businessAddressError" class="invalid-feedback"></div>
+                                                <small class="text-muted">Your registered shipping address will be used as your business address. You can modify it if needed.</small>
+                                            </div>
+                                            <div class="mb-4">
+                                                <label for="district" class="form-label">District</label>
+                                                <select class="form-control" id="district" name="district" required>
+                                                    <option value="">Select your district</option>
+                                                    <option value="Alappuzha" {% if user_info.get('district') == 'Alappuzha' %}selected{% endif %}>Alappuzha</option>
+                                                    <option value="Ernakulam" {% if user_info.get('district') == 'Ernakulam' %}selected{% endif %}>Ernakulam</option>
+                                                    <option value="Idukki" {% if user_info.get('district') == 'Idukki' %}selected{% endif %}>Idukki</option>
+                                                    <option value="Kannur" {% if user_info.get('district') == 'Kannur' %}selected{% endif %}>Kannur</option>
+                                                    <option value="Kasaragod" {% if user_info.get('district') == 'Kasaragod' %}selected{% endif %}>Kasaragod</option>
+                                                    <option value="Kollam" {% if user_info.get('district') == 'Kollam' %}selected{% endif %}>Kollam</option>
+                                                    <option value="Kottayam" {% if user_info.get('district') == 'Kottayam' %}selected{% endif %}>Kottayam</option>
+                                                    <option value="Kozhikode" {% if user_info.get('district') == 'Kozhikode' %}selected{% endif %}>Kozhikode</option>
+                                                    <option value="Malappuram" {% if user_info.get('district') == 'Malappuram' %}selected{% endif %}>Malappuram</option>
+                                                    <option value="Palakkad" {% if user_info.get('district') == 'Palakkad' %}selected{% endif %}>Palakkad</option>
+                                                    <option value="Pathanamthitta" {% if user_info.get('district') == 'Pathanamthitta' %}selected{% endif %}>Pathanamthitta</option>
+                                                    <option value="Thiruvananthapuram" {% if user_info.get('district') == 'Thiruvananthapuram' %}selected{% endif %}>Thiruvananthapuram</option>
+                                                    <option value="Thrissur" {% if user_info.get('district') == 'Thrissur' %}selected{% endif %}>Thrissur</option>
+                                                    <option value="Wayanad" {% if user_info.get('district') == 'Wayanad' %}selected{% endif %}>Wayanad</option>
+                                                </select>
+                                                <div id="districtError" class="invalid-feedback"></div>
                                             </div>
                                         </div>
 
-                                        <!-- Step 3: Additional Information -->
+                                        <!-- Step 3: Business Information -->
                                         <div class="step">
-                                            <div class="mb-3">
+                                            <div class="mb-4">
                                                 <label for="gst_number" class="form-label">GST Number</label>
-                                                <input type="text" class="form-control" id="gst_number" name="gst_number" required maxlength="15">
+                                                <input type="text" class="form-control" id="gst_number" name="gst_number" 
+                                                       required maxlength="15" placeholder="Enter your 15-digit GST number">
                                                 <div id="gstError" class="invalid-feedback"></div>
+                                                <small class="text-muted">Format: 22AAAAA0000A1Z5</small>
+                                            </div>
+                                            <div class="mb-4">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="terms" required>
+                                                    <label class="form-check-label" for="terms">
+                                                        I agree to ToolHive's <a href="#" class="text-primary">Terms of Service</a> and <a href="#" class="text-primary">Vendor Guidelines</a>
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
 
                                         <div class="d-flex justify-content-between mt-4">
-                                            <button type="button" id="prev-btn" class="btn btn-secondary">Previous</button>
-                                            <button type="button" id="next-btn" class="btn btn-primary">Next</button>
-                                            <button type="submit" id="submit-btn" class="btn btn-success" style="display: none;">Submit</button>
+                                            <button type="button" id="prev-btn" class="btn btn-secondary">
+                                                <i class="fa fa-arrow-left me-2"></i>Previous
+                                            </button>
+                                            <button type="button" id="next-btn" class="btn btn-primary">
+                                                Next<i class="fa fa-arrow-right ms-2"></i>
+                                            </button>
+                                            <button type="submit" id="submit-btn" class="btn btn-success" style="display: none;">
+                                                <i class="fa fa-check me-2"></i>Submit Application
+                                            </button>
                                         </div>
                                     </form>
                                 {% endif %}
@@ -373,6 +642,32 @@
             </div>
         </div>
         <!-- Become a Seller Form End -->
+
+        <!-- Success Modal -->
+        <div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Application Submitted Successfully!</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body text-center">
+                        <i class="fa fa-check-circle text-success" style="font-size: 48px;"></i>
+                        <p class="mt-3">Thank you for applying to become a ToolHive vendor. We'll review your application and notify you via email once it's approved.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" onclick="window.location.href='{{ url_for('account') }}'">
+                            Go to Account
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Update Popup -->
+        <div id="updatePopup" class="custom-popup">
+            <p id="popup-message"></p>
+        </div>
 
         <!-- Footer Start -->
         <footer class="off-white-bg">
@@ -475,13 +770,23 @@
         }
     }
 
-    function validateAddress() {
-        const addressInput = document.getElementById('address');
-        const errorElement = document.getElementById('addressError');
-        const regex = /^[A-Za-z0-9\s,.-]{5,20}$/;
-    
-        if (!regex.test(addressInput.value.trim())) {
-            errorElement.textContent = 'Address must be 5-20 characters long and can only contain letters, numbers, spaces, commas, periods, and hyphens.';
+    function validateBusinessAddress() {
+        const addressInput = document.getElementById('business_address');
+        const errorElement = document.getElementById('businessAddressError');
+        const address = addressInput.value.trim();
+        
+        if (address.length < 10) {
+            errorElement.textContent = 'Business address must be at least 10 characters long';
+            errorElement.style.display = 'block';
+            addressInput.classList.add('is-invalid');
+            return false;
+        } else if (address.length > 200) {
+            errorElement.textContent = 'Business address cannot exceed 200 characters';
+            errorElement.style.display = 'block';
+            addressInput.classList.add('is-invalid');
+            return false;
+        } else if (!/^[A-Za-z0-9\s,.-/#]+$/.test(address)) {
+            errorElement.textContent = 'Business address can only contain letters, numbers, spaces, and basic punctuation';
             errorElement.style.display = 'block';
             addressInput.classList.add('is-invalid');
             return false;
@@ -489,6 +794,23 @@
             errorElement.textContent = '';
             errorElement.style.display = 'none';
             addressInput.classList.remove('is-invalid');
+            return true;
+        }
+    }
+
+    function validateDistrict() {
+        const districtInput = document.getElementById('district');
+        const errorElement = document.getElementById('districtError');
+        
+        if (!districtInput.value) {
+            errorElement.textContent = 'Please select your district';
+            errorElement.style.display = 'block';
+            districtInput.classList.add('is-invalid');
+            return false;
+        } else {
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+            districtInput.classList.remove('is-invalid');
             return true;
         }
     }
@@ -516,9 +838,10 @@
         const storeNameValid = validateStoreName();
         const nameValid = validateName();
         const phoneValid = validatePhone();
-        const addressValid = validateAddress();
+        const addressValid = validateBusinessAddress();
+        const districtValid = validateDistrict();
         const gstValid = validateGST();
-        return storeNameValid && nameValid && phoneValid && addressValid && gstValid;
+        return storeNameValid && nameValid && phoneValid && addressValid && districtValid && gstValid;
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -558,7 +881,7 @@
                     isValid = validateStoreName() && validateName();
                     break;
                 case 1:
-                    isValid = validatePhone() && validateAddress();
+                    isValid = validatePhone() && validateBusinessAddress() && validateDistrict();
                     break;
                 case 2:
                     isValid = validateGST();
@@ -632,40 +955,31 @@
         // Pre-fill validation for pre-filled fields
         validateName();
         validatePhone();
-        validateAddress();
+        validateBusinessAddress();
+        validateDistrict();
+
+        // Pre-fill business address from shipping address if available
+        const shippingAddress = "{{ user_info.get('shipping_address', '') }}";
+        if (shippingAddress) {
+            document.getElementById('business_address').value = shippingAddress;
+        }
+
+        // Pre-fill district if available
+        const district = "{{ user_info.get('district', '') }}";
+        if (district) {
+            document.getElementById('district').value = district;
+        }
 
         // Add event listeners for real-time validation
         document.getElementById('store_name').addEventListener('input', validateStoreName);
         document.getElementById('name').addEventListener('input', validateName);
         document.getElementById('phone').addEventListener('input', validatePhone);
-        document.getElementById('address').addEventListener('input', validateAddress);
+        document.getElementById('business_address').addEventListener('input', validateBusinessAddress);
+        document.getElementById('district').addEventListener('change', validateDistrict);
         document.getElementById('gst_number').addEventListener('input', validateGST);
 
         showStep(currentStep);
     });
     </script>
-
-    <!-- Add this modal at the end of the body, just before the closing </body> tag -->
-    <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="successModalLabel">Registration Successful</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <p>Your vendor registration was successful! Your application is now pending approval.</p>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-primary" onclick="window.location.href='{{ url_for('account') }}'">Go to Account</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Add this just before the closing </body> tag -->
-    <div id="updatePopup" class="custom-popup">
-        <p id="popup-message"></p>
-    </div>
 </body>
 </html>

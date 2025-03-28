@@ -43,9 +43,94 @@
 
   <!-- modernizr js -->
   <script src="{{ url_for('static', filename='js/vendor/modernizr-2.8.3.min.js') }}"></script>
+  
+  <style>
+    .custom-popup {
+        display: none;
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #f8f8f8;
+        border: 1px solid #ddd;
+        padding: 15px 25px;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        z-index: 1000;
+        text-align: center;
+        animation: fadeInOut 3s ease-in-out;
+    }
+
+    .custom-popup.error {
+        background-color: #dc3545;
+        border-left: 4px solid #c82333;
+        color: white;
+    }
+    
+    .custom-popup.success {
+        background-color: #28a745;
+        border-left: 4px solid #218838;
+        color: white;
+    }
+
+    #popup-message {
+        margin: 0;
+        font-size: 16px;
+        color: #333;
+    }
+    
+    .custom-popup.error #popup-message,
+    .custom-popup.success #popup-message {
+        color: white;
+    }
+
+    @keyframes fadeInOut {
+        0% { opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { opacity: 0; }
+    }
+    
+    .form-error {
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        animation: fadeIn 0.3s;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+  </style>
 
 </head>
 <script>
+    function showPopup(message, isError = false, isSuccess = false) {
+        var popup = document.getElementById('custom-popup');
+        var popupMessage = document.getElementById('popup-message');
+        
+        if (popup && popupMessage) {
+            popupMessage.textContent = message;
+            popup.classList.remove('error', 'success');
+            
+            if (isError) {
+                popup.classList.add('error');
+            } else if (isSuccess) {
+                popup.classList.add('success');
+            }
+            
+            popup.style.display = 'block';
+            
+            // Remove the popup after 5 seconds
+            setTimeout(function() {
+                popup.style.display = 'none';
+            }, 5000);
+        } else {
+            console.error('Popup elements not found');
+            alert(message);
+        }
+    }
 
     function validatePassword() {
         const password = document.getElementById('pwd').value;
@@ -119,7 +204,7 @@
             addressError.textContent = 'Please enter your address';
             return false;
         } else if (addressValue.length < 5) {
-            addressError.textContent = 'Address should be at least 5 characters long';
+            addressError.textContent = 'Address should be at least 10 characters long';
             return false;
         } else if (!validAddressPattern.test(addressValue)) {
             addressError.textContent = 'Address can only contain letters, numbers, spaces, commas, and periods';
@@ -163,9 +248,100 @@
         }
     }
 </script>
+
+{% if success_message %}
+<script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', function() {
+        showPopup('{{ success_message }}', false, true);
+        setTimeout(function() {
+            window.location.href = '/login';
+        }, 5000);
+    });
+</script>
+{% endif %}
+
+{% if error_message %}
+<script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', function() {
+        showPopup('{{ error_message }}', true, false);
+    });
+</script>
+{% endif %}
+
+<script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', function() {
+        const registerForm = document.getElementById('register-form');
+        if (registerForm) {
+            registerForm.addEventListener('submit', function(e) {
+                if (!validateForm()) {
+                    e.preventDefault();
+                    showPopup('Please correct the errors in the form before submitting.', true);
+                    return false;
+                }
+                
+                const jsonResponseInput = document.createElement('input');
+                jsonResponseInput.type = 'hidden';
+                jsonResponseInput.name = 'json_response';
+                jsonResponseInput.value = '1';
+                this.appendChild(jsonResponseInput);
+                
+                showPopup('Processing registration...', false, false);
+                return true;
+            });
+        }
+        
+        // Check for flash messages on page load
+        const urlParams = new URLSearchParams(window.location.search);
+        const message = urlParams.get('message');
+        const status = urlParams.get('status');
+        
+        if (message) {
+            const decodedMessage = decodeURIComponent(message);
+            const isError = status === 'error';
+            const isSuccess = status === 'success';
+            
+            if (isSuccess) {
+                showPopup('Registration successful! Please check your email for verification link before logging in.', false, true);
+                setTimeout(function() {
+                    window.location.href = '/login';
+                }, 5000);
+            } else if (isError) {
+                showPopup(decodedMessage, true, false);
+            } else {
+                showPopup(decodedMessage, false, false);
+            }
+        }
+        
+        // Real-time validation feedback
+        const inputFields = document.querySelectorAll('input, select, textarea');
+        inputFields.forEach(field => {
+            field.addEventListener('blur', function() {
+                switch(this.id) {
+                    case 'f-name':
+                        validateName();
+                        break;
+                    case 'email':
+                        validateEmail();
+                        break;
+                    case 'number':
+                        validatePhone();
+                        break;
+                    case 'pwd':
+                        validatePassword();
+                        break;
+                    case 'district':
+                        validateDistrict();
+                        break;
+                    case 'address':
+                        validateAddress();
+                        break;
+                }
+            });
+        });
+    });
+</script>
+
 <style>
-    // ... existing styles ...
-    
     .toolhive-logo {
         text-decoration: none;
         display: block;
@@ -406,7 +582,7 @@
                                 <p class="text-muted">Already have an account? <a href="/login" class="text-primary">Login here</a></p>
                             </div>
                             
-                            <form class="form-horizontal" action="/register" method="POST" onsubmit="return validateForm()">
+                            <form id="register-form" class="form-horizontal" action="/register" method="POST" onsubmit="return validateForm()">
                                 <div class="row">
                                     <!-- Left Column -->
                                     <div class="col-md-6">
@@ -465,11 +641,12 @@
                                         </div>
 
                                         <div class="form-group mb-3">
-                                            <label class="form-label" for="address">Address <span class="text-danger">*</span></label>
-                                            <textarea name="address" class="form-control rounded" id="address" 
-                                                      placeholder="Enter your complete address (only letters, numbers, spaces, commas, and periods allowed)" 
+                                            <label class="form-label" for="address">Shipping Address <span class="text-danger">*</span></label>
+                                            <textarea name="shipping_address" class="form-control rounded" id="address" 
+                                                      placeholder="Enter your shipping address (only letters, numbers, spaces, commas, and periods allowed)" 
                                                       required rows="3" maxlength="200" oninput="validateAddress()"></textarea>
                                             <span id="addressError" class="text-danger small"></span>
+                                            <small class="text-muted">This will be used as your default shipping address</small>
                                         </div>
                                     </div>
                                 </div>
@@ -478,9 +655,11 @@
                                 <input type="hidden" name="user_type" value="customer">
 
                                 {% if error %}
-                                    <div class="alert alert-danger rounded-pill" role="alert">
-                                        {{ error }}
-                                    </div>
+                                    <script>
+                                        document.addEventListener('DOMContentLoaded', function() {
+                                            showPopup("{{ error }}", true, false);
+                                        });
+                                    </script>
                                 {% endif %}
 
                                 <div class="form-group mt-4">
@@ -499,9 +678,11 @@
                             </form>
 
                             {% if error_message %}
-                            <div class="alert alert-danger mt-3 rounded-pill" role="alert">
-                                {{ error_message }}
-                            </div>
+                                <script>
+                                    document.addEventListener('DOMContentLoaded', function() {
+                                        showPopup("{{ error_message }}", true, false);
+                                    });
+                                </script>
                             {% endif %}
                         </div>
                     </div>
@@ -608,6 +789,10 @@
     <!-- main js -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
+    <!-- Custom Popup for Success/Error Messages -->
+    <div id="custom-popup" class="custom-popup" style="display: none;">
+        <p id="popup-message"></p>
+    </div>
 </body>
 
 

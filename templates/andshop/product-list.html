@@ -300,23 +300,70 @@
 	<!-- custom js -->
 	<script src="{{ url_for('static', filename='assets/js/custom.js') }}"></script>
 	
+	<!-- Data-Tables -->
+	<script src="{{ url_for('static', filename='assets/plugins/data-tables/jquery.datatables.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/data-tables/datatables.bootstrap5.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/data-tables/datatables.responsive.min.js') }}"></script>
+	
 	<!-- Action buttons styling and functionality -->
 	<style>
-		/* Product image */
+		/* ===== PRODUCT LIST STYLING ===== */
+		
+		/* Product Table Styles */
+		.table-responsive {
+			border-radius: 8px;
+			overflow: hidden;
+			box-shadow: 0 0 10px rgba(0, 0, 0, 0.03);
+		}
+		
+		.table {
+			margin-bottom: 0;
+			border-collapse: separate;
+			border-spacing: 0;
+			width: 100%;
+		}
+		
+		.table th {
+			letter-spacing: 0.3px;
+			font-size: 12px;
+			font-weight: 600;
+			padding: 10px 15px;
+			text-transform: uppercase;
+			background-color: #fafafa;
+			border-bottom: 1px solid #eaeaea;
+			color: #6c757d;
+		}
+		
+		.table td {
+			padding: 10px 15px;
+			vertical-align: middle;
+			border-bottom: 1px solid #f1f1f1;
+		}
+		
+		.table tr:hover {
+			background-color: #f9fbff;
+		}
+		
+		.table-striped tbody tr:nth-of-type(odd) {
+			background-color: rgba(0, 0, 0, 0.01);
+		}
+		
+		/* Product Image */
 		.tbl-thumb {
-			width: 60px;
-			height: 60px;
+			width: 50px;
+			height: 50px;
 			object-fit: cover;
-			border-radius: 5px;
-			box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-			transition: transform 0.2s ease;
+			border-radius: 4px;
+			box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+			transition: all 0.2s ease;
 		}
 		
 		.tbl-thumb:hover {
 			transform: scale(1.05);
+			box-shadow: 0 3px 8px rgba(0,0,0,0.12);
 		}
 		
-		/* Action buttons */
+		/* Action Buttons */
 		.action-buttons {
 			display: flex;
 			justify-content: center;
@@ -327,64 +374,74 @@
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
-			padding: 6px 10px;
+			padding: 5px 10px;
 			transition: all 0.2s ease;
 			border-radius: 4px;
 			font-weight: 500;
-			font-size: 0.85rem;
+			font-size: 0.8rem;
+			box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 		}
 		
 		.action-buttons .btn i {
-			margin-right: 5px;
+			margin-right: 4px;
 			font-size: 14px;
 		}
 		
-		.action-buttons .btn:hover {
-			transform: translateY(-2px);
-			box-shadow: 0 3px 5px rgba(0,0,0,0.1);
+		.action-buttons .btn-primary {
+			background-color: #4e73df;
+			border-color: #4e73df;
 		}
 		
-		/* Card styling */
+		.action-buttons .btn-primary:hover {
+			background-color: #3a5bcc;
+			border-color: #3a5bcc;
+			transform: translateY(-2px);
+			box-shadow: 0 3px 6px rgba(78, 115, 223, 0.2);
+		}
+		
+		.action-buttons .btn-danger {
+			background-color: #e74a3b;
+			border-color: #e74a3b;
+		}
+		
+		.action-buttons .btn-danger:hover {
+			background-color: #d52a1a;
+			border-color: #d52a1a;
+			transform: translateY(-2px);
+			box-shadow: 0 3px 6px rgba(231, 74, 59, 0.2);
+		}
+		
+		/* Card Styling */
 		.card {
 			border: none;
 			border-radius: 8px;
-			box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+			box-shadow: 0 0.1rem 0.75rem 0 rgba(58, 59, 69, 0.1);
+			overflow: hidden;
 		}
 		
 		.card-body {
 			padding: 1.25rem;
 		}
 		
-		/* Table enhancements */
-		.table-responsive {
-			border-radius: 6px;
-			overflow: hidden;
+		.card-default {
+			transition: transform 0.2s ease, box-shadow 0.2s ease;
 		}
 		
-		.table {
-			margin-bottom: 0;
-			border-collapse: separate;
-			border-spacing: 0;
+		.card-default:hover {
+			box-shadow: 0 0.2rem 1rem 0 rgba(58, 59, 69, 0.15);
 		}
 		
-		.table th {
-			letter-spacing: 0.5px;
-			font-size: 13px;
-			font-weight: 600;
-			padding: 12px 15px;
-		}
-		
-		.table td {
-			padding: 12px 15px;
-			vertical-align: middle;
-		}
-		
-		/* Header action button */
+		/* Header Action Button */
 		.breadcrumb-wrapper .btn-primary {
 			display: flex;
 			align-items: center;
-			padding: 8px 16px;
+			padding: 8px 14px;
 			transition: all 0.2s ease;
+			border-radius: 4px;
+			background-color: #4e73df;
+			border-color: #4e73df;
+			font-weight: 500;
+			font-size: 0.9rem;
 		}
 		
 		.breadcrumb-wrapper .btn-primary i {
@@ -393,57 +450,132 @@
 		}
 		
 		.breadcrumb-wrapper .btn-primary:hover {
-			transform: translateY(-1px);
-			box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+			transform: translateY(-2px);
+			box-shadow: 0 3px 10px rgba(78, 115, 223, 0.2);
+			background-color: #3a5bcc;
+			border-color: #3a5bcc;
 		}
 		
-		/* Product name styling */
+		/* Product Content Styling */
 		.product-name {
 			font-weight: 500;
-			color: #333;
+			color: #444;
+			font-size: 0.95rem;
+			transition: color 0.2s ease;
 		}
 		
-		/* Price tag styling */
-		.price-tag {
-			font-weight: 600;
-			color: #28a745;
-		}
-		
-		/* Price period styling */
-		.price-period {
-			font-size: 0.8rem;
-			color: #6c757d;
-			font-weight: normal;
-		}
-		
-		/* Category badge */
-		.category-badge {
-			background-color: #f1f5ff;
+		tr:hover .product-name {
 			color: #4e73df;
-			padding: 5px 10px;
-			border-radius: 4px;
-			font-size: 0.8rem;
-			display: inline-block;
 		}
 		
-		/* Stock indicator */
-		.stock-indicator {
-			font-weight: 500;
-		}
-		
-		/* Product name truncation for long names */
 		.product-name-cell {
-			max-width: 200px;
+			max-width: 180px;
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;
 		}
+		
+		.price-tag {
+			font-weight: 600;
+			color: #28a745;
+			font-size: 0.95rem;
+		}
+		
+		.price-period {
+			font-size: 0.75rem;
+			color: #6c757d;
+			font-weight: normal;
+			margin-left: 1px;
+		}
+		
+		.category-badge {
+			background-color: #f0f4ff;
+			color: #4e73df;
+			padding: 4px 10px;
+			border-radius: 12px;
+			font-size: 0.75rem;
+			display: inline-block;
+			font-weight: 500;
+			box-shadow: 0 1px 2px rgba(78, 115, 223, 0.1);
+			transition: all 0.2s ease;
+		}
+		
+		tr:hover .category-badge {
+			background-color: #4e73df;
+			color: white;
+			box-shadow: 0 2px 5px rgba(78, 115, 223, 0.2);
+		}
+		
+		.stock-indicator {
+			font-weight: 500;
+			background-color: #f8f9fa;
+			padding: 3px 8px;
+			border-radius: 4px;
+			color: #495057;
+			font-size: 0.85rem;
+		}
+		
+		/* DataTables Customization */
+		.dataTables_wrapper .row {
+			margin: 0;
+			padding: 10px 0;
+		}
+		
+		.dataTables_filter {
+			margin-bottom: 8px;
+		}
+		
+		.dataTables_filter input {
+			border-radius: 15px;
+			padding: 5px 15px;
+			height: 32px;
+			border: 1px solid #e0e0e0;
+			box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+			font-size: 0.875rem;
+		}
+		
+		.dataTables_filter input:focus {
+			border-color: #4e73df;
+			box-shadow: 0 0 0 0.15rem rgba(78, 115, 223, 0.2);
+		}
+		
+		.dataTables_length select {
+			border-radius: 15px;
+			border: 1px solid #e0e0e0;
+			box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+			padding: 5px 10px;
+			height: 32px;
+			font-size: 0.875rem;
+		}
+		
+		.dataTables_paginate .paginate_button {
+			border-radius: 4px;
+			padding: 2px 8px;
+			font-size: 0.85rem;
+		}
+		
+		.dataTables_paginate .paginate_button.current {
+			background: #4e73df !important;
+			border-color: #4e73df !important;
+			color: white !important;
+		}
+		
+		.dataTables_info {
+			font-size: 0.85rem;
+			color: #6c757d;
+			padding-top: 0.5rem;
+		}
+		
+		/* Pagination adjustments */
+		.dataTables_paginate {
+			padding-top: 0.25rem;
+		}
+		
+		.paginate_button.previous,
+		.paginate_button.next {
+			padding: 2px 8px !important;
+		}
 	</style>
-	
-	<!-- Data-Tables -->
-	<script src="{{ url_for('static', filename='assets/plugins/data-tables/jquery.datatables.min.js') }}"></script>
-	<script src="{{ url_for('static', filename='assets/plugins/data-tables/datatables.bootstrap5.min.js') }}"></script>
-	<script src="{{ url_for('static', filename='assets/plugins/data-tables/datatables.responsive.min.js') }}"></script>
 	
 	<script>
 		// Product deletion confirmation
@@ -463,7 +595,7 @@
 						[10, 25, 50, 75, "All"]
 					],
 					"pageLength": 10,
-					"dom": '<"row align-items-center mb-3"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>><"table-responsive"tr><"row align-items-center"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+					"dom": '<"row align-items-center mb-3"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>><"table-responsive"tr><"row align-items-center mt-3"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
 					"language": {
 						"search": "Search:",
 						"lengthMenu": "Show _MENU_ entries",
@@ -481,6 +613,7 @@
 				// Add custom styling to DataTables elements
 				$('.dataTables_length select').addClass('form-select form-select-sm');
 				$('.dataTables_filter input').addClass('form-control form-control-sm ms-2').attr('placeholder', 'Search products...');
+				$('.dataTables_paginate .paginate_button').addClass('btn btn-sm');
 			}
 		});
 	</script>

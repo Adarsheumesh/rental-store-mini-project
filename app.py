@@ -143,6 +143,7 @@ def register():
         name = request.form.get('name')
         phone = request.form.get('phone')
         district = request.form.get('district')
+        shipping_address = request.form.get('shipping_address')  # Get shipping address
         user_type = request.form.get('user_type')  # Get user type from form
         status = "active"    # Default status
         registration_date = datetime.now().date().strftime("%Y-%m-%d")  # Get current date
@@ -167,6 +168,10 @@ def register():
             flash('District cannot contain numbers or special characters.', 'danger')
             return render_template('register.html')
 
+        if not shipping_address or len(shipping_address.strip()) < 10:
+            flash('Please enter a valid shipping address (minimum 10 characters).', 'danger')
+            return render_template('register.html')
+
         try:
             # Create user in Firebase Auth
             user = auth.create_user_with_email_and_password(email, password)
@@ -181,7 +186,8 @@ def register():
                 "email": email,
                 "user_type": user_type,  # Save user type
                 "status": status,  # Default status
-                "registration_date": registration_date  # Save registration date (only date)
+                "registration_date": registration_date,  # Save registration date (only date)
+                "shipping_address": shipping_address  # Save shipping address
             })
 
             flash('Registration successful! Please verify your email before logging in.', 'success')
@@ -776,40 +782,67 @@ def save_profile_picture(profile_picture):
 @app.route('/update-account', methods=['GET', 'POST'])
 def update_account():
     if 'email' not in session or 'user_info' not in session:
+        if request.form.get('json_response') == '1':
+            return jsonify({"success": False, "message": "You must be logged in."})
         return redirect(url_for('login'))
 
     email = session['email']
     user_info = session['user_info']
     user_type = user_info.get('user_type')
+    # Flag to check if this is an AJAX request expecting JSON response
+    is_json_response = request.form.get('json_response') == '1'
 
     if request.method == 'POST':
         name = request.form.get('name')
         phone = request.form.get('phone')
         district = request.form.get('district')
-        address = request.form.get('address')  # Get address from form
+        shipping_address = request.form.get('shipping_address')  # Get shipping_address from form
 
+        # For vendor profile updates, shipping_address may not be included
+        if user_type == 'vendor' and not shipping_address:
+            shipping_address = user_info.get('shipping_address', '')
+
+        # Create validation error messages
+        errors = []
+        
         if not is_valid_name(name):
+            errors.append('Name cannot contain numbers or special characters.')
+            if is_json_response:
+                return jsonify({"success": False, "message": "Name cannot contain numbers or special characters."})
             flash('Name cannot contain numbers or special characters.', 'danger')
             return render_template('account.html', email=email, user_info=user_info)
 
         if not is_valid_phone(phone):
+            errors.append('Invalid phone number.')
+            if is_json_response:
+                return jsonify({"success": False, "message": "Invalid phone number."})
             flash('Invalid phone number.', 'danger')
             return render_template('account.html', email=email, user_info=user_info)
 
         if not is_valid_district(district):
+            errors.append('Please select a valid district.')
+            if is_json_response:
+                return jsonify({"success": False, "message": "Please select a valid district."})
             flash('Please select a valid district.', 'danger')
             return render_template('account.html', email=email, user_info=user_info)
 
-        if not is_valid_address(address):  # Add address validation
-            flash('Address can only contain letters, numbers, spaces, commas, and periods.', 'danger')
+        # Only validate shipping address for regular customers or if it's provided
+        if not user_type == 'vendor' and (not shipping_address or len(shipping_address.strip()) < 10):
+            errors.append('Address should be at least 10 characters long.')
+            if is_json_response:
+                return jsonify({"success": False, "message": "Address should be at least 10 characters long."})
+            flash('Address should be at least 10 characters long.', 'danger')
             return render_template('account.html', email=email, user_info=user_info)
 
         update_data = {
             "name": name,
             "phone": phone,
-            "district": district,
-            "address": address  # Add address to update data
+            "district": district
         }
+        
+        # Only include shipping_address if it's provided
+        if shipping_address:
+            update_data["shipping_address"] = shipping_address
 
         # Additional fields for vendors
         if user_type == 'vendor':
@@ -817,34 +850,55 @@ def update_account():
             profile_pic = request.files.get('profile_pic')
 
             if not store_name:
+                errors.append('Store name is required for vendors.')
+                if is_json_response:
+                    return jsonify({"success": False, "message": "Store name is required for vendors."})
                 flash('Store name is required for vendors.', 'danger')
                 return render_template('account.html', email=email, user_info=user_info)
 
             # Save the profile picture if it exists
-            if profile_pic:
-                profile_pic_url = save_profile_picture(profile_pic)
-                update_data['profile_pic'] = profile_pic_url
+            if profile_pic and profile_pic.filename:
+                try:
+                    profile_pic_url = save_profile_picture(profile_pic)
+                    update_data['profile_pic'] = profile_pic_url
+                except Exception as e:
+                    if is_json_response:
+                        return jsonify({"success": False, "message": f"Failed to upload profile picture: {str(e)}"})
+                    flash(f"Failed to upload profile picture: {str(e)}", 'danger')
+                    return render_template('account.html', email=email, user_info=user_info)
 
             update_data['store_name'] = store_name
 
         user_id = session['user_id']
         try:
+            # Update the database
             db.child("users").child(user_id).update(update_data)
 
             # Update session info
-            session['user_info'].update(update_data)
+            user_info.update(update_data)
+            session['user_info'] = user_info
+
+            if is_json_response:
+                # Return JSON response for AJAX requests
+                return jsonify({
+                    "success": True, 
+                    "message": "Account updated successfully!",
+                    "user": user_info
+                })
 
             flash('Account updated successfully!', 'success')
-            
-            # Redirect based on user type
-            if user_type == "vendor":
-                return redirect(url_for('user_profile'))  # Redirect to the vendor profile route
-            else:
-                return redirect(url_for('account'))
+            return redirect(url_for('account'))
         except Exception as e:
-            flash(f"Failed to update account: {str(e)}", 'danger')
+            error_message = f"Failed to update account: {str(e)}"
+            if is_json_response:
+                return jsonify({"success": False, "message": error_message})
+            flash(error_message, 'danger')
             return render_template('account.html', email=email, user_info=user_info)
 
+    # For GET requests
+    if is_json_response:
+        return jsonify({"success": False, "message": "Method not allowed. Please submit the form."})
+        
     return render_template('account.html', email=email, user_info=user_info)
 
 def is_valid_address(address):
@@ -1180,13 +1234,23 @@ def product_list():
         return redirect(url_for('login'))
 
     user_info = session['user_info']
+    user_id = session.get('user_id')
     try:
         # Fetch all products from the Firebase database
         products = db.child("products").get()
-        product_list = products.val() if products else {}
+        all_products = products.val() if products else {}
+        
+        # Filter products to only show those from the vendor's store
+        store_name = user_info.get('store_name')
+        product_list = {}
+        
+        if all_products and store_name:
+            for product_id, product in all_products.items():
+                if product.get('store_name') == store_name:
+                    product_list[product_id] = product
 
         if not product_list:
-            flash('No products found.', 'warning')
+            flash('No products found for your store.', 'warning')
 
     except Exception as e:
         flash(f"Failed to fetch product list: {str(e)}", 'danger')
@@ -1203,6 +1267,8 @@ def update_product(product_id):
         return redirect(url_for('login'))
 
     user_info = session['user_info']
+    user_id = session.get('user_id')
+    store_name = user_info.get('store_name')
     print(f"Accessing edit-product route for product_id: {product_id}")
     
     try:
@@ -1213,6 +1279,11 @@ def update_product(product_id):
         if not product:
             print(f"Product with ID {product_id} not found in the database.")
             flash('Product not found.', 'danger')
+            return redirect(url_for('product_list'))
+            
+        # Check if the product belongs to this vendor's store
+        if product.get('store_name') != store_name:
+            flash('You do not have permission to edit this product.', 'danger')
             return redirect(url_for('product_list'))
 
         # Fetch categories
@@ -1241,7 +1312,9 @@ def update_product(product_id):
                 "product_name": product_name,
                 "product_quantity": product_quantity,
                 "main_category": main_category,
-                "product_price": product_price
+                "product_price": product_price,
+                "store_name": store_name,  # Ensure store name is preserved
+                "vendor_id": user_id  # Ensure vendor ID is preserved
             }
 
             # Handle product image
@@ -1278,7 +1351,26 @@ def update_product(product_id):
 # delete_product
 @app.route('/delete-product/<product_id>', methods=['POST'])
 def delete_product(product_id):
+    if 'user_info' not in session or 'user_id' not in session:
+        flash('Please log in to delete products.', 'warning')
+        return redirect(url_for('login'))
+        
+    user_info = session['user_info']
+    store_name = user_info.get('store_name')
+    
     try:
+        # First check if the product exists
+        product = db.child("products").child(product_id).get().val()
+        
+        if not product:
+            flash('Product not found.', 'danger')
+            return redirect(url_for('product_list'))
+            
+        # Check if the product belongs to this vendor's store
+        if product.get('store_name') != store_name:
+            flash('You do not have permission to delete this product.', 'danger')
+            return redirect(url_for('product_list'))
+            
         # Delete the product from the Firebase database
         db.child("products").child(product_id).remove()
         flash('Product deleted successfully!', 'success')
@@ -3199,92 +3291,102 @@ def cancel_order():
         return jsonify({'success': False, 'message': 'An error occurred while cancelling the order'}), 500
 @app.route('/become-seller', methods=['GET', 'POST'])
 def become_seller():
-    app.logger.info(f"Entering become_seller route. Method: {request.method}")
+    app.logger.info("Entering become_seller route. Method: %s", request.method)
     if 'user_id' not in session:
-        app.logger.warning("User not logged in, redirecting to login")
+        flash('Please log in to access this page.', 'warning')
         return redirect(url_for('login'))
 
-    user_id = session['user_id']
-    app.logger.info(f"User ID from session: {user_id}")
-    
-    # Fetch user data from the database
-    user_data = db.child("users").child(user_id).get().val()
-    app.logger.info(f"Fetched user data: {user_data}")
-    
-    if user_data:
-        name = user_data.get('name', 'Unknown')
-        email = user_data.get('email', 'Unknown')
-        phone = user_data.get('phone', 'Unknown')
-        district = user_data.get('district', 'Unknown')
-        vendor_status = user_data.get('vendor_status', None)
-    else:
-        name = email = phone = district = 'Unknown'
-        vendor_status = None
-        app.logger.warning(f"No user data found for user_id: {user_id}")
+    try:
+        user_id = session['user_id']
+        app.logger.info("User ID from session: %s", user_id)
+        
+        # Fetch user data from the database
+        user_data = db.child("users").child(user_id).get().val()
+        app.logger.info("Fetched user data: %s", user_data)
+        
+        if user_data:
+            name = user_data.get('name', 'Unknown')
+            email = user_data.get('email', 'Unknown')
+            phone = user_data.get('phone', 'Unknown')
+            district = user_data.get('district', 'Unknown')
+            vendor_status = user_data.get('vendor_status', None)
+        else:
+            name = email = phone = district = 'Unknown'
+            vendor_status = None
+            app.logger.warning("No user data found for user_id: %s", user_id)
 
-    if vendor_status == 'pending':
-        app.logger.info("Vendor application is pending")
+        if vendor_status == 'pending':
+            app.logger.info("Vendor application is pending")
+            return render_template('become_seller.html', 
+                                application_pending=True,
+                                name=name, 
+                                email=email, 
+                                phone=phone,
+                                district=district,
+                                user_info=user_data)  # Pass user_data as user_info
+        elif vendor_status == 'approved':
+            flash('You are already a registered vendor.', 'info')
+            return redirect(url_for('vendor_dashboard'))
+
+        if request.method == 'POST':
+            app.logger.info("Processing POST request")
+            current_step = int(request.form.get('current_step', 0))
+            app.logger.info("Current step: %d", current_step)
+
+            update_data = {}
+            if current_step == 0:
+                update_data['store_name'] = request.form.get('store_name')
+                update_data['name'] = request.form.get('name')
+            elif current_step == 1:
+                update_data['phone'] = request.form.get('phone')
+                update_data['business_address'] = request.form.get('business_address')
+                update_data['district'] = request.form.get('district')
+            elif current_step == 2:
+                update_data['gst_number'] = request.form.get('gst_number')
+                if request.form.get('final_submit') == 'true':
+                    update_data['vendor_status'] = 'pending'
+
+            app.logger.info("Update data prepared: %s", update_data)
+
+            try:
+                # Update user data in the Realtime Database
+                app.logger.info("Attempting to update user data for user_id: %s", user_id)
+                result = db.child("users").child(user_id).update(update_data)
+                app.logger.info("Update result: %s", result)
+                
+                # Verify the update
+                updated_user_data = db.child("users").child(user_id).get().val()
+                app.logger.info("Updated user data: %s", updated_user_data)
+
+                if all(updated_user_data.get(key) == value for key, value in update_data.items()):
+                    app.logger.info("Update successful")
+                    # Update session info
+                    if 'user_info' in session:
+                        session['user_info'].update(update_data)
+                    return jsonify({'success': True, 'message': 'Vendor registration successful!'})
+                else:
+                    app.logger.error("Data update verification failed")
+                    raise Exception("Data update verification failed")
+
+            except Exception as e:
+                app.logger.error("Error in become_seller for user %s: %s", user_id, str(e))
+                app.logger.error(traceback.format_exc())
+                return jsonify({'success': False, 'error': str(e)})
+
+        app.logger.info("Rendering become_seller template with form")
         return render_template('become_seller.html', 
-                               application_pending=True,
-                               name=name, 
-                               email=email, 
-                               phone=phone,
-                               district=district)
-    elif vendor_status == 'approved':
-        flash('You are already a registered vendor.', 'info')
-        return redirect(url_for('vendor_dashboard'))
+                            application_pending=False,
+                            name=name, 
+                            email=email, 
+                            phone=phone,
+                            district=district,
+                            user_info=user_data)  # Pass user_data as user_info
 
-    if request.method == 'POST':
-        app.logger.info("Processing POST request")
-        current_step = int(request.form.get('current_step', 0))
-        app.logger.info(f"Current step: {current_step}")
+    except Exception as e:
+        app.logger.error("Error in become_seller: %s", str(e))
+        flash(f'An error occurred: {str(e)}', 'error')
+        return redirect(url_for('index'))
 
-        update_data = {}
-        if current_step == 0:
-            update_data['store_name'] = request.form.get('store_name')
-            update_data['name'] = request.form.get('name')
-        elif current_step == 1:
-            update_data['phone'] = request.form.get('phone')
-            update_data['district'] = request.form.get('address')
-        elif current_step == 2:
-            update_data['gst_number'] = request.form.get('gst_number')
-            if request.form.get('final_submit') == 'true':
-                update_data['vendor_status'] = 'pending'
-
-        app.logger.info(f"Update data prepared: {update_data}")
-
-        try:
-            # Update user data in the Realtime Database
-            app.logger.info(f"Attempting to update user data for user_id: {user_id}")
-            result = db.child("users").child(user_id).update(update_data)
-            app.logger.info(f"Update result: {result}")
-            
-            # Verify the update
-            updated_user_data = db.child("users").child(user_id).get().val()
-            app.logger.info(f"Updated user data: {updated_user_data}")
-
-            if all(updated_user_data.get(key) == value for key, value in update_data.items()):
-                app.logger.info("Update successful")
-                # Update session info
-                if 'user_info' in session:
-                    session['user_info'].update(update_data)
-                return jsonify({'success': True, 'message': 'Vendor registration successful!'})
-            else:
-                app.logger.error("Data update verification failed")
-                raise Exception("Data update verification failed")
-
-        except Exception as e:
-            app.logger.error(f"Error in become_seller for user {user_id}: {str(e)}")
-            app.logger.error(traceback.format_exc())
-            return jsonify({'success': False, 'error': str(e)})
-
-    app.logger.info("Rendering become_seller template with form")
-    return render_template('become_seller.html', 
-                           application_pending=False,
-                           name=name, 
-                           email=email, 
-                           phone=phone,
-                           district=district)
 @app.route('/get-low-stock-notifications', methods=['GET'])
 def get_low_stock_notifications():
     try:

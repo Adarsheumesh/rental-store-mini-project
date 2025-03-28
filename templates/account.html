@@ -483,7 +483,7 @@
                                         <div class="form-group row">
                                             <label for="address" class="col-lg-3 col-md-4 col-form-label">Address</label>
                                             <div class="col-lg-6 col-md-8">
-                                                <label style="white-space: pre-line;">{{ user_info.address }}</label>
+                                                <label style="white-space: pre-line;">{{ user_info.shipping_address }}</label>
                                             </div>
                                         </div>
                                         <div class="form-group row">
@@ -698,7 +698,7 @@
                                         <div class="form-group row">
                                             <label for="address" class="col-lg-3 col-md-4 col-form-label">Address</label>
                                             <div class="col-lg-6 col-md-8">
-                                                <textarea class="form-control" id="address" name="address" rows="3" required oninput="validateAddress()">{{ user_info.address }}</textarea>
+                                                <textarea class="form-control" id="address" name="shipping_address" rows="3" required oninput="validateAddress()">{{ user_info.shipping_address }}</textarea>
                                                 <div id="addressError" style="color: red;"></div>
                                             </div>
                                         </div>
@@ -876,6 +876,22 @@
         const isAddressValid = validateAddress();
         
         return isNameValid && isDistrictValid && isPhoneValid && isAddressValid;
+    }
+
+    function validateBusinessAddress() {
+        const addressInput = document.getElementById('business_address');
+        const errorElement = document.getElementById('businessAddressError');
+        const address = addressInput.value.trim();
+        
+        if (address.length < 10) {
+            errorElement.textContent = 'Business address must be at least 10 characters long';
+            return false;
+        } else if (address.length > 200) {
+            errorElement.textContent = 'Business address cannot exceed 200 characters';
+            return false;
+        }
+        errorElement.textContent = '';
+        return true;
     }
 </script>
                     
@@ -1573,42 +1589,59 @@ $(document).ready(function() {
         
         // Get order details
         $.ajax({
-            url: `/order-details/${orderId}`,
+            url: `/order/${orderId}`,
             method: 'GET',
             success: function(response) {
-                // Process the response
+                $('#orderDetailsLoading').addClass('d-none');
+                
                 if (response.success) {
-                    $('#orderDetailsLoading').addClass('d-none');
-                    
-                    // Create content without download invoice buttons for orders tab
-                    const orderContent = `
-                        <!-- Order info content -->
+                    // Create the content HTML
+                    const contentHtml = `
                         <div class="order-info mb-4">
                             <h6>Order Information</h6>
-                            <p><strong>Order ID:</strong> ${response.order_id}</p>
-                            <p><strong>Total Price:</strong> ₹${parseFloat(response.subtotal).toFixed(2)}</p>
-                            <p><strong>Order Date:</strong> ${response.created_at}</p>
+                            <p><strong>Order ID:</strong> ${response.order.order_id}</p>
+                            <p><strong>Date:</strong> ${response.order.created_at}</p>
+                            <p><strong>Status:</strong> ${response.order.status || 'N/A'}</p>
+                            <p><strong>Total Amount:</strong> ₹${parseFloat(response.order.order_total || 0).toFixed(2)}</p>
                         </div>
                         
-                        <!-- Items list without download buttons -->
                         <div class="order-items mb-4">
-                            <h6>Ordered Items</h6>
+                            <h6>Items</h6>
                             <div class="list-group">
-                                ${response.items.map(item => `
-                                    <!-- Item content without download buttons -->
+                                ${response.order.items.map(item => `
+                                    <div class="list-group-item">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-1">${item.product_name}</h6>
+                                            <span class="badge ${getStatusBadgeClass(item.status)}">${item.status}</span>
+                                        </div>
+                                        <p class="mb-1">Quantity: ${item.quantity}</p>
+                                        <p class="mb-1">Rental Period: ${item.rent_from} to ${item.rent_to}</p>
+                                        <p class="mb-1">Price: ₹${parseFloat(item.item_total || 0).toFixed(2)}</p>
+                                        <small class="text-muted">Store: ${item.store_name || 'N/A'}</small>
+                                    </div>
                                 `).join('')}
                             </div>
                         </div>
+                        
+                        ${response.order.shipping_address ? `
+                            <div class="shipping-info">
+                                <h6>Shipping Information</h6>
+                                <p>${response.order.shipping_address}</p>
+                                <p>${response.order.shipping_district || ''}</p>
+                            </div>
+                        ` : ''}
                     `;
                     
-                    $('#moreDetailsContent').html(orderContent).removeClass('d-none');
+                    $('#moreDetailsContent').html(contentHtml).removeClass('d-none');
                 } else {
                     $('#orderDetailsError').removeClass('d-none');
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
                 $('#orderDetailsLoading').addClass('d-none');
-                $('#orderDetailsError').removeClass('d-none');
+                $('#orderDetailsError').removeClass('d-none')
+                    .text(xhr.responseJSON?.message || 'Failed to load order details. Please try again.');
+                console.error('Error loading order details:', error);
             }
         });
     });
@@ -1681,12 +1714,11 @@ $(document).ready(function() {
 
                 <!-- Order Content -->
                 <div id="moreDetailsContent" class="d-none">
-                    <!-- Content will be dynamically populated without download buttons -->
+                    <!-- Content will be dynamically populated -->
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <!-- No download button here -->
             </div>
         </div>
     </div>
@@ -1888,5 +1920,97 @@ $(document).ready(function() {
         background-color: #e55d00;
     }
 </style>
+
+<script>
+$(document).ready(function() {
+    // Order details view handler
+    $('.view-order-details').on('click', function() {
+        const orderId = $(this).data('order-id');
+        const modal = new bootstrap.Modal(document.getElementById('moreDetailsModal'));
+        
+        // Reset modal state
+        $('#orderDetailsLoading').removeClass('d-none');
+        $('#orderDetailsError').addClass('d-none');
+        $('#moreDetailsContent').addClass('d-none').empty();
+        
+        // Show modal
+        modal.show();
+        
+        // Fetch order details
+        $.ajax({
+            url: `/order/${orderId}`,
+            method: 'GET',
+            success: function(response) {
+                $('#orderDetailsLoading').addClass('d-none');
+                
+                if (response.success) {
+                    // Create the content HTML
+                    const contentHtml = `
+                        <div class="order-info mb-4">
+                            <h6>Order Information</h6>
+                            <p><strong>Order ID:</strong> ${response.order.order_id}</p>
+                            <p><strong>Date:</strong> ${response.order.created_at}</p>
+                            <p><strong>Status:</strong> ${response.order.status || 'N/A'}</p>
+                            <p><strong>Total Amount:</strong> ₹${parseFloat(response.order.order_total || 0).toFixed(2)}</p>
+                        </div>
+                        
+                        <div class="order-items mb-4">
+                            <h6>Items</h6>
+                            <div class="list-group">
+                                ${response.order.items.map(item => `
+                                    <div class="list-group-item">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-1">${item.product_name}</h6>
+                                            <span class="badge ${getStatusBadgeClass(item.status)}">${item.status}</span>
+                                        </div>
+                                        <p class="mb-1">Quantity: ${item.quantity}</p>
+                                        <p class="mb-1">Rental Period: ${item.rent_from} to ${item.rent_to}</p>
+                                        <p class="mb-1">Price: ₹${parseFloat(item.item_total || 0).toFixed(2)}</p>
+                                        <small class="text-muted">Store: ${item.store_name || 'N/A'}</small>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        ${response.order.shipping_address ? `
+                            <div class="shipping-info">
+                                <h6>Shipping Information</h6>
+                                <p>${response.order.shipping_address}</p>
+                                <p>${response.order.shipping_district || ''}</p>
+                            </div>
+                        ` : ''}
+                    `;
+                    
+                    $('#moreDetailsContent').html(contentHtml).removeClass('d-none');
+                } else {
+                    $('#orderDetailsError').removeClass('d-none');
+                }
+            },
+            error: function(xhr, status, error) {
+                $('#orderDetailsLoading').addClass('d-none');
+                $('#orderDetailsError').removeClass('d-none')
+                    .text(xhr.responseJSON?.message || 'Failed to load order details. Please try again.');
+                console.error('Error loading order details:', error);
+            }
+        });
+    });
+    
+    // Helper function to get badge class based on status
+    function getStatusBadgeClass(status) {
+        switch(status.toLowerCase()) {
+            case 'delivered':
+                return 'bg-success';
+            case 'cancelled':
+                return 'bg-danger';
+            case 'returned':
+                return 'bg-info';
+            case 'ordered':
+                return 'bg-primary';
+            default:
+                return 'bg-secondary';
+        }
+    }
+});
+</script>
 </body>
 </html>

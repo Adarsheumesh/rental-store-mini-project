@@ -270,7 +270,7 @@
 												</div>
 											</div>
 										</div>
-										<div class="col-md-6">
+										<div class="col-md-6 mb-4">
 											<div class="detail-card p-4 rounded bg-light">
 												<h6 class="text-muted mb-2">Contact Details</h6>
 												<div class="mb-3">
@@ -283,12 +283,21 @@
 												</div>
 											</div>
 										</div>
+										<div class="col-md-6 mb-4">
+											<div class="detail-card p-4 rounded bg-light">
+												<h6 class="text-muted mb-2">Shipping Details</h6>
+												<div class="mb-3">
+													<label class="text-muted">Shipping Address</label>
+													<p class="h5 shipping-address">{{ user.shipping_address|default('Not provided') }}</p>
+												</div>
+											</div>
+										</div>
 									</div>
 								</div>
 
 								<!-- Edit Profile Tab -->
 								<div class="tab-pane fade" id="edit" role="tabpanel">
-									<form method="POST" enctype="multipart/form-data" action="/update-account" id="profileForm" onsubmit="return validateForm()">
+									<form method="POST" enctype="multipart/form-data" id="profileForm" onsubmit="return handleProfileUpdate(event)">
 										<div class="row">
 											<div class="col-md-6 mb-4">
 												<div class="form-group">
@@ -316,9 +325,33 @@
 											<div class="col-md-6 mb-4">
 												<div class="form-group">
 													<label class="form-label">District <span class="text-danger">*</span></label>
-													<input type="text" class="form-control" name="district" id="district" 
-														   value="{{ user.district }}" required maxlength="20" oninput="validateDistrict()">
+													<select class="form-control" name="district" id="district" required onchange="validateDistrict()">
+														<option value="">Select your district</option>
+														<option value="Alappuzha" {% if user.district == 'Alappuzha' %}selected{% endif %}>Alappuzha</option>
+														<option value="Ernakulam" {% if user.district == 'Ernakulam' %}selected{% endif %}>Ernakulam</option>
+														<option value="Idukki" {% if user.district == 'Idukki' %}selected{% endif %}>Idukki</option>
+														<option value="Kannur" {% if user.district == 'Kannur' %}selected{% endif %}>Kannur</option>
+														<option value="Kasaragod" {% if user.district == 'Kasaragod' %}selected{% endif %}>Kasaragod</option>
+														<option value="Kollam" {% if user.district == 'Kollam' %}selected{% endif %}>Kollam</option>
+														<option value="Kottayam" {% if user.district == 'Kottayam' %}selected{% endif %}>Kottayam</option>
+														<option value="Kozhikode" {% if user.district == 'Kozhikode' %}selected{% endif %}>Kozhikode</option>
+														<option value="Malappuram" {% if user.district == 'Malappuram' %}selected{% endif %}>Malappuram</option>
+														<option value="Palakkad" {% if user.district == 'Palakkad' %}selected{% endif %}>Palakkad</option>
+														<option value="Pathanamthitta" {% if user.district == 'Pathanamthitta' %}selected{% endif %}>Pathanamthitta</option>
+														<option value="Thiruvananthapuram" {% if user.district == 'Thiruvananthapuram' %}selected{% endif %}>Thiruvananthapuram</option>
+														<option value="Thrissur" {% if user.district == 'Thrissur' %}selected{% endif %}>Thrissur</option>
+														<option value="Wayanad" {% if user.district == 'Wayanad' %}selected{% endif %}>Wayanad</option>
+													</select>
 													<span id="districtError" class="text-danger small"></span>
+												</div>
+											</div>
+											<div class="col-md-6 mb-4">
+												<div class="form-group">
+													<label class="form-label">Shipping Address <span class="text-danger">*</span></label>
+													<textarea class="form-control" name="shipping_address" id="shipping_address" 
+															  rows="3" required oninput="validateShippingAddress()">{{ user.shipping_address|default('') }}</textarea>
+													<span id="shippingAddressError" class="text-danger small"></span>
+													<small class="text-muted">Enter your complete shipping address for deliveries</small>
 												</div>
 											</div>
 											<div class="col-md-6 mb-4">
@@ -330,9 +363,11 @@
 											</div>
 										</div>
 										<div class="text-end mt-4">
-											<button type="submit" class="btn btn-primary px-4">Save Changes</button>
+											<button type="submit" class="btn btn-primary px-4" id="saveChangesBtn">Save Changes</button>
 										</div>
 									</form>
+									<!-- Add alert container for messages -->
+									<div id="updateAlert" class="alert mt-3" style="display: none;"></div>
 								</div>
 							</div>
 						</div>
@@ -366,6 +401,262 @@
 <!-- Custom JS -->
 <script src="{{ url_for('static', filename='assets/js/custom.js') }}"></script>
 
+<script>
+function validateStoreName() {
+    const storeNameInput = document.getElementById('store_name');
+    const storeNameError = document.getElementById('storeNameError');
+    
+    if (storeNameInput.value.trim() === '') {
+        storeNameError.textContent = 'Store name is required';
+        return false;
+    } else if (storeNameInput.value.length > 30) {
+        storeNameError.textContent = 'Store name must be 30 characters or less';
+        return false;
+    } else {
+        storeNameError.textContent = '';
+        return true;
+    }
+}
+
+function validatePhone() {
+    const phoneInput = document.getElementById('phone');
+    const phoneError = document.getElementById('phoneError');
+    
+    // Remove any non-numeric characters
+    phoneInput.value = phoneInput.value.replace(/[^0-9]/g, '');
+    
+    if (phoneInput.value.trim() === '') {
+        phoneError.textContent = 'Phone number is required';
+        return false;
+    } else if (!/^\d{10}$/.test(phoneInput.value)) {
+        phoneError.textContent = 'Phone number must be 10 digits';
+        return false;
+    } else {
+        phoneError.textContent = '';
+        return true;
+    }
+}
+
+function validateDistrict() {
+    const districtInput = document.getElementById('district');
+    const districtError = document.getElementById('districtError');
+    
+    if (districtInput.value.trim() === '') {
+        districtError.textContent = 'Please select your district';
+        return false;
+    } else {
+        districtError.textContent = '';
+        return true;
+    }
+}
+
+function validateShippingAddress() {
+    const shippingAddressInput = document.getElementById('shipping_address');
+    const shippingAddressError = document.getElementById('shippingAddressError');
+    
+    const addressValue = shippingAddressInput.value.trim();
+    
+    if (addressValue === '') {
+        shippingAddressError.textContent = 'Shipping address is required';
+        return false;
+    } else if (addressValue.length < 10) {
+        shippingAddressError.textContent = 'Shipping address should be at least 10 characters long';
+        return false;
+    } else if (addressValue.length > 200) {
+        shippingAddressError.textContent = 'Shipping address should not exceed 200 characters';
+        return false;
+    } else {
+        // Check for valid characters (letters, numbers, spaces, commas, and basic punctuation)
+        const validAddressPattern = /^[a-zA-Z0-9\s,.'-\/\(\)#&]+$/;
+        if (!validAddressPattern.test(addressValue)) {
+            shippingAddressError.textContent = 'Address contains invalid characters';
+            return false;
+        }
+        
+        shippingAddressError.textContent = '';
+        return true;
+    }
+}
+
+function handleProfileUpdate(event) {
+    event.preventDefault();
+    
+    // Validate form fields
+    if (!validateStoreName() || !validatePhone() || !validateDistrict() || !validateShippingAddress()) {
+        const alertDiv = document.getElementById('updateAlert');
+        alertDiv.className = 'alert alert-danger mt-3';
+        alertDiv.innerHTML = '<i class="mdi mdi-alert-circle"></i> Please correct the errors in the form.';
+        alertDiv.style.display = 'block';
+        setTimeout(() => {
+            alertDiv.style.display = 'none';
+        }, 5000);
+        return false;
+    }
+    
+    // Show loading state
+    const saveButton = document.getElementById('saveChangesBtn');
+    const originalText = saveButton.innerHTML;
+    saveButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+    saveButton.disabled = true;
+
+    // Create FormData object
+    const formData = new FormData(document.getElementById('profileForm'));
+
+    // Add a hidden field to request JSON response
+    formData.append('json_response', '1');
+    
+    // Ensure user_type is passed
+    formData.append('user_type', 'vendor');
+    
+    // Add timestamp to prevent caching issues
+    const timestamp = new Date().getTime();
+    
+    // Send AJAX request using jQuery
+    $.ajax({
+        url: `/update-account?t=${timestamp}`,
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+            console.log("Response received:", response);
+            const alertDiv = document.getElementById('updateAlert');
+            
+            try {
+                // Try to parse as JSON if string
+                let data = typeof response === 'string' ? JSON.parse(response) : response;
+                
+                if (data.success) {
+                    // Show success message
+                    alertDiv.className = 'alert alert-success mt-3';
+                    alertDiv.innerHTML = '<i class="mdi mdi-check-circle"></i> Profile updated successfully!';
+                    
+                    // Update the input fields with new values
+                    if (data.user) {
+                        if (data.user.store_name) {
+                            document.getElementById('store_name').value = data.user.store_name;
+                            // Update the displayed store name in profile tab
+                            document.querySelectorAll('.detail-card .h5').forEach(el => {
+                                if (el.previousElementSibling && el.previousElementSibling.textContent.includes('Store Name')) {
+                                    el.textContent = data.user.store_name;
+                                }
+                            });
+                            // Update store name in header
+                            const storeElement = document.querySelector('.profile-info p:first-of-type');
+                            if (storeElement) {
+                                storeElement.innerHTML = '<i class="mdi mdi-store me-1"></i>' + data.user.store_name;
+                            }
+                        }
+                        
+                        if (data.user.phone) {
+                            document.getElementById('phone').value = data.user.phone;
+                            // Update phone in profile tab
+                            document.querySelectorAll('.detail-card .h5').forEach(el => {
+                                if (el.previousElementSibling && el.previousElementSibling.textContent.includes('Phone Number')) {
+                                    el.textContent = data.user.phone;
+                                }
+                            });
+                        }
+                        
+                        if (data.user.district) {
+                            document.getElementById('district').value = data.user.district;
+                            // Update district in profile tab
+                            document.querySelectorAll('.detail-card .h5').forEach(el => {
+                                if (el.previousElementSibling && el.previousElementSibling.textContent.includes('Location')) {
+                                    el.textContent = data.user.district;
+                                }
+                            });
+                            // Update district in header
+                            const districtElement = document.querySelector('.profile-info p:last-child');
+                            if (districtElement) {
+                                districtElement.innerHTML = '<i class="mdi mdi-map-marker me-1"></i>' + data.user.district;
+                            }
+                        }
+                        
+                        if (data.user.shipping_address) {
+                            document.getElementById('shipping_address').value = data.user.shipping_address;
+                            // Update shipping address in profile tab
+                            const shippingAddressElement = document.querySelector('.detail-card .shipping-address');
+                            if (shippingAddressElement) {
+                                shippingAddressElement.textContent = data.user.shipping_address;
+                            }
+                        }
+                        
+                        // If profile picture was updated, update all instances
+                        if (data.user.profile_pic) {
+                            const profileImages = document.querySelectorAll('img.user-image, img.rounded-circle');
+                            profileImages.forEach(img => {
+                                // Add timestamp to prevent caching issues
+                                img.src = '/static/' + data.user.profile_pic + '?' + timestamp;
+                            });
+                        }
+                    }
+                    
+                    // Switch to profile tab to show updated information
+                    document.getElementById('profile-tab').click();
+                    
+                } else {
+                    // Show error message
+                    alertDiv.className = 'alert alert-danger mt-3';
+                    alertDiv.innerHTML = '<i class="mdi mdi-alert-circle"></i> ' + (data.message || 'Failed to update profile. Please try again.');
+                }
+            } catch (e) {
+                console.log("Non-JSON response received:", e);
+                
+                // Check if the response contains "success" or "updated successfully" text
+                // This is a fallback for when the server doesn't return JSON
+                if (typeof response === 'string' && 
+                   (response.includes('success') || response.includes('updated successfully'))) {
+                    alertDiv.className = 'alert alert-success mt-3';
+                    alertDiv.innerHTML = '<i class="mdi mdi-check-circle"></i> Profile updated successfully!';
+                    
+                    // Refresh the page after a short delay to show updated information
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    // Show generic success message
+                    alertDiv.className = 'alert alert-success mt-3';
+                    alertDiv.innerHTML = '<i class="mdi mdi-check-circle"></i> Profile updated successfully!';
+                    
+                    // Switch to profile tab
+                    document.getElementById('profile-tab').click();
+                }
+            }
+            
+            // Show the alert
+            alertDiv.style.display = 'block';
+            
+            // Hide alert after 5 seconds
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 5000);
+        },
+        error: function(xhr, status, error) {
+            console.error('Error:', error);
+            console.log('Status:', xhr.status);
+            console.log('Response:', xhr.responseText);
+            
+            const alertDiv = document.getElementById('updateAlert');
+            alertDiv.className = 'alert alert-danger mt-3';
+            alertDiv.innerHTML = '<i class="mdi mdi-alert-circle"></i> An error occurred. Please try again.';
+            alertDiv.style.display = 'block';
+            
+            // Hide alert after 5 seconds
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 5000);
+        },
+        complete: function() {
+            // Restore button state
+            saveButton.innerHTML = originalText;
+            saveButton.disabled = false;
+        }
+    });
+
+    return false;
+}
+</script>
 
 </body>
 
