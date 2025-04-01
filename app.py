@@ -53,7 +53,8 @@ try:
     init_blockchain()
 except Exception as e:
     app.logger.error(f"Failed to initialize blockchain: {str(e)}")
-    raise
+    # Continue without blockchain functionality instead of raising an exception
+    app.logger.warning("Continuing without blockchain functionality")
 
 @app.route('/analysis')
 def analysis():

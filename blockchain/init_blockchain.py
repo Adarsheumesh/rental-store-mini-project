@@ -5,6 +5,7 @@ import json
 import logging
 from eth_account import Account
 import secrets
+import platform
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -46,14 +47,27 @@ def deploy_new_contract(w3, contract_data, admin_account, admin_key):
     logger.info(f"Contract deployed successfully at {tx_receipt.contractAddress}")
     return tx_receipt.contractAddress, tx_hash.hex()
 
+def is_running_on_render():
+    """Check if we're running on Render."""
+    return os.environ.get('RENDER') == 'true'
+
 def init_blockchain():
     load_dotenv()
     
-    # Connect to local blockchain
+    # Skip actual blockchain connection on Render
+    if is_running_on_render():
+        logger.info("Running on Render - skipping blockchain initialization")
+        # Just set some placeholder values that the rest of the app can use
+        os.environ['RENTAL_HISTORY_CONTRACT'] = '0x0000000000000000000000000000000000000000'
+        return
+    
+    # Otherwise, connect to local blockchain for development
+    logger.info("Running locally - connecting to local blockchain")
     w3 = Web3(Web3.HTTPProvider('http://127.0.0.1:8545'))
     
     if not w3.is_connected():
-        raise Exception("Could not connect to Ethereum node")
+        logger.warning("Could not connect to local Ethereum node - skipping blockchain initialization")
+        return
     
     logger.debug("Connected to Ethereum node")
     
@@ -141,11 +155,11 @@ def init_blockchain():
         
     except Exception as e:
         logger.error(f"Error during initialization: {str(e)}")
-        raise
+        # Don't raise exception to allow app to continue running
+        return
 
 if __name__ == "__main__":
     try:
         init_blockchain()
     except Exception as e:
-        logger.error(f"Initialization failed: {str(e)}")
-        raise 
+        logger.error(f"Initialization failed: {str(e)}") 
