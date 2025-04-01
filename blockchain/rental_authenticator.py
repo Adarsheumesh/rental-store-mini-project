@@ -10,17 +10,29 @@ from datetime import datetime
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+def is_running_on_render():
+    """Check if we're running on Render."""
+    return os.environ.get('RENDER') == 'true'
+
 class RentalAuthenticator:
     def __init__(self):
         try:
             # Load environment variables
             load_dotenv()
             
+            # Skip blockchain initialization on Render
+            if is_running_on_render():
+                logger.info("Running on Render - skipping blockchain initialization")
+                self.w3 = None
+                self.admin_account = None
+                self.contract = None
+                return
+            
             # Initialize Web3
             self.w3 = Web3(Web3.HTTPProvider(os.getenv('ETHEREUM_NODE_URL', 'http://127.0.0.1:7545')))
             
             # Set up admin account
-            admin_private_key = os.getenv('ETHEREUM_PRIVATE_KEY')  # Changed from ADMIN_PRIVATE_KEY
+            admin_private_key = os.getenv('ETHEREUM_PRIVATE_KEY')
             if not admin_private_key:
                 raise ValueError("Admin private key not found in environment variables")
             
@@ -34,7 +46,7 @@ class RentalAuthenticator:
             logger.info(f"Admin account balance: {self.w3.from_wei(balance, 'ether')} ETH")
             
             # Load contract
-            contract_address = os.getenv('RENTAL_HISTORY_CONTRACT')  # Changed from CONTRACT_ADDRESS
+            contract_address = os.getenv('RENTAL_HISTORY_CONTRACT')
             if not contract_address:
                 raise ValueError("Contract address not found in environment variables")
             

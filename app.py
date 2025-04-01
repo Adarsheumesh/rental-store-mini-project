@@ -28,6 +28,7 @@ from reportlab.lib.pagesizes import letter
 import google.generativeai as genai
 from dotenv import load_dotenv
 from blockchain.init_blockchain import init_blockchain
+from blockchain.rental_authenticator import RentalAuthenticator
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -53,7 +54,16 @@ try:
     init_blockchain()
 except Exception as e:
     app.logger.error(f"Failed to initialize blockchain: {str(e)}")
-    raise
+    # Don't raise the exception, just log it
+    pass
+
+# Initialize RentalAuthenticator
+try:
+    authenticator = RentalAuthenticator()
+except Exception as e:
+    app.logger.error(f"Failed to initialize RentalAuthenticator: {str(e)}")
+    # Set authenticator to None if initialization fails
+    authenticator = None
 
 @app.route('/analysis')
 def analysis():
