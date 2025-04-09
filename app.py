@@ -1268,7 +1268,132 @@ def product_list():
 
     # Render the product list template with the fetched product data and user info
     return render_template('/andshop/product-list.html', products=product_list, user=user_info)
-            # edit product_page 
+
+@app.route('/lost-products')
+def lost_products():
+    # Check if user is logged in
+    if 'user_info' not in session:
+        flash('You need to log in first.', 'danger')
+        return redirect(url_for('login'))
+
+    user_info = session['user_info']
+    store_name = user_info.get('store_name')
+    
+    # Debug info
+    print(f"Looking for lost products for store: {store_name}")
+    
+    try:
+        # Get all orders
+        orders = db.child("orders").get().val() or {}
+        print(f"Found {len(orders)} total orders")
+        
+        # Print the first order to understand the structure
+        if orders:
+            first_order_id = list(orders.keys())[0]
+            first_order = orders[first_order_id]
+            print(f"First order structure: {first_order}")
+        
+        # List to store lost product data
+        lost_products = []
+        
+        # Process orders to find lost items
+        for order_id, order in orders.items():
+            print(f"Processing order {order_id}")
+            print(f"Order keys: {list(order.keys() if isinstance(order, dict) else [])}")
+            
+            order_matched = False
+            
+            # Look for lost items directly in the items array at the index level
+            if isinstance(order, dict) and 'items' in order and isinstance(order['items'], list):
+                for i, item in enumerate(order['items']):
+                    if isinstance(item, dict):
+                        item_store_name = item.get('store_name')
+                        item_status = item.get('status')
+                        product_id = item.get('product_id')
+                        
+                        print(f"Item {i} - store_name: {item_store_name}, status: {item_status}")
+                        
+                        # Check if the item belongs to this store and is lost
+                        if (item_store_name and store_name and 
+                            item_store_name.strip().lower() == store_name.strip().lower() and 
+                            item_status == 'lost' and product_id):
+                            
+                            print(f"Found lost item matching this store in items[{i}]")
+                            order_matched = True
+                            
+                            # Get product details
+                            product = db.child("products").child(product_id).get().val()
+                            if product:
+                                lost_product = product.copy() if isinstance(product, dict) else {}
+                                lost_product['product_id'] = product_id
+                                lost_product['status'] = 'lost'
+                                lost_product['reported_date'] = item.get('return_completed_at', '').split('T')[0] if item.get('return_completed_at') else ''
+                                lost_product['order_id'] = order_id
+                                lost_product['rental_days'] = item.get('rental_days')
+                                lost_product['rent_from'] = item.get('rent_from')
+                                lost_product['rent_to'] = item.get('rent_to')
+                                lost_product['last_location'] = order.get('shipping_address', '')
+                                
+                                lost_products.append(lost_product)
+                                print(f"Added lost product: {lost_product.get('product_name', 'Unknown')}")
+            
+            # If no store match was found in items array, then check at the order level (fallback)
+            if not order_matched and isinstance(order, dict):
+                order_store_name = order.get('store_name')
+                order_status = order.get('status')
+                product_id = order.get('product_id')
+                
+                print(f"Order level - store_name: {order_store_name}, status: {order_status}")
+                
+                # Check if this order is for the current store
+                if ((order_store_name and store_name and 
+                     order_store_name.strip().lower() == store_name.strip().lower()) or
+                    # Special case: Check item 0 if it exists
+                    (isinstance(order.get('items'), list) and len(order.get('items', [])) > 0 and
+                     isinstance(order['items'][0], dict) and 
+                     order['items'][0].get('store_name', '').strip().lower() == store_name.strip().lower())):
+                    
+                    print(f"Order matches this store")
+                    
+                    # Check if any item is lost
+                    if 'items' in order and isinstance(order['items'], list):
+                        for i, item in enumerate(order['items']):
+                            if isinstance(item, dict) and item.get('status') == 'lost':
+                                product_id = item.get('product_id')
+                                if product_id:
+                                    print(f"Found lost item in order's items array")
+                                    
+                                    # Get product details
+                                    product = db.child("products").child(product_id).get().val()
+                                    if product:
+                                        lost_product = product.copy() if isinstance(product, dict) else {}
+                                        lost_product['product_id'] = product_id
+                                        lost_product['status'] = 'lost'
+                                        lost_product['reported_date'] = item.get('return_completed_at', '').split('T')[0] if item.get('return_completed_at') else ''
+                                        lost_product['order_id'] = order_id
+                                        lost_product['rental_days'] = item.get('rental_days')
+                                        lost_product['rent_from'] = item.get('rent_from')
+                                        lost_product['rent_to'] = item.get('rent_to')
+                                        lost_product['last_location'] = order.get('shipping_address', '')
+                                        
+                                        lost_products.append(lost_product)
+                                        print(f"Added lost product: {lost_product.get('product_name', 'Unknown')}")
+        
+        print(f"Total lost products found: {len(lost_products)}")
+        if not lost_products:
+            flash('No lost products found. Please mark products as lost in orders to see them here.', 'info')
+            
+    except Exception as e:
+        print(f"Error in lost_products route: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash(f"Failed to fetch lost products: {str(e)}", 'danger')
+        return redirect(url_for('index'))
+
+    # Render the lost products template with the fetched data
+    return render_template('andshop/lost-products.html', products=lost_products, user=user_info)
+            
+# edit product_page 
 @app.route('/edit-product/<product_id>', methods=['GET', 'POST'])
 def update_product(product_id):
     # Check if user is logged in
@@ -4580,6 +4705,17 @@ def complete_return_delivery():
         items = order.get('items', [])
         if isinstance(items, dict):
             items = [items]
+            
+        # Get user information for email notification
+        user_id = order.get('user_id')
+        user_data = db.child("users").child(user_id).get().val() if user_id else None
+        user_email = user_data.get('email') if user_data else None
+        user_name = user_data.get('name', 'Customer') if user_data else 'Customer'
+        
+        # Product details for notification
+        product_name = product.get('product_name', 'Product')
+        product_price = product.get('product_price', '0')
+        deposit_amount = order.get('wallet_deposit', 1000)  # Default to 1000 if not found
 
         # Find the item being returned and update product quantity
         for i, item in enumerate(items):
@@ -4589,16 +4725,23 @@ def complete_return_delivery():
                 returned_quantity = int(item.get('quantity', 1))
                 current_product_quantity = int(product.get('product_quantity', 0))
                 
-                # Update product quantity
-                new_quantity = current_product_quantity + returned_quantity
-                db.child("products").child(product_id).update({
-                    'product_quantity': str(new_quantity)
-                })
+                # Check if the product is marked as lost
+                is_lost = condition == "lost"
+                
+                # Only update product quantity if the product is not lost
+                if not is_lost:
+                    # Update product quantity
+                    new_quantity = current_product_quantity + returned_quantity
+                    db.child("products").child(product_id).update({
+                        'product_quantity': str(new_quantity)
+                    })
                 
                 # Update item status
                 item_path = f"orders/{order_id}/items/{i}"
+                item_status = "lost" if is_lost else "returned"
+                
                 db.update({
-                    f"{item_path}/status": "returned",
+                    f"{item_path}/status": item_status,
                     f"{item_path}/return_completed_at": current_time
                 })
                 break
@@ -4617,9 +4760,58 @@ def complete_return_delivery():
         # Add to product_conditions table
         db.child("product_conditions").push(condition_data)
 
+        # Prepare appropriate response message
+        if condition == "lost":
+            message = 'Product marked as lost. Security deposit forfeited.'
+            
+            # Send email notification to user if product is lost
+            if user_email:
+                try:
+                    # Format order ID for display
+                    display_order_id = order.get('order_id', order_id)
+                    
+                    # Create email content
+                    email_subject = f"Important Notice: Rental Item Marked as Lost - Order #{display_order_id[:8]}"
+                    email_content = f"""
+                    Dear {user_name},
+
+                    We regret to inform you that the item you rented has been marked as lost during the return process.
+
+                    Order Details:
+                    - Order Number: #{display_order_id[:8]}
+                    - Product: {product_name}
+                    - Store: {store_name}
+                    
+                    As per our rental policy, when a rented item is lost or not returned, the security deposit (₹{deposit_amount}) is forfeited to cover the partial cost of the item.
+
+                    Additional Notes from our Return Agent:
+                    {notes}
+
+                    If you believe this is an error or if you have any questions regarding this matter, please contact our customer support team immediately at support@toolhive.com.
+
+                    Thank you for your understanding.
+
+                    Regards,
+                    ToolHive Team
+                    """
+                    
+                    # Send the email
+                    msg = Message(
+                        subject=email_subject,
+                        recipients=[user_email],
+                        body=email_content,
+                        sender=app.config['MAIL_DEFAULT_SENDER']
+                    )
+                    mail.send(msg)
+                    app.logger.info(f"Lost product notification email sent to {user_email}")
+                except Exception as e:
+                    app.logger.error(f"Failed to send lost product notification email: {str(e)}")
+        else:
+            message = 'Return completed and product quantity updated successfully'
+
         return jsonify({
             'success': True,
-            'message': 'Return completed and product quantity updated successfully'
+            'message': message
         })
         
     except Exception as e:
@@ -4836,6 +5028,8 @@ def store_revenue():
 
     user_info = session['user_info']
     store_name = user_info.get('store_name', '')
+    
+    app.logger.debug(f"Retrieving revenue for store: {store_name}")
 
     # Fetch all orders
     all_orders = db.child("orders").get().val()
@@ -4845,12 +5039,15 @@ def store_revenue():
         'total_orders': 0,
         'total_sales': 0,
         'total_revenue': 0,  # 5% of total sales
-        'monthly_data': defaultdict(lambda: {'sales': 0, 'revenue': 0, 'orders': 0}),
+        'total_late_fine': 0,  # Initialize total late fine
+        'monthly_data': defaultdict(lambda: {'sales': 0, 'revenue': 0, 'orders': 0, 'late_fine': 0}),
         'orders': []
     }
 
     if all_orders:
         for order_id, order in all_orders.items():
+            app.logger.debug(f"Processing order: {order_id}")
+            
             # Get order items, handle both list and dict formats
             order_items = order.get('items', [])
             if isinstance(order_items, dict):
@@ -4861,18 +5058,32 @@ def store_revenue():
             # Filter items for this store
             store_items = []
             for item in order_items:
-                if isinstance(item, dict) and item.get('store_name', '').lower() == store_name.lower():
-                    store_items.append(item)
+                if isinstance(item, dict):
+                    item_store = item.get('store_name', '').lower()
+                    app.logger.debug(f"Item store: {item_store}, Current store: {store_name.lower()}")
+                    if item_store == store_name.lower():
+                        store_items.append(item)
             
             if store_items:
                 # Calculate store's total for this order and revenue (5%)
                 store_total = 0
                 store_revenue = 0
+                order_late_fine = 0  # Initialize order late fine
+                
                 for item in store_items:
                     item_total = float(item.get('total_price', 0))
                     store_total += item_total
                     # Calculate 5% revenue for each item
                     store_revenue += (item_total * 0.05)
+                    
+                    # Get autoreturn charge if any
+                    if 'autoreturn_charge' in item:
+                        try:
+                            item_late_fine = float(item.get('autoreturn_charge', 0))
+                            app.logger.debug(f"Found autoreturn_charge: {item_late_fine} for item in order {order_id}")
+                            order_late_fine += item_late_fine
+                        except (ValueError, TypeError) as e:
+                            app.logger.error(f"Error converting autoreturn_charge: {e}")
                 
                 try:
                     # Get order date - try different formats
@@ -4892,11 +5103,13 @@ def store_revenue():
                     revenue_data['monthly_data'][month_key]['sales'] += store_total
                     revenue_data['monthly_data'][month_key]['revenue'] += store_revenue
                     revenue_data['monthly_data'][month_key]['orders'] += 1
+                    revenue_data['monthly_data'][month_key]['late_fine'] += order_late_fine
                     
                     # Update totals
                     revenue_data['total_orders'] += 1
                     revenue_data['total_sales'] += store_total
                     revenue_data['total_revenue'] += store_revenue
+                    revenue_data['total_late_fine'] += order_late_fine
                     
                     # Get customer name
                     user_id = order.get('user_id')
@@ -4931,12 +5144,14 @@ def store_revenue():
                         'order_items': processed_items,
                         'total': float(store_total),
                         'revenue': float(store_revenue),
+                        'autoreturn_charge': float(order_late_fine),
                         'created_at': created_at.strftime('%Y-%m-%d %H:%M')
                     }
                     
                     revenue_data['orders'].append(order_data)
                 except Exception as e:
                     app.logger.error(f"Error processing order {order_id}: {str(e)}")
+                    app.logger.error(traceback.format_exc())
                     continue
 
     # Sort orders by date (newest first)
@@ -4948,7 +5163,8 @@ def store_revenue():
             'month': month,
             'sales': data['sales'],
             'revenue': data['revenue'],
-            'orders': data['orders']
+            'orders': data['orders'],
+            'late_fine': data['late_fine']
         }
         for month, data in revenue_data['monthly_data'].items()
     ]
@@ -5660,6 +5876,391 @@ def get_revenue_preview():
         app.logger.error(f"Error generating revenue preview: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/mark-found/<product_id>', methods=['GET'])
+def mark_found(product_id):
+    # Check if user is logged in
+    if 'user_info' not in session:
+        flash('You need to log in first.', 'danger')
+        return redirect(url_for('login'))
+
+    user_info = session['user_info']
+    store_name = user_info.get('store_name')
+    
+    try:
+        # First check if the product exists
+        product = db.child("products").child(product_id).get().val()
+        
+        if not product:
+            flash('Product not found.', 'danger')
+            return redirect(url_for('lost_products'))
+            
+        # Check if the product belongs to this vendor's store
+        if product.get('store_name') != store_name:
+            flash('You do not have permission to update this product.', 'danger')
+            return redirect(url_for('lost_products'))
+        
+        # Get order_id from the request query parameter
+        order_id = request.args.get('order_id')
+        print(f"Marking product {product_id} as found for order {order_id}")
+        
+        # Update the product status to 'available'
+        db.child("products").child(product_id).update({
+            'status': 'available',
+            'recovered_date': datetime.now().strftime("%Y-%m-%d")
+        })
+        
+        # Get current product quantity and increment it
+        current_quantity = int(product.get('product_quantity', 0)) 
+        db.child("products").child(product_id).update({
+            'product_quantity': current_quantity + 1
+        })
+        
+        # If order_id is provided, update the order item status
+        if order_id:
+            order = db.child("orders").child(order_id).get().val()
+            if order:
+                order_updated = False
+                
+                # CASE 1: Check for items array
+                if 'items' in order and isinstance(order['items'], list):
+                    # Update status for matching product in items array
+                    updated_items = order['items']
+                    for i, item in enumerate(updated_items):
+                        if isinstance(item, dict) and item.get('product_id') == product_id and item.get('status') == 'lost':
+                            print(f"Updating item {i} in items array")
+                            updated_items[i]['status'] = 'returned'
+                            updated_items[i]['found_date'] = datetime.now().strftime("%Y-%m-%d")
+                            order_updated = True
+                            
+                    # Update the items in the order
+                    if order_updated:
+                        db.child("orders").child(order_id).update({
+                            'items': updated_items
+                        })
+                
+                # CASE 2: Check if the order itself has lost status
+                if order.get('status') == 'lost' and order.get('product_id') == product_id:
+                    print("Updating order status from lost to returned")
+                    db.child("orders").child(order_id).update({
+                        'status': 'returned',
+                        'found_date': datetime.now().strftime("%Y-%m-%d")
+                    })
+                    order_updated = True
+                
+                # CASE 3: Check for individual item_ properties
+                for key, value in order.items():
+                    if key.startswith('item_') and isinstance(value, dict) and value.get('product_id') == product_id and value.get('status') == 'lost':
+                        print(f"Updating {key} from lost to returned")
+                        value['status'] = 'returned'
+                        value['found_date'] = datetime.now().strftime("%Y-%m-%d")
+                        
+                        # Update this specific item
+                        db.child("orders").child(order_id).child(key).update(value)
+                        order_updated = True
+                
+                if not order_updated:
+                    print(f"Warning: Could not find lost item in order {order_id} for product {product_id}")
+        
+        flash('Product marked as found successfully!', 'success')
+        
+    except Exception as e:
+        print(f"Error marking product as found: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash(f"Failed to update product status: {str(e)}", 'danger')
+    
+    return redirect(url_for('lost_products'))
+
+@app.route('/api/renter-details')
+def get_renter_details():
+    # Check if user is logged in
+    if 'user_info' not in session:
+        return jsonify({"success": False, "error": "Authentication required"}), 401
+
+    order_id = request.args.get('order_id')
+    product_id = request.args.get('product_id')
+    
+    if not order_id or not product_id:
+        return jsonify({"success": False, "error": "Missing order_id or product_id"}), 400
+    
+    try:
+        # Get order details
+        order = db.child("orders").child(order_id).get().val()
+        if not order or not isinstance(order, dict):
+            return jsonify({"success": False, "error": "Order not found"}), 404
+        
+        # Get user ID from order
+        user_id = order.get('user_id')
+        if not user_id:
+            return jsonify({"success": False, "error": "User not found in order"}), 404
+        
+        # Get user details
+        user = db.child("users").child(user_id).get().val()
+        if not user or not isinstance(user, dict):
+            return jsonify({"success": False, "error": "User details not found"}), 404
+        
+        # Get product details
+        product = db.child("products").child(product_id).get().val()
+        if not product or not isinstance(product, dict):
+            return jsonify({"success": False, "error": "Product details not found"}), 404
+        
+        # Get wallet balance
+        wallet_balance = get_user_wallet_balance(user_id)
+        
+        # Count total orders for this user
+        user_orders = 0
+        all_orders = db.child("orders").get().val() or {}
+        for _, ord in all_orders.items():
+            if isinstance(ord, dict) and ord.get('user_id') == user_id:
+                user_orders += 1
+        
+        # Get wallet transactions for this user
+        wallet_transactions = []
+        all_transactions = db.child("wallet_transactions").get().val() or {}
+        for trans_id, trans in all_transactions.items():
+            if isinstance(trans, dict) and trans.get('user_id') == user_id:
+                transaction = {
+                    'amount': trans.get('amount', 0),
+                    'created_at': trans.get('created_at', ''),
+                    'status': trans.get('status', ''),
+                    'type': trans.get('type', ''),
+                    'order_id': trans.get('order_id', '')
+                }
+                wallet_transactions.append(transaction)
+                
+        # Sort transactions by date (newest first)
+        wallet_transactions.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        
+        # Find rental period for this product in the order
+        rental_period = ""
+        if 'items' in order and isinstance(order['items'], list):
+            for item in order['items']:
+                if isinstance(item, dict) and item.get('product_id') == product_id:
+                    rent_from = item.get('rent_from', '')
+                    rent_to = item.get('rent_to', '')
+                    if rent_from and rent_to:
+                        rental_period = f"{rent_from} to {rent_to}"
+                    break
+        
+        # Prepare response data
+        renter_data = {
+            "success": True,
+            "name": user.get('name', 'Unknown'),
+            "email": user.get('email', ''),
+            "phone": user.get('phone', 'Not provided'),
+            "address": user.get('shipping_address', order.get('shipping_address', 'Not provided')),
+            "wallet_balance": float(wallet_balance) if wallet_balance else 0,
+            "wallet_transactions": wallet_transactions,
+            "total_orders": user_orders,
+            "product_name": product.get('product_name', 'Unknown product'),
+            "product_image": product.get('product_image', ''),
+            "rental_period": rental_period,
+            "profile_pic": user.get('profile_pic', '/static/assets/img/user/user.png')
+        }
+        
+        return jsonify(renter_data)
+        
+    except Exception as e:
+        print(f"Error fetching renter details: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/return-details/<order_id>/<product_id>')
+def return_details(order_id, product_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'Please login to continue'})
+
+    try:
+        app.logger.info(f"Getting return details for order ID: {order_id}, product ID: {product_id}")
+        
+        # Get order data
+        order_ref = db.child("orders").child(order_id)
+        order_data = order_ref.get().val()
+        
+        if not order_data:
+            return jsonify({'success': False, 'error': 'Order not found'})
+
+        # Check if the order belongs to the logged-in user
+        if str(order_data.get('user_id')) != str(session['user_id']):
+            return jsonify({'success': False, 'error': 'Unauthorized access'})
+
+        # Find the specific item in items array
+        items = order_data.get('items', [])
+        target_item = None
+        
+        for item in items:
+            if item.get('product_id') == product_id:
+                target_item = item
+                break
+
+        if not target_item:
+            return jsonify({'success': False, 'error': 'Product not found in order'})
+        
+        # Get product details
+        product = db.child("products").child(product_id).get().val()
+        product_name = product.get('product_name', 'Unknown Product') if product else 'Unknown Product'
+        
+        # Check if this item has an auto-return charge
+        auto_return_charge = None
+        if target_item.get('autoreturn_charge'):
+            auto_return_charge = {
+                'amount': target_item.get('autoreturn_charge', 50),
+                'added_at': target_item.get('auto_returned_at', '')
+            }
+        
+        # Get wallet deposit information
+        wallet_deposit = order_data.get('wallet_deposit', 0)
+        
+        # Prepare response
+        item_details = {
+            'product_name': product_name,
+            'product_id': product_id,
+            'status': target_item.get('status', 'Unknown'),
+            'rent_from': target_item.get('rent_from', ''),
+            'rent_to': target_item.get('rent_to', ''),
+            'rental_days': target_item.get('rental_days', ''),
+            'order_date': order_data.get('created_at', ''),
+            'delivery_date': order_data.get('delivered_at', ''),
+            'return_initiated_at': target_item.get('return_initiated_at', ''),
+            'return_completed_at': target_item.get('return_completed_at', ''),
+            'auto_returned_at': target_item.get('auto_returned_at', ''),
+            'auto_return_charge': auto_return_charge,
+            'wallet_deposit': wallet_deposit
+        }
+        
+        return jsonify({
+            'success': True,
+            'item': item_details
+        })
+
+    except Exception as e:
+        app.logger.error(f"Error in return_details: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        })
+
+@app.route('/auto-return', methods=['POST'])
+def auto_return():
+    app.logger.info("=== Starting auto_return process ===")
+    
+    try:
+        data = request.get_json()
+        order_id = data.get('order_id')
+        product_id = data.get('product_id')
+        user_id = data.get('user_id')
+        
+        app.logger.info(f"Processing auto-return for order ID: {order_id}, product ID: {product_id}, user ID: {user_id}")
+        
+        # Get order data
+        order_ref = db.child("orders").child(order_id)
+        order_data = order_ref.get().val()
+        
+        if not order_data:
+            return jsonify({'success': False, 'error': 'Order not found'})
+            
+        # Find the specific item in items array
+        items = order_data.get('items', [])
+        target_item_index = None
+        target_item = None
+        
+        for index, item in enumerate(items):
+            if item.get('product_id') == product_id:
+                target_item_index = index
+                target_item = item
+                break
+                
+        if target_item_index is None:
+            return jsonify({'success': False, 'error': 'Product not found in order'})
+            
+        # Check if item is already returned or auto-returned
+        if target_item.get('status') in ['returned', 'auto_returned', 'return_initiated']:
+            return jsonify({'success': False, 'error': 'Item is already returned or in return process'})
+            
+        current_time = datetime.now().isoformat()
+        
+        # Update item status to return_initiated
+        db.child("orders").child(order_id).child("items").child(str(target_item_index)).update({
+            "status": "return_initiated",
+            "return_initiated_at": current_time,
+            "return_notes": "Auto-returned due to past due date",
+            "auto_returned_at": current_time,
+            "autoreturn_charge": 50  # Add the charge to the existing item instead of creating a new one
+        })
+        
+        # Update the wallet deposit by deducting the 50 rupee charge
+        current_wallet_deposit = float(order_data.get('wallet_deposit', 0))
+        new_wallet_deposit = current_wallet_deposit - 50
+        db.child("orders").child(order_id).update({
+            "wallet_deposit": new_wallet_deposit
+        })
+        
+        # Apply penalty to user's wallet
+        penalty_amount = -50  # Deduct ₹50 as penalty
+        
+        # Get current wallet balance
+        user_ref = db.child("users").child(user_id)
+        user_data = user_ref.get().val()
+        
+        current_wallet = float(user_data.get('wallet_balance', 0))
+        new_wallet_balance = current_wallet + penalty_amount
+        
+        # Update wallet balance
+        user_ref.update({
+            "wallet_balance": str(new_wallet_balance)
+        })
+        
+        # Record wallet transaction
+        transaction_id = str(uuid.uuid4())
+        transaction_data = {
+            "user_id": user_id,
+            "amount": str(penalty_amount),
+            "type": "penalty",
+            "status": "completed",
+            "description": f"Auto-return penalty for order {order_id}",
+            "created_at": current_time,
+            "order_id": order_id,
+            "product_id": product_id
+        }
+        
+        db.child("wallet_transactions").child(transaction_id).set(transaction_data)
+        
+        # Update product availability in inventory
+        try:
+            product_ref = db.child("products").child(product_id)
+            product_data = product_ref.get().val()
+            
+            if product_data:
+                current_quantity = int(product_data.get('product_quantity', 0))
+                rental_quantity = int(target_item.get('quantity', 1))
+                new_quantity = current_quantity + rental_quantity
+                
+                product_ref.update({
+                    "product_quantity": str(new_quantity)
+                })
+                
+                app.logger.info(f"Updated inventory for product {product_id}, new quantity: {new_quantity}")
+        except Exception as e:
+            app.logger.error(f"Error updating product inventory: {str(e)}")
+            
+        return jsonify({
+            'success': True,
+            'message': 'Auto-return initiated successfully',
+            'penalty_amount': 50,
+            'new_wallet_balance': new_wallet_balance,
+            'new_wallet_deposit': new_wallet_deposit,
+            'autoreturn_charge': 50
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error in auto_return: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        })
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.debug = True
+    app.run(host='0.0.0.0', port=port, debug=True)

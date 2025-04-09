@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="description" content="Andshop - Admin Dashboard HTML Template.">
+
+	<title>Andshop - Lost Products</title>
+
+	<!-- GOOGLE FONTS -->
+	<link rel="preconnect" href="https://fonts.googleapis.com/">
+	<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
+	<link
+		href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700;800&amp;family=Poppins:wght@300;400;500;600;700;800;900&amp;family=Roboto:wght@400;500;700;900&amp;display=swap"
+		rel="stylesheet">
+
+	<link href="{{ url_for('static', filename='assets/css/materialdesignicons.min.css') }}" rel="stylesheet" />
+
+	<!-- PLUGINS CSS STYLE -->
+	<link href="{{ url_for('static', filename='assets/plugins/simplebar/simplebar.css') }}" rel="stylesheet">
+
+	<!-- Data Tables -->
+	<link href="{{ url_for('static', filename='assets/plugins/data-tables/datatables.bootstrap5.min.css') }}" rel="stylesheet">
+	<link href="{{ url_for('static', filename='assets/plugins/data-tables/responsive.datatables.min.css') }}" rel="stylesheet">
+
+	<!-- custom css -->
+	<link id="style.css" href="{{ url_for('static', filename='assets/css/style.css') }}" rel="stylesheet" />
+
+	<!-- FAVICON -->
+	<link rel="icon" href="{{ url_for('static', filename='assets/img/favicon.png') }}" type="image/png">
+
+	<script type="text/javascript">
+		window.addEventListener('pageshow', function(event) {
+			if (event.persisted) {
+				// If the page is loaded from the cache, reload it
+				window.location.reload();
+			}
+		});
+	</script>
+</head>
+
+<body class="ec-header-fixed ec-sidebar-fixed ec-sidebar-dark ec-header-light" id="body">
+
+	<!-- WRAPPER -->
+	<div class="wrapper">
+
+		<!-- LEFT MAIN SIDEBAR -->
+		<div class="ec-left-sidebar ec-bg-sidebar">
+			<div id="sidebar" class="sidebar ec-sidebar-footer">
+
+				<div class="ec-brand">
+					<a href="/vendor_dashboard">
+						<img class="ec-brand-icon" src="{{ url_for('static', filename='assets/img/logo/favicon.png') }}" alt="" />
+						<span class="ec-brand-name text-truncate">ANDSHOP</span>
+					</a>
+				</div>
+				<!-- begin sidebar scrollbar -->
+				<div class="ec-navigation" data-simplebar>
+					<!-- sidebar menu -->
+					<ul class="nav sidebar-inner" id="sidebar-menu">
+						<!-- Dashboard -->
+						<li>
+							<a class="sidenav-item-link" href="/vendor_dashboard">
+								<i class="mdi mdi-view-dashboard-outline"></i>
+								<span class="nav-text">Dashboard</span>
+							</a>
+							<hr>
+						</li>
+						<!-- Users -->
+						<li class="has-sub">
+							<a class="sidenav-item-link" href="javascript:void(0)">
+								<i class="mdi mdi-account-multiple-outline"></i>
+								<span class="nav-text">Customers</span> <b class="caret"></b>
+							</a>
+							<div class="collapse">
+								<ul class="sub-menu" id="users" data-parent="#sidebar-menu">
+
+									<li class="">
+										<a class="sidenav-item-link" href='/user-list'>
+											<span class="nav-text">User List</span>
+										</a>
+									</li>
+								</ul>
+							</div>
+							<hr>
+						</li>
+						<!-- Analytics -->
+						<li class="has-sub">
+							<a class="sidenav-item-link" href="javascript:void(0)">
+								<i class="mdi mdi-chart-line"></i>
+								<span class="nav-text">Analytics</span> <b class="caret"></b>
+							</a>
+							<div class="collapse">
+								<ul class="sub-menu" id="analytics" data-parent="#sidebar-menu">
+									<li class="">
+										<a class="sidenav-item-link" href="/store-revenue">
+											<span class="nav-text">Store Revenue</span>
+										</a>
+									</li>
+								</ul>
+							</div>
+							<hr>
+						</li>
+						<!-- Products -->
+						<li class="has-sub active">
+							<a class="sidenav-item-link" href="javascript:void(0)">
+								<i class="mdi mdi-package-variant-closed"></i>
+								<span class="nav-text">Products</span> <b class="caret"></b>
+							</a>
+							<div class="collapse show">
+								<ul class="sub-menu" id="products" data-parent="#sidebar-menu">
+									<li class="">
+										<a class="sidenav-item-link" href="/product-add">
+											<span class="nav-text">Add Product</span>
+										</a>										
+									</li>
+									<li class="">
+										<a class="sidenav-item-link" href="/products">
+											<span class="nav-text">List Product</span>
+										</a>
+									</li>
+									<li class="active">
+										<a class="sidenav-item-link" href="/lost-products">
+											<span class="nav-text">Lost Products</span>
+										</a>
+									</li>
+								</ul>
+							</div>
+						</li>
+
+						<!-- Orders -->
+						<li class="has-sub">
+							<a class="sidenav-item-link" href="javascript:void(0)">
+								<i class="mdi mdi-cart-outline"></i>
+								<span class="nav-text">Orders</span> <b class="caret"></b>
+							</a>
+							<div class="collapse">
+								<ul class="sub-menu" id="orders" data-parent="#sidebar-menu">
+									<li class="">
+										<a class="sidenav-item-link" href="/new-order">
+											<span class="nav-text">Order list</span>
+										</a>
+									</li>
+								</ul>
+							</div>
+						</li>
+						<!-- Analysis page -->
+						<li>
+							<a class="sidenav-item-link" href="/analysis">
+								<i class="mdi mdi-finance"></i>
+								<span class="nav-text">Product Analysis page</span>
+							</a>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+
+		<!-- PAGE WRAPPER -->
+		<div class="ec-page-wrapper">
+
+			<!-- Header -->
+			<header class="ec-main-header" id="header">
+				<nav class="navbar navbar-static-top navbar-expand-lg">
+					<!-- Sidebar toggle button -->
+					<button id="sidebar-toggler">
+						<img src="{{ url_for('static', filename='assets/img/icons/clops.png') }}" alt="">
+					</button>
+					<!-- search form -->
+					<div class="search-form d-lg-inline-block">
+						<div class="input-group">
+							<input type="text" name="query" id="search-input" class="form-control"
+								placeholder="search.." autofocus autocomplete="off" />
+							<button type="button" name="search" id="search-btn" class="btn btn-flat">
+								<i class="mdi mdi-magnify"></i>
+							</button>
+						</div>
+						<div id="search-results-container">
+							<ul id="search-results"></ul>
+						</div>
+					</div>
+
+					<!-- navbar right -->
+					<div class="navbar-right">
+						<ul class="nav navbar-nav">
+							<!-- User Account -->
+							<li class="dropdown user-menu">
+								<button class="dropdown-toggle nav-link ec-drop" data-bs-toggle="dropdown"
+									aria-expanded="false">
+									{% if user and user.profile_pic %}
+										<img src="static/{{ user.profile_pic }}" class="user-image" alt="User Image" />
+									{% else %}
+										<img src="{{ url_for('static', filename='assets/img/user/user.png') }}" class="user-image" alt="User Image" />
+									{% endif %}
+								</button>
+								<ul class="dropdown-menu dropdown-menu-right ec-dropdown-menu">
+									<!-- User image -->
+									<li class="dropdown-header">
+										<div class="d-inline-block">
+											<h5>{{ user.name }}</h5>
+											<p class="pt-2">{{ user.email }}</p>
+										</div>
+									</li>
+									<li>
+										<a href="/user-profile">
+											<i class="mdi mdi-account"></i> My Profile
+										</a>
+									</li>
+									<li class="dropdown-footer">
+										<a href="/logout"> <i class="mdi mdi-logout"></i> Log Out </a>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</div>
+				</nav>
+			</header>
+
+			<!-- CONTENT WRAPPER -->
+			<div class="ec-content-wrapper">
+				<div class="content">
+					<div class="breadcrumb-wrapper d-flex align-items-center justify-content-between">
+						<div>
+							<h1>Lost Products</h1>
+							<p class="breadcrumbs"><span><a href="/vendor_dashboard">Home</a></span>
+								<span><i class="mdi mdi-chevron-right"></i></span>Products
+								<span><i class="mdi mdi-chevron-right"></i></span>Lost Products
+							</p>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-12">
+							<div class="card card-default">
+								<div class="card-body">
+									<div class="table-responsive">
+										<table id="responsive-data-table" class="table table-striped table-hover table-sm align-middle">
+											<thead class="table-light">
+												<tr>
+													<th>Photo</th>
+													<th>Product name</th>
+													<th>Category</th>
+													<th>Price</th>
+													<th>Last Location</th>
+													<th>Rental Period</th>
+													<th>Order ID</th>
+													<th>Date Reported</th>
+													<th class="text-center">Action</th>
+												</tr>
+											</thead>
+											<tbody>
+												{% for product in products %}
+												<tr>
+													<td><img class="tbl-thumb" src="{{ product.product_image }}" alt="Product Image" /></td>
+													<td>{{ product.product_name }}</td>
+													<td>{{ product.main_category|default(product.category) }}</td>
+													<td>₹{{ product.product_price }}</td>
+													<td>{{ product.last_location|default('Unknown') }}</td>
+													<td>{{ product.rent_from|default('') }} to {{ product.rent_to|default('') }}</td>
+													<td><a href="/order-detail/{{ product.order_id }}" class="text-primary">{{ product.order_id[:8] }}...</a></td>
+													<td>{{ product.reported_date|default('N/A') }}</td>
+													<td class="text-right">
+														<div class="btn-group">
+															<button type="button"
+																class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
+																data-bs-toggle="dropdown" aria-haspopup="true"
+																aria-expanded="false" data-display="static">
+																<span class="sr-only">Action</span>
+															</button>
+															<div class="dropdown-menu">
+																<a class="dropdown-item renter-detail-btn" href="#" data-bs-toggle="modal" data-bs-target="#renterDetailModal" data-order-id="{{ product.order_id }}" data-product-id="{{ product.product_id }}">Detail</a>
+																
+																<a class="dropdown-item" href="/mark-found/{{ product.product_id }}?order_id={{ product.order_id }}">Mark as Found</a>
+															</div>
+														</div>
+													</td>
+												</tr>
+												{% endfor %}
+											</tbody>
+										</table>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div> <!-- End Content -->
+			</div> <!-- End Content Wrapper -->
+
+			<!-- Renter Detail Modal -->
+			<div class="modal fade" id="renterDetailModal" tabindex="-1" aria-labelledby="renterDetailModalLabel" aria-hidden="true">
+				<div class="modal-dialog modal-dialog-centered">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h5 class="modal-title" id="renterDetailModalLabel">Renter Details</h5>
+							<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						</div>
+						<div class="modal-body">
+							<div class="text-center mb-3" id="renterLoading">
+								<div class="spinner-border text-primary" role="status">
+									<span class="visually-hidden">Loading...</span>
+								</div>
+							</div>
+							<div id="renterDetails" style="display:none;">
+								<div class="mb-3">
+									<h5 id="renterName" class="mb-1"></h5>
+									<p id="renterEmail" class="text-muted mb-0"></p>
+								</div>
+								
+								<div class="row mb-3">
+									<div class="col-6">
+										<div class="card bg-light">
+											<div class="card-body py-2">
+												<p class="text-muted mb-1">Wallet Balance</p>
+												<h5 id="walletBalance" class="mb-0"></h5>
+											</div>
+										</div>
+									</div>
+									<div class="col-6">
+										<div class="card bg-light">
+											<div class="card-body py-2">
+												<p class="text-muted mb-1">Total Orders</p>
+												<h5 id="totalOrders" class="mb-0"></h5>
+											</div>
+										</div>
+									</div>
+								</div>
+								
+								<div class="mb-3">
+									<p class="text-muted mb-2">Forfeited Deposits</p>
+									<div class="table-responsive">
+										<table class="table table-sm table-bordered">
+											<thead class="bg-light">
+												<tr>
+													<th>Amount</th>
+													<th>Date</th>
+													<th>Status</th>
+												</tr>
+											</thead>
+											<tbody id="walletTransactions">
+												<!-- Transactions will be populated here -->
+											</tbody>
+										</table>
+									</div>
+								</div>
+								
+								<div class="mb-3">
+									<p class="text-muted mb-1">Contact</p>
+									<p id="renterPhone" class="mb-0"></p>
+								</div>
+								
+								<div class="mb-3">
+									<p class="text-muted mb-1">Address</p>
+									<p id="renterAddress" class="mb-0"></p>
+								</div>
+								
+								<div>
+									<p class="text-muted mb-1">Current Product</p>
+									<div class="d-flex align-items-center">
+										<img id="productImage" src="" alt="Product" class="me-2" style="width: 48px; height: 48px; object-fit: cover;">
+										<div>
+											<p id="productName" class="mb-0 fw-bold"></p>
+											<small id="orderDetails" class="text-muted"></small>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div id="renterError" class="alert alert-danger" style="display:none;">
+								Failed to load renter details. Please try again.
+							</div>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+							<a id="contactRenterBtn" href="#" class="btn btn-primary">Contact Renter</a>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Footer -->
+			<footer class="footer mt-auto">
+				<div class="copyright bg-white">
+					<p>
+						Copyright &copy; <span id="ec-year"></span><a class="text-primary"
+							href="https://themeforest.net/user/ashishmaraviya" target="_blank"> AndShop Dashboard
+							Admin Template</a>. All Rights Reserved.
+					</p>
+				</div>
+			</footer>
+
+		</div> <!-- End Page Wrapper -->
+	</div> <!-- End Wrapper -->
+
+	<!-- Common Javascript -->
+	<script src="{{ url_for('static', filename='assets/plugins/jquery/jquery-3.5.1.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/js/bootstrap.bundle.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/simplebar/simplebar.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/jquery-zoom/jquery.zoom.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/slick/slick.min.js') }}"></script>
+
+	<!-- Data Tables -->
+	<script src="{{ url_for('static', filename='assets/plugins/data-tables/jquery.datatables.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/data-tables/datatables.bootstrap5.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/data-tables/datatables.responsive.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='assets/plugins/options-sidebar/optionswitcher.js') }}"></script>
+
+	<script src="{{ url_for('static', filename='assets/js/custom.js') }}"></script>
+	
+	<script>
+		$(document).ready(function() {
+			// Handle renter detail button click
+			$('.renter-detail-btn').on('click', function() {
+				const orderId = $(this).data('order-id');
+				const productId = $(this).data('product-id');
+				
+				// Show loading, hide content and error
+				$('#renterLoading').show();
+				$('#renterDetails').hide();
+				$('#renterError').hide();
+				
+				// Fetch renter details from server
+				$.ajax({
+					url: '/api/renter-details',
+					type: 'GET',
+					data: {
+						order_id: orderId,
+						product_id: productId
+					},
+					success: function(data) {
+						// Hide loading
+						$('#renterLoading').hide();
+						
+						if (data.success) {
+							// Populate modal with renter details
+							$('#renterName').text(data.name);
+							$('#renterEmail').text(data.email);
+							$('#walletBalance').text('₹' + data.wallet_balance);
+							$('#totalOrders').text(data.total_orders);
+							$('#renterPhone').text(data.phone);
+							$('#renterAddress').text(data.address);
+							$('#productImage').attr('src', data.product_image);
+							$('#productName').text(data.product_name);
+							$('#orderDetails').text('Order #' + orderId.substring(0, 8) + '... • ' + data.rental_period);
+							
+							// Populate wallet transactions table
+							$('#walletTransactions').empty();
+							if (data.wallet_transactions && data.wallet_transactions.length > 0) {
+								// Filter to show only forfeited transactions
+								const forfeitedTransactions = data.wallet_transactions.filter(function(transaction) {
+									return transaction.status === 'forfeited';
+								});
+								
+								if (forfeitedTransactions.length > 0) {
+									forfeitedTransactions.forEach(function(transaction) {
+										const date = transaction.created_at ? new Date(transaction.created_at).toLocaleDateString() : 'N/A';
+										const row = `
+											<tr>
+												<td>₹${transaction.amount}</td>
+												<td>${date}</td>
+												<td><span class="badge bg-danger">FORFEITED</span></td>
+											</tr>
+										`;
+										$('#walletTransactions').append(row);
+									});
+								} else {
+									$('#walletTransactions').append('<tr><td colspan="3" class="text-center">No forfeited deposits found</td></tr>');
+								}
+							} else {
+								$('#walletTransactions').append('<tr><td colspan="3" class="text-center">No wallet transactions found</td></tr>');
+							}
+							
+							// Set contact link
+							$('#contactRenterBtn').attr('href', 'mailto:' + data.email);
+							
+							// Show details
+							$('#renterDetails').show();
+						} else {
+							// Show error
+							$('#renterError').show();
+						}
+					},
+					error: function() {
+						// Hide loading, show error
+						$('#renterLoading').hide();
+						$('#renterError').show();
+					}
+				});
+			});
+		});
+	</script>
+</body>
+
+</html> 

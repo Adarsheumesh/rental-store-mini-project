@@ -30,8 +30,15 @@
             <tr>
                 <td>{{ item.get('product_name', 'Unknown Product') }}</td>
                 <td>{{ item.get('quantity', 0) }}</td>
-                <td>${{ "%.2f"|format(item.get('price', 0)) }}</td>
+                <td>₹{{ "%.2f"|format(item.get('price', 0)) }}</td>
             </tr>
+            {% if item.get('autoreturn_charge') %}
+            <tr>
+                <td><span style="color: red;">Auto-Return Charge</span></td>
+                <td>1</td>
+                <td><span style="color: red;">₹{{ "%.2f"|format(item.get('autoreturn_charge', 50)) }}</span></td>
+            </tr>
+            {% endif %}
             {% endfor %}
         </tbody>
     </table>

@@ -10,6 +10,7 @@
     <meta name="description" content="Default Description">
     <meta name="keywords" content="E-commerce" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="user-id" content="{{ session.user_id }}">
    <!-- place favicon.ico in the root directory -->
    <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='img/icon/favicon.png') }}">
 
@@ -366,6 +367,7 @@
 </head>
 
 <body>
+    <input type="hidden" id="user-id" value="{{ session.user_id }}">
     <!--[if lt IE 8]>
     <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
     <![endif]-->
@@ -444,6 +446,20 @@
             <!-- Container End -->
         </div>
         <!-- Breadcrumb End -->
+        
+        <!-- Auto-Return Notification -->
+        <div id="autoReturnNotification" class="position-fixed top-50 start-50 translate-middle bg-white p-4 rounded shadow-lg text-center" style="display: none; z-index: 9999; min-width: 300px;">
+            <div class="mb-3">
+                <i class="fa fa-exclamation-circle text-warning" style="font-size: 48px;"></i>
+            </div>
+            <h4>Late Return Penalty Applied</h4>
+            <p>Your item has been automatically returned as the return date has passed.</p>
+            <p class="text-danger">A penalty of ₹50 has been deducted from your wallet balance.</p>
+            <p><strong>Item:</strong> <span id="autoReturnItemName"></span></p>
+            <p><strong>Order ID:</strong> <span id="autoReturnOrderId"></span></p>
+            <button class="btn btn-primary mt-2" onclick="$('#autoReturnNotification').fadeOut();">OK</button>
+        </div>
+        
         <!-- My Account Page Start Here -->
         <div class="my-account white-bg pb-60">
             <div class="container">
@@ -732,6 +748,94 @@
                             <!-- New Returns tab content -->
                             <div id="returns" class="tab-pane fade">
                                 <h3>Returns</h3>
+                                <div class="alert alert-info">
+                                    <i class="fa fa-info-circle me-2"></i>
+                                    Items not returned by the due date will be automatically returned with a penalty of ₹50 charged from your wallet.
+                                </div>
+                                
+                                <ul class="nav nav-tabs mb-3" id="returnsTabContent" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="normal-returns-tab" data-bs-toggle="tab" data-bs-target="#normal-returns" type="button" role="tab">Normal Returns</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="auto-returns-tab" data-bs-toggle="tab" data-bs-target="#auto-returns" type="button" role="tab">Late Returns</button>
+                                    </li>
+                                </ul>
+                                
+                                <script>
+                                $(document).ready(function() {
+                                    // Add a global flag to track tab switching
+                                    window.isTabSwitching = false;
+                                    
+                                    // Function to close all modals
+                                    window.closeAllModals = function() {
+                                        $('.modal').each(function() {
+                                            const modalElement = $(this)[0];
+                                            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                                            if (modalInstance) {
+                                                modalInstance.hide();
+                                            }
+                                        });
+                                    };
+                                    
+                                    // Make sure only one bootstrap modal can be displayed at a time
+                                    $(document).on('show.bs.modal', '.modal', function() {
+                                        // This flag prevents modal conflicts
+                                        if (window.modalIsShowing) {
+                                            return false; // Prevent showing multiple modals
+                                        }
+                                        window.modalIsShowing = true;
+                                    });
+                                    
+                                    $(document).on('hidden.bs.modal', '.modal', function() {
+                                        window.modalIsShowing = false;
+                                    });
+                                    
+                                    // Add event handlers for BOTH tab buttons to prevent the alert
+                                    $('#normal-returns-tab, #auto-returns-tab').on('click', function() {
+                                        // Set flag to prevent checkPastDueRentals from processing
+                                        window.isTabSwitching = true;
+                                        
+                                        // Close any return-related modals when switching sub-tabs
+                                        closeAllModals();
+                                        
+                                        // Reset flag after tab switch is complete
+                                        setTimeout(function() {
+                                            window.isTabSwitching = false;
+                                        }, 800);  // Increased timeout to ensure complete tab switching
+                                    });
+                                    
+                                    // Also add handlers for all main tab buttons to close modals
+                                    $('a[data-bs-toggle="tab"]').on('click', function() {
+                                        // Set flag to prevent processing
+                                        window.isTabSwitching = true;
+                                        
+                                        // Close any open modals when switching tabs
+                                        closeAllModals();
+                                        
+                                        // Reset flag after tab switch is complete
+                                        setTimeout(function() {
+                                            window.isTabSwitching = false;
+                                        }, 800);
+                                    });
+                                    
+                                    // Override the global confirm function to prevent dialogs during tab switching
+                                    const originalConfirm = window.confirm;
+                                    window.confirm = function(message) {
+                                        // If we're switching tabs or the message contains penalty text, auto-confirm
+                                        if (window.isTabSwitching || (message && message.includes("penalty"))) {
+                                            console.log("Suppressing confirmation dialog during tab switching");
+                                            return true; // Auto-confirm
+                                        }
+                                        // Otherwise use original confirm
+                                        return originalConfirm.apply(this, arguments);
+                                    };
+                                });
+                                </script>
+                                
+                                <div class="tab-content" id="returnsTabContent">
+                                    <!-- Normal Returns Tab -->
+                                    <div class="tab-pane fade show active" id="normal-returns" role="tabpanel">
                                 <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
                                     <table class="table">
                                         <thead style="position: sticky; top: 0; background-color: white; z-index: 1;">
@@ -746,7 +850,7 @@
                                         <tbody>
                                             {% for order in orders %}
                                                 {% for item in order.get('items', []) %}
-                                                    {% if item.get('status') == 'returned' %}
+                                                            {% if item.get('status') == 'returned' and item.get('is_auto_return', false) == false and item.get('return_notes', '') != 'Auto-returned due to past due date' %}
                                                         <tr>
                                                             <td>
                                                                 <img src="{{ item.get('image_url', url_for('static', filename='img/default-product.jpg')) }}" 
@@ -784,114 +888,167 @@
                                                         </tr>
                                                     {% endif %}
                                                 {% endfor %}
-                                            {% else %}
-                                                <tr>
-                                                    <td colspan="5" class="text-center">No returned items found.</td>
+                                                    {% endfor %}
+                                                    
+                                                    {% set has_normal_returns = false %}
+                                                    {% for order in orders %}
+                                                        {% for item in order.get('items', []) %}
+                                                            {% if item.get('status') == 'returned' and item.get('is_auto_return', false) == false and item.get('return_notes', '') != 'Auto-returned due to past due date' %}
+                                                                {% set has_normal_returns = true %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    {% endfor %}
+                                                    
+                                                    {% if not has_normal_returns %}
+                                                        <tr>
+                                                            <td colspan="5" class="text-center">No regular returned items found.</td>
                                                 </tr>
-                                            {% endfor %}
+                                                    {% endif %}
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
+                                    
+                                    <!-- Auto Returns Tab -->
+                                    <div class="tab-pane fade" id="auto-returns" role="tabpanel">
+                                        <div class="alert alert-warning">
+                                            <i class="fa fa-exclamation-triangle me-2"></i>
+                                            Items listed here were automatically returned after the rental period expired. A penalty of ₹50 has been charged for each item.
                         </div>
+                                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                            <table class="table">
+                                                <thead style="position: sticky; top: 0; background-color: white; z-index: 1;">
+                                                    <tr>
+                                                        <th>Product</th>
+                                                        <th>Details</th>
+                                                        <th>Price</th>
+                                                        <th>Status</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for order in orders %}
+                                                        {% for item in order.get('items', []) %}
+                                                            {% if (item.get('status') == 'returned' or item.get('status') == 'auto_returned') and (item.get('is_auto_return', false) == true or item.get('return_notes', '') == 'Auto-returned due to past due date') %}
+                                                                <tr>
+                                                                    <td>
+                                                                        <img src="{{ item.get('image_url', url_for('static', filename='img/default-product.jpg')) }}" 
+                                                                             alt="{{ item.get('product_name', 'Product') }}" 
+                                                                             width="50" height="50">
+                                                                    </td>
+                                                                    <td>
+                                                                        <strong>{{ item.get('product_name', 'Unknown Product') }}</strong><br>
+                                                                        Order ID: {{ order.get('order_id', 'N/A') }}<br>
+                                                                        {% if item.get('color') %}Color: {{ item.get('color') }}{% endif %}
+                                                                        {% if item.get('size') %}Size: {{ item.get('size') }}{% endif %}
+                                                                        <br>
+                                                                        Quantity: {{ item.get('quantity', 1) }}
+                                                                    </td>
+                                                                    <td>₹{{ "%.2f"|format(item.get('total_price', 0)) }}</td>
+                                                                    <td>
+                                                                        <span class="badge bg-danger">Auto-Returned</span><br>
+                                                                        <small>Return Date: {{ item.get('return_completed_at', 'N/A') }}</small><br>
+                                                                        <small>Rental Period: {{ item.get('rent_from', 'N/A') }} to {{ item.get('rent_to', 'N/A') }}</small>
+                                                                        <br>
+                                                                        <small class="text-danger">Penalty: ₹50</small>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="d-flex flex-column gap-2">
+                                                                            <button class="btn btn-outline-primary btn-sm view-return-details" 
+                                                                                    data-order-id="{{ order.get('order_id', '') }}"
+                                                                                    data-product-id="{{ item.get('product_id', '') }}">
+                                                                                <i class="fa fa-eye"></i> View Details
+                                                                            </button>
+                                                                            <a href="{{ url_for('download_order_pdf', order_id=order.get('order_id', '')) }}" 
+                                                                               class="btn btn-outline-secondary btn-sm download-invoice" 
+                                                                               target="_blank">
+                                                                                    <i class="fa fa-download"></i> Download Invoice
+                                                                                </a>
                     </div>
-                </div>
-                <script>
-    function validateName() {
-        const nameInput = document.getElementById('f-name');
-        // Replace any character that is not a letter or space with an empty string
-        nameInput.value = nameInput.value.replace(/[^A-Za-z\s]/g, '');
+                                                                    </td>
+                                                                </tr>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    {% endfor %}
+                                                    
+                                                    {% set has_auto_returns = false %}
+                                                    {% for order in orders %}
+                                                        {% for item in order.get('items', []) %}
+                                                            {% if (item.get('status') == 'returned' or item.get('status') == 'auto_returned') and (item.get('is_auto_return', false) == true or item.get('return_notes', '') == 'Auto-returned due to past due date') %}
+                                                                {% set has_auto_returns = true %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    {% endfor %}
+                                                    
+                                                    {% if not has_auto_returns %}
+                                                        <tr>
+                                                            <td colspan="5" class="text-center">No late-returned items found.</td>
+                                                        </tr>
+                                                    {% endif %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-        // Display error if any invalid character is entered
-        const regex = /^[A-Za-z\s]+$/;
-        if (!regex.test(nameInput.value)) {
-            document.getElementById('nameError').innerText = 'Name can only contain letters and spaces.';
-            return false;
-        } else {
-            document.getElementById('nameError').innerText = '';
-            return true;
-        }
-    }
-
-    function validateDistrict() {
-        const districtInput = document.getElementById('l-name');
-        // Replace any character that is not a letter or space with an empty string
-        districtInput.value = districtInput.value.replace(/[^A-Za-z\s]/g, '');
-
-        // Display error if any invalid character is entered
-        const regex = /^[A-Za-z\s]+$/;
-        if (!regex.test(districtInput.value) || districtInput.value.trim() === '') {
-            document.getElementById('districtError').innerText = 'Address can only contain letters and spaces.';
-            return false;
-        } else {
-            document.getElementById('districtError').innerText = '';
-            return true;
-        }
-    }
-
-    function validatePhone() {
-        const phoneInput = document.getElementById('phone');
-        // Replace any character that is not a digit with an empty string
-        phoneInput.value = phoneInput.value.replace(/[^0-9]/g, '');
-
-        // Display error if any invalid character is entered
-        const regex = /^[0-9]{10}$/;
-        if (!regex.test(phoneInput.value)) {
-            document.getElementById('phoneError').innerText = 'Phone number must be 10 digits.';
-            return false;
-        } else {
-            document.getElementById('phoneError').innerText = '';
-            return true;
-        }
-    }
-
-    function validateAddress() {
-        const address = document.getElementById('address');
-        const addressError = document.getElementById('addressError');
-        const addressValue = address.value.trim();
+<script>
+    function validateAddress() { 
+        const address = document.getElementById('address'); 
+        const addressValue = address.value.trim(); 
         
         // Regular expression to allow only letters, numbers, spaces, commas, periods, and newlines
-        const validAddressPattern = /^[a-zA-Z0-9\s,.'"\n]+$/;
+        const validAddressPattern = /^[a-zA-Z0-9\s,.'"\n-]+$/; 
         
-        if (!addressValue) {
-            addressError.textContent = 'Please enter your address';
-            return false;
-        } else if (addressValue.length < 10) {
-            addressError.textContent = 'Address should be at least 10 characters long';
-            return false;
-        } else if (!validAddressPattern.test(addressValue)) {
-            addressError.textContent = 'Address can only contain letters, numbers, spaces, commas, and periods';
-            address.value = addressValue.replace(/[^a-zA-Z0-9\s,.'"\n]/g, '');
-            return false;
-        } else {
-            addressError.textContent = '';
-            return true;
-        }
-    }
+        // Remove error class if present
+        address.classList.remove('is-invalid');
+        
+        if (!addressValue) { 
+            address.classList.add('is-invalid');
+            return false; 
+        } else if (addressValue.length < 10) { 
+            address.classList.add('is-invalid');
+            return false; 
+        } else if (!validAddressPattern.test(addressValue)) { 
+            address.classList.add('is-invalid');
+            return false; 
+        } else { 
+            return true; 
+        } 
+    } 
 
-    function validateForm() {
-        const isNameValid = validateName();
-        const isDistrictValid = validateDistrict();
-        const isPhoneValid = validatePhone();
-        const isAddressValid = validateAddress();
+    function validateForm() { 
+        const isNameValid = validateName(); 
+        const isDistrictValid = validateDistrict(); 
+        const isPhoneValid = validatePhone(); 
+        const isAddressValid = validateAddress(); 
         
-        return isNameValid && isDistrictValid && isPhoneValid && isAddressValid;
-    }
+        return isNameValid && isDistrictValid && isPhoneValid && isAddressValid; 
+    } 
 
-    function validateBusinessAddress() {
-        const addressInput = document.getElementById('business_address');
-        const errorElement = document.getElementById('businessAddressError');
-        const address = addressInput.value.trim();
+    function validateBusinessAddress() { 
+        const addressInput = document.getElementById('business_address'); 
+        const address = addressInput.value.trim(); 
         
-        if (address.length < 10) {
-            errorElement.textContent = 'Business address must be at least 10 characters long';
-            return false;
-        } else if (address.length > 200) {
-            errorElement.textContent = 'Business address cannot exceed 200 characters';
+        // Remove error class if present
+        addressInput.classList.remove('is-invalid');
+        
+        if (address.length < 10) { 
+            addressInput.classList.add('is-invalid');
+            return false; 
+        } else if (address.length > 200) { 
+            addressInput.classList.add('is-invalid');
+            return false; 
+        } 
+        
+        // Check for invalid characters
+        const validAddressPattern = /^[a-zA-Z0-9\s,.'"\n-]+$/;
+        if (!validAddressPattern.test(address)) {
+            addressInput.classList.add('is-invalid');
             return false;
         }
-        errorElement.textContent = '';
-        return true;
+        
+        return true; 
     }
 </script>
                     
@@ -1087,6 +1244,9 @@
 <!-- Cart utilities -->
 <script src="{{ url_for('static', filename='js/cart-utils.js') }}"></script>
 
+<!-- Auto Return System -->
+<script src="{{ url_for('static', filename='js/auto-return.js') }}"></script>
+
 <!-- Remove all other jQuery and Bootstrap imports and keep only these -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -1152,6 +1312,14 @@ $(document).ready(function() {
         const rentFrom = $(this).data('rent-from');
         const rentTo = $(this).data('rent-to');
         const quantity = $(this).data('quantity') || 1;
+
+        // Only show the modal if we're in the Orders tab
+        const isOrdersTab = $('#orders').hasClass('active') || $(this).closest('#orders').length > 0;
+        
+        if (!isOrdersTab) {
+            console.log('Not displaying return modal because we are not in the Orders tab');
+            return;
+        }
 
         console.log('Return button clicked:', { orderId, productId, productName, rentFrom, rentTo, quantity });
 
@@ -1436,6 +1604,14 @@ $(document).ready(function() {
         const productName = $(this).data('product-name');
         const quantity = parseInt($(this).data('quantity') || 1);
 
+        // Only show the modal if we're in the Orders tab
+        const isOrdersTab = $('#orders').hasClass('active') || $(this).closest('#orders').length > 0;
+        
+        if (!isOrdersTab) {
+            console.log('Not displaying cancel item modal because we are not in the Orders tab');
+            return;
+        }
+
         // Populate modal
         $('#cancelItemOrderId').text(orderId);
         $('#cancelItemProductName').text(productName);
@@ -1584,69 +1760,6 @@ $(document).ready(function() {
     }
 
     // Prevent download invoice buttons from appearing in order details modal when accessed from orders tab
-    $('.view-order-details').on('click', function() {
-        const orderId = $(this).data('order-id');
-        
-        // Get order details
-        $.ajax({
-            url: `/order/${orderId}`,
-            method: 'GET',
-            success: function(response) {
-                $('#orderDetailsLoading').addClass('d-none');
-                
-                if (response.success) {
-                    // Create the content HTML
-                    const contentHtml = `
-                        <div class="order-info mb-4">
-                            <h6>Order Information</h6>
-                            <p><strong>Order ID:</strong> ${response.order.order_id}</p>
-                            <p><strong>Date:</strong> ${response.order.created_at}</p>
-                            <p><strong>Status:</strong> ${response.order.status || 'N/A'}</p>
-                            <p><strong>Total Amount:</strong> ₹${parseFloat(response.order.order_total || 0).toFixed(2)}</p>
-                        </div>
-                        
-                        <div class="order-items mb-4">
-                            <h6>Items</h6>
-                            <div class="list-group">
-                                ${response.order.items.map(item => `
-                                    <div class="list-group-item">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <h6 class="mb-1">${item.product_name}</h6>
-                                            <span class="badge ${getStatusBadgeClass(item.status)}">${item.status}</span>
-                                        </div>
-                                        <p class="mb-1">Quantity: ${item.quantity}</p>
-                                        <p class="mb-1">Rental Period: ${item.rent_from} to ${item.rent_to}</p>
-                                        <p class="mb-1">Price: ₹${parseFloat(item.item_total || 0).toFixed(2)}</p>
-                                        <small class="text-muted">Store: ${item.store_name || 'N/A'}</small>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                        
-                        ${response.order.shipping_address ? `
-                            <div class="shipping-info">
-                                <h6>Shipping Information</h6>
-                                <p>${response.order.shipping_address}</p>
-                                <p>${response.order.shipping_district || ''}</p>
-                            </div>
-                        ` : ''}
-                    `;
-                    
-                    $('#moreDetailsContent').html(contentHtml).removeClass('d-none');
-                } else {
-                    $('#orderDetailsError').removeClass('d-none');
-                }
-            },
-            error: function(xhr, status, error) {
-                $('#orderDetailsLoading').addClass('d-none');
-                $('#orderDetailsError').removeClass('d-none')
-                    .text(xhr.responseJSON?.message || 'Failed to load order details. Please try again.');
-                console.error('Error loading order details:', error);
-            }
-        });
-    });
-    
-    // Make sure the downloadInvoice function only works from the Returns tab
     $('.download-invoice').on('click', function(e) {
         // Only allow download if we're in the Returns tab
         if (!$('#returns').hasClass('active') && !$(this).closest('#returns').length) {
@@ -1663,7 +1776,139 @@ $(document).ready(function() {
             counter.dataset.cartCount = count;
         });
     }
+
+    // Get item information
+    const orderId = itemRow.find('button[data-order-id]').data('order-id');
+    const productId = itemRow.find('button[data-product-id]').data('product-id');
+    const productName = itemRow.find('button[data-product-name]').data('product-name') || 
+                      itemRow.find('strong').first().text();
+    
+    // Only proceed if we have all required information
+    if (orderId && productId) {
+        // Initiate auto-return with penalty
+        initiateAutoReturn(orderId, productId, productName);
+    }
 });
+
+// Function to handle auto-return
+function initiateAutoReturn(orderId, productId, productName) {
+    $.ajax({
+        url: '/auto-return',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            order_id: orderId,
+            product_id: productId,
+            apply_penalty: true,
+            penalty_amount: 50
+        }),
+        success: function(response) {
+            if (response.success) {
+                // Update UI to show returned status
+                const statusCell = $(`#status-cell-${orderId}-${productId}`);
+                if (statusCell.length) {
+                    statusCell.html(`
+                        <span class="badge bg-danger">Auto-Returned</span><br>
+                        <small>Rental Period: ${response.rent_from || 'N/A'} to ${response.rent_to || 'N/A'}</small><br>
+                        <small>Penalty Applied: ₹50</small>
+                    `);
+                }
+                
+                // Hide any action buttons
+                $(`button[data-order-id="${orderId}"][data-product-id="${productId}"]`).hide();
+                
+                // Show notification
+                $('#autoReturnItemName').text(productName);
+                $('#autoReturnOrderId').text(orderId);
+                $('#autoReturnNotification').fadeIn(300).delay(5000).fadeOut(300);
+                
+                // Update wallet balance if provided
+                if (response.wallet_balance !== undefined) {
+                    // Update wallet balance in the modal
+                    $('#walletBalance, .text-primary:contains("₹")').text(`₹${parseFloat(response.wallet_balance).toFixed(2)}`);
+                }
+                
+                // Refresh the returns tab
+                setTimeout(() => {
+                    // If user is on the returns tab, refresh it
+                    if ($('#returns').hasClass('active')) {
+                        location.reload();
+                    }
+                }, 6000);
+            } else {
+                console.error('Auto-return failed:', response.message);
+                showToast('Error', response.message || 'Failed to process auto-return', true);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Auto-return error:', error);
+            showToast('Error', 'Failed to process auto-return. Please try again.', true);
+        }
+    });
+}
+
+// Run the check when page loads, but only after a delay to avoid conflicts with tab initialization
+setTimeout(function() {
+    // Skip check if we're in the middle of tab switching
+    if (!window.isTabSwitching) {
+        checkPastDueRentals();
+    }
+}, 1000);
+
+// Also run the check periodically (every hour) but only if not switching tabs
+setInterval(function() {
+    // Skip check if we're in the middle of tab switching
+    if (!window.isTabSwitching) {
+        checkPastDueRentals();
+    }
+}, 3600000);
+
+function checkPastDueRentals() {
+    // Skip processing if we're just switching tabs
+    if (window.isTabSwitching) {
+        console.log('Skipping checkPastDueRentals during tab switch');
+        return;
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day
+    
+    // Get all active rental items with delivered status
+    // Note: We check for delivered items (bg-success) since these are the items that should be returned
+    $('.badge.bg-primary, .badge:contains("Active")').each(function() {
+        const statusCell = $(this).closest('td');
+        const itemRow = statusCell.closest('tr');
+        
+        // Extract return date from the small text within status cell
+        const rentToText = statusCell.find('small:contains("Rental Period")').text();
+        if (!rentToText) return;
+        
+        const rentToMatch = rentToText.match(/Rental Period:.*to\s+(\d{2}\/\d{2}\/\d{4})/);
+        if (!rentToMatch || !rentToMatch[1]) return;
+        
+        // Parse the return date
+        const [day, month, year] = rentToMatch[1].split('/');
+        const returnDate = new Date(year, month - 1, day);
+        returnDate.setHours(23, 59, 59, 999); // End of day
+        
+        // Check if return date has passed
+        if (returnDate < today) {
+            console.log('Found past due rental', returnDate);
+            
+            // Get item information
+            const orderId = itemRow.find('button[data-order-id]').data('order-id');
+            const productId = itemRow.find('button[data-product-id]').data('product-id');
+            const productName = itemRow.find('button[data-product-name]').data('product-name') || 
+                              itemRow.find('strong').first().text();
+            
+            // Only proceed if we have all required information
+            if (orderId && productId) {
+                // Initiate auto-return with penalty
+                initiateAutoReturn(orderId, productId, productName);
+            }
+        }
+    });
+}
 </script>
 
 <!-- Add complete modal structure -->
@@ -1926,91 +2171,437 @@ $(document).ready(function() {
     // Order details view handler
     $('.view-order-details').on('click', function() {
         const orderId = $(this).data('order-id');
-        const modal = new bootstrap.Modal(document.getElementById('moreDetailsModal'));
         
         // Reset modal state
         $('#orderDetailsLoading').removeClass('d-none');
         $('#orderDetailsError').addClass('d-none');
         $('#moreDetailsContent').addClass('d-none').empty();
         
+        // Only show the modal if we're in the Orders tab
+        const isOrdersTab = $('#orders').hasClass('active') || $(this).closest('#orders').length > 0;
+        
+        // Check if the button is in the currently visible tab
+        const isInActiveTab = $(this).closest('.tab-pane.active').length > 0;
+        
+        if (!isOrdersTab || !isInActiveTab) {
+            console.log('Not displaying order details modal - either not in Orders tab or not in active tab');
+            return;
+        }
+        
+        // Close any existing modals
+        closeAllModals();
+        
+        // Create a new modal instance after ensuring the element is clean
+        const modalElement = document.getElementById('moreDetailsModal');
+        // Ensure any existing modal instance is disposed
+        const existingModal = bootstrap.Modal.getInstance(modalElement);
+        if (existingModal) {
+            existingModal.dispose();
+        }
+        
+        // Create a new modal instance
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: 'static',
+            keyboard: false
+        });
+        
         // Show modal
         modal.show();
+    });
+    
+    // Function to check for past due rentals
+    function checkPastDueRentals() {
+        // Skip processing if we're just switching tabs
+        if (window.isTabSwitching) {
+            console.log('Skipping checkPastDueRentals during tab switch');
+            return;
+        }
         
-        // Fetch order details
-        $.ajax({
-            url: `/order/${orderId}`,
-            method: 'GET',
-            success: function(response) {
-                $('#orderDetailsLoading').addClass('d-none');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to start of day
+        
+        // Get all active rental items with delivered status
+        // Note: We check for delivered items (bg-success) since these are the items that should be returned
+        $('.badge.bg-primary, .badge:contains("Active")').each(function() {
+            const statusCell = $(this).closest('td');
+            const itemRow = statusCell.closest('tr');
+            
+            // Extract return date from the small text within status cell
+            const rentToText = statusCell.find('small:contains("Rental Period")').text();
+            if (!rentToText) return;
+            
+            const rentToMatch = rentToText.match(/Rental Period:.*to\s+(\d{2}\/\d{2}\/\d{4})/);
+            if (!rentToMatch || !rentToMatch[1]) return;
+            
+            // Parse the return date
+            const [day, month, year] = rentToMatch[1].split('/');
+            const returnDate = new Date(year, month - 1, day);
+            returnDate.setHours(23, 59, 59, 999); // End of day
+            
+            // Check if return date has passed
+            if (returnDate < today) {
+                console.log('Found past due rental', returnDate);
                 
+                // Get item information
+                const orderId = itemRow.find('button[data-order-id]').data('order-id');
+                const productId = itemRow.find('button[data-product-id]').data('product-id');
+                const productName = itemRow.find('button[data-product-name]').data('product-name') || 
+                                  itemRow.find('strong').first().text();
+                
+                // Only proceed if we have all required information
+                if (orderId && productId) {
+                    // Initiate auto-return with penalty
+                    initiateAutoReturn(orderId, productId, productName);
+                }
+            }
+        });
+    }
+     
+    // Function to handle auto-return
+    function initiateAutoReturn(orderId, productId, productName) {
+        $.ajax({
+            url: '/auto-return',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                order_id: orderId,
+                product_id: productId,
+                apply_penalty: true,
+                penalty_amount: 50
+            }),
+            success: function(response) {
                 if (response.success) {
-                    // Create the content HTML
-                    const contentHtml = `
-                        <div class="order-info mb-4">
-                            <h6>Order Information</h6>
-                            <p><strong>Order ID:</strong> ${response.order.order_id}</p>
-                            <p><strong>Date:</strong> ${response.order.created_at}</p>
-                            <p><strong>Status:</strong> ${response.order.status || 'N/A'}</p>
-                            <p><strong>Total Amount:</strong> ₹${parseFloat(response.order.order_total || 0).toFixed(2)}</p>
-                        </div>
-                        
-                        <div class="order-items mb-4">
-                            <h6>Items</h6>
-                            <div class="list-group">
-                                ${response.order.items.map(item => `
-                                    <div class="list-group-item">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <h6 class="mb-1">${item.product_name}</h6>
-                                            <span class="badge ${getStatusBadgeClass(item.status)}">${item.status}</span>
-                                        </div>
-                                        <p class="mb-1">Quantity: ${item.quantity}</p>
-                                        <p class="mb-1">Rental Period: ${item.rent_from} to ${item.rent_to}</p>
-                                        <p class="mb-1">Price: ₹${parseFloat(item.item_total || 0).toFixed(2)}</p>
-                                        <small class="text-muted">Store: ${item.store_name || 'N/A'}</small>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                        
-                        ${response.order.shipping_address ? `
-                            <div class="shipping-info">
-                                <h6>Shipping Information</h6>
-                                <p>${response.order.shipping_address}</p>
-                                <p>${response.order.shipping_district || ''}</p>
-                            </div>
-                        ` : ''}
-                    `;
+                    // Update UI to show returned status
+                    const statusCell = $(`#status-cell-${orderId}-${productId}`);
+                    if (statusCell.length) {
+                        statusCell.html(`
+                            <span class="badge bg-danger">Auto-Returned</span><br>
+                            <small>Rental Period: ${response.rent_from || 'N/A'} to ${response.rent_to || 'N/A'}</small><br>
+                            <small>Penalty Applied: ₹50</small>
+                        `);
+                    }
                     
-                    $('#moreDetailsContent').html(contentHtml).removeClass('d-none');
+                    // Hide any action buttons
+                    $(`button[data-order-id="${orderId}"][data-product-id="${productId}"]`).hide();
+                    
+                    // Show notification
+                    $('#autoReturnItemName').text(productName);
+                    $('#autoReturnOrderId').text(orderId);
+                    $('#autoReturnNotification').fadeIn(300).delay(5000).fadeOut(300);
+                    
+                    // Update wallet balance if provided
+                    if (response.wallet_balance !== undefined) {
+                        // Update wallet balance in the modal
+                        $('#walletBalance, .text-primary:contains("₹")').text(`₹${parseFloat(response.wallet_balance).toFixed(2)}`);
+                    }
+                    
+                    // Refresh the returns tab
+                    setTimeout(() => {
+                        // If user is on the returns tab, refresh it
+                        if ($('#returns').hasClass('active')) {
+                            location.reload();
+                        }
+                    }, 6000);
                 } else {
-                    $('#orderDetailsError').removeClass('d-none');
+                    console.error('Auto-return failed:', response.message);
+                    showToast('Error', response.message || 'Failed to process auto-return', true);
                 }
             },
             error: function(xhr, status, error) {
-                $('#orderDetailsLoading').addClass('d-none');
-                $('#orderDetailsError').removeClass('d-none')
-                    .text(xhr.responseJSON?.message || 'Failed to load order details. Please try again.');
-                console.error('Error loading order details:', error);
+                console.error('Auto-return error:', error);
+                showToast('Error', 'Failed to process auto-return. Please try again.', true);
             }
         });
-    });
-    
-    // Helper function to get badge class based on status
-    function getStatusBadgeClass(status) {
-        switch(status.toLowerCase()) {
-            case 'delivered':
-                return 'bg-success';
-            case 'cancelled':
-                return 'bg-danger';
-            case 'returned':
-                return 'bg-info';
-            case 'ordered':
-                return 'bg-primary';
-            default:
-                return 'bg-secondary';
-        }
     }
+     
+    // Run the check when page loads
+    checkPastDueRentals();
+     
+    // Also run the check periodically (every hour)
+    setInterval(checkPastDueRentals, 3600000);
 });
+</script>
+
+<!-- Return Details Modal -->
+<div class="modal fade" id="returnDetailsModal" tabindex="-1" aria-labelledby="returnDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="returnDetailsModalLabel">Return Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Return Information</h6>
+                        <p><strong>Product:</strong> <span id="returnModalProductName"></span></p>
+                        <p><strong>Order ID:</strong> <span id="returnModalOrderId"></span></p>
+                        <p><strong>Return Status:</strong> <span id="returnModalStatus" class="badge"></span></p>
+                        <p><strong>Return Date:</strong> <span id="returnModalReturnDate"></span></p>
+                        <p id="penaltyInfo" style="display: none;">
+                            <strong class="text-danger">Late Return Penalty:</strong> ₹<span id="penaltyAmount">50</span>
+                        </p>
+                        <div id="autoReturnChargeInfo" style="display: none;" class="alert alert-danger">
+                            <h6><i class="fa fa-exclamation-triangle"></i> Auto-Return Applied</h6>
+                            <p class="mb-1">This item was automatically returned due to late return.</p>
+                            <p class="mb-1"><strong>Auto-Return Charge:</strong> ₹<span id="autoReturnChargeAmount">50</span></p>
+                            <p class="mb-0"><strong>Wallet Deposit:</strong> ₹<span id="walletDepositAmount">1000</span> (₹50 deducted)</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Return Timeline</h6>
+                        <div class="timeline-events">
+                            <div class="timeline-event">
+                                <div class="timeline-icon">
+                                    <i class="fa fa-shopping-cart"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <p class="timeline-date" id="returnTimelineOrderDate"></p>
+                                    <p class="timeline-label">Order Placed</p>
+                                </div>
+                            </div>
+                            <div class="timeline-event">
+                                <div class="timeline-icon">
+                                    <i class="fa fa-truck"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <p class="timeline-date" id="returnTimelineDeliveryDate"></p>
+                                    <p class="timeline-label">Item Delivered</p>
+                                </div>
+                            </div>
+                            <div class="timeline-event">
+                                <div class="timeline-icon">
+                                    <i class="fa fa-calendar"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <p class="timeline-date" id="returnTimelineDueDate"></p>
+                                    <p class="timeline-label">Return Due Date</p>
+                                </div>
+                            </div>
+                            <div class="timeline-event" id="autoReturnEvent" style="display: none;">
+                                <div class="timeline-icon">
+                                    <i class="fa fa-exclamation-triangle text-warning"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <p class="timeline-date" id="returnTimelineAutoReturnDate"></p>
+                                    <p class="timeline-label">Auto-Returned (Late)</p>
+                                    <p class="text-danger">₹50 penalty applied</p>
+                                </div>
+                            </div>
+                            <div class="timeline-event">
+                                <div class="timeline-icon">
+                                    <i class="fa fa-check-circle"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <p class="timeline-date" id="returnTimelineReturnDate"></p>
+                                    <p class="timeline-label">Return Completed</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Add debug tools at the bottom of the page, right before closing body tag -->
+    
+
+    <script>
+        // Debug tools
+        $(document).ready(function() {
+            $('#debug-check-overdue').on('click', function() {
+                console.log('Manual check for overdue rentals triggered');
+                checkPastDueRentals();
+            });
+        });
+    </script>
+
+    <script>
+        // Add this to bind the Return button to our auto-return function
+        $(document).ready(function() {
+            // Find all "Return" buttons on the page
+            $('button:contains("Return"), .btn:contains("Return")').not('#confirmReturn').on('click', function(e) {
+                // Check if we're in tab switching mode - if so, completely ignore the click
+                if (window.isTabSwitching) {
+                    console.log('Ignoring Return button click during tab switching');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+                
+                // Get the order card or row containing this button
+                const orderItem = $(this).closest('tr, .order-item');
+                
+                // Try to extract order ID and product ID
+                const orderIdText = orderItem.find(':contains("Order ID:")').text() || 
+                                   $(':contains("Order ID:")').text();
+                const orderIdMatch = orderIdText.match(/Order ID:?\s*([\w-]+)/);
+                const orderId = orderIdMatch ? orderIdMatch[1] : null;
+                
+                // Get product name
+                const productName = orderItem.find('h4, h5, strong').first().text().trim();
+                
+                if (orderId) {
+                    console.log('Return button clicked for order:', orderId, 'product:', productName);
+                    
+                    // Check if we're in the Late Returns tab
+                    const inLateReturnsTab = $('#auto-returns-tab').hasClass('active') || $('#auto-returns').hasClass('show active');
+                    
+                    // Only show confirmation dialog if not in Late Returns tab
+                    let shouldProceed = true;
+                    if (!inLateReturnsTab && !window.isTabSwitching) {
+                        shouldProceed = confirm(`Do you want to initiate return for the item "${productName}"? A penalty of ₹50 will be deducted from your wallet due to late return.`);
+                    }
+                    
+                    if (shouldProceed) {
+                        // If checkPastDueRentals is available in the global scope, call it
+                        if (typeof checkPastDueRentals === 'function') {
+                            // Set a delay to allow tab switching to complete
+                            setTimeout(function() {
+                                checkPastDueRentals();
+                            }, 100);
+                        } else {
+                            // Fallback - directly call the auto-return endpoint
+                            const userId = $('meta[name="user-id"]').attr('content') || $('#user-id').val();
+                            
+                            $.ajax({
+                                url: '/auto-return',
+                                method: 'POST',
+                                contentType: 'application/json',
+                                data: JSON.stringify({
+                                    order_id: orderId,
+                                    product_id: '-',  // Use placeholder if we don't have the actual ID
+                                    user_id: userId
+                                }),
+                                success: function(response) {
+                                    if (response.success) {
+                                        alert(`Return process initiated successfully. A penalty of ₹${response.penalty_amount} has been applied to your wallet.`);
+                                        location.reload();
+                                    } else {
+                                        alert(`Error: ${response.error || 'Failed to process auto-return'}`);
+                                    }
+                                },
+                                error: function() {
+                                    alert('Failed to process auto-return. Please try again.');
+                                }
+                            });
+                        }
+                    }
+                } else {
+                    console.error('Could not find order ID for auto-return');
+                    alert('Could not determine order details for auto-return. Please try again.');
+                }
+            });
+        });
+
+        // View return details handler
+        $('.view-return-details').on('click', function() {
+            const orderId = $(this).data('order-id');
+            const productId = $(this).data('product-id');
+            
+            // Only proceed if we're in the Returns tab
+            const isReturnsTab = $('#returns').hasClass('active');
+            if (!isReturnsTab) {
+                console.log('Not displaying return modal because we are not in the Returns tab');
+                return;
+            }
+            
+            // Determine which sub-tab is active
+            const isNormalReturnsActive = $('#normal-returns').hasClass('show active');
+            const isAutoReturnsActive = $('#auto-returns').hasClass('show active');
+            
+            // Determine which sub-tab this button belongs to
+            const isInNormalReturns = $(this).closest('#normal-returns').length > 0;
+            const isInAutoReturns = $(this).closest('#auto-returns').length > 0;
+            
+            // Only show the modal if the button is in the active sub-tab
+            if ((isNormalReturnsActive && !isInNormalReturns) || (isAutoReturnsActive && !isInAutoReturns)) {
+                console.log('Not displaying return modal because button is not in the active Returns sub-tab');
+                return;
+            }
+            
+            // Close any existing modals
+            closeAllModals();
+            
+            // Create a new modal instance after ensuring the element is clean
+            const modalElement = document.getElementById('returnDetailsModal');
+            // Ensure any existing modal instance is disposed
+            const existingModal = bootstrap.Modal.getInstance(modalElement);
+            if (existingModal) {
+                existingModal.dispose();
+            }
+            
+            // Create a new modal instance
+            const returnModal = new bootstrap.Modal(modalElement, {
+                backdrop: 'static',
+                keyboard: false
+            });
+            
+            // Get return details from the server
+            $.ajax({
+                url: `/return-details/${orderId}/${productId}`,
+                method: 'GET',
+                success: function(response) {
+                    if (response.success) {
+                        const item = response.item;
+                        
+                        // Populate basic return info
+                        $('#returnModalProductName').text(item.product_name || 'Unknown Product');
+                        $('#returnModalOrderId').text(orderId);
+                        
+                        // Set return status with appropriate badge
+                        const statusBadge = $('#returnModalStatus');
+                        statusBadge.text(item.status || 'Returned');
+                        
+                        // Hide autoreturn info by default
+                        $('#autoReturnChargeInfo').hide();
+                        
+                        if (item.status === 'auto_returned' || item.auto_returned_at) {
+                            statusBadge.removeClass().addClass('badge bg-danger');
+                            // Show penalty info for auto-returned items
+                            $('#penaltyInfo').show();
+                            $('#penaltyAmount').text('50');
+                            // Show auto-return event in timeline
+                            $('#autoReturnEvent').show();
+                            $('#returnTimelineAutoReturnDate').text(item.auto_returned_at || 'N/A');
+                            
+                            // Show auto-return charge info if available
+                            if (item.auto_return_charge) {
+                                $('#autoReturnChargeInfo').show();
+                                $('#autoReturnChargeAmount').text(item.auto_return_charge.amount || '50');
+                                $('#walletDepositAmount').text(item.wallet_deposit || '950');
+                            }
+                        } else {
+                            statusBadge.removeClass().addClass('badge bg-success');
+                            $('#penaltyInfo').hide();
+                            $('#autoReturnEvent').hide();
+                        }
+                        
+                        // Set dates
+                        $('#returnModalReturnDate').text(item.return_completed_at || 'N/A');
+                        $('#returnTimelineOrderDate').text(item.order_date || 'N/A');
+                        $('#returnTimelineDeliveryDate').text(item.delivery_date || 'N/A');
+                        $('#returnTimelineDueDate').text(item.rent_to || 'N/A');
+                        $('#returnTimelineReturnDate').text(item.return_completed_at || 'N/A');
+                        
+                        // Show the modal
+                        returnModal.show();
+                    } else {
+                        // Show error toast
+                        showToast('Error', response.message || 'Failed to load return details', true);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    showToast('Error', 'Failed to load return details. Please try again.', true);
+                    console.error('Error loading return details:', error);
+                }
+            });
+        });
 </script>
 </body>
 </html>

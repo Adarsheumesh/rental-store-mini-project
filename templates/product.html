@@ -1195,7 +1195,7 @@
                             <tr>
                                 <td>
                                     <i class="fa fa-user-circle me-2"></i>
-                                    ${record.user_name}
+                                    ${record.user_name ? record.user_name.substring(0, 2) + '*'.repeat(record.user_name.length > 2 ? record.user_name.length - 2 : 0) : 'Unknown User'}
                                 </td>
                                 <td>
                                     <i class="fa fa-store me-2"></i>
@@ -1222,7 +1222,7 @@
                                 <td>
                                     ${record.notes ? `
                                         <i class="fa fa-comment me-2"></i>
-                                        ${record.notes}
+                                        ${record.notes.replace('LOST PRODUCT:', '')}
                                     ` : '-'}
                                 </td>
                             </tr>`;

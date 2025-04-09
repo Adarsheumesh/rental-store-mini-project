@@ -107,19 +107,23 @@
                         <li class="has-sub">
                             <a class="sidenav-item-link" href="javascript:void(0)">
                                 <i class="mdi mdi-package-variant-closed"></i>
-                                <span class="nav-text">Products</span>
-                                <b class="caret"></b>
+                                <span class="nav-text">Products</span> <b class="caret"></b>
                             </a>
                             <div class="collapse">
                                 <ul class="sub-menu" id="products" data-parent="#sidebar-menu">
-                                    <li>
+                                    <li class="">
                                         <a class="sidenav-item-link" href="/product-add">
                                             <span class="nav-text">Add Product</span>
                                         </a>
                                     </li>
-                                    <li>
+                                    <li class="">
                                         <a class="sidenav-item-link" href="/products">
                                             <span class="nav-text">List Product</span>
+                                        </a>
+                                    </li>
+                                    <li class="">
+                                        <a class="sidenav-item-link" href="/lost-products">
+                                            <span class="nav-text">Lost Products</span>
                                         </a>
                                     </li>
                                 </ul>
@@ -235,7 +239,7 @@
                     
                     <!-- Revenue Summary Cards -->
                     <div class="row">
-                        <div class="col-xl-4 col-sm-6 p-b-15 lbl-card">
+                        <div class="col-xl-3 col-sm-6 p-b-15 lbl-card">
                             <div class="card card-mini dash-card card-1">
                                 <div class="card-body">
                                     <h2 class="mb-1">₹{{ "%.2f"|format(revenue_data.total_revenue) }}</h2>
@@ -244,7 +248,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-xl-4 col-sm-6 p-b-15 lbl-card">
+                        <div class="col-xl-3 col-sm-6 p-b-15 lbl-card">
                             <div class="card card-mini dash-card card-2">
                                 <div class="card-body">
                                     <h2 class="mb-1">₹{{ "%.2f"|format(revenue_data.total_sales) }}</h2>
@@ -253,7 +257,16 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-xl-4 col-sm-6 p-b-15 lbl-card">
+                        <div class="col-xl-3 col-sm-6 p-b-15 lbl-card">
+                            <div class="card card-mini dash-card card-4">
+                                <div class="card-body">
+                                    <h2 class="mb-1">₹{{ "%.2f"|format(revenue_data.total_late_fine|default(0)) }}</h2>
+                                    <p>Late Fine Revenue</p>
+                                    <span class="mdi mdi-cash-multiple"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-3 col-sm-6 p-b-15 lbl-card">
                             <div class="card card-mini dash-card card-3">
                                 <div class="card-body">
                                     <h2 class="mb-1">₹{{ "%.2f"|format(revenue_data.total_revenue / revenue_data.total_orders if revenue_data.total_orders > 0 else 0) }}</h2>
@@ -279,6 +292,7 @@
                                                     <th>Month</th>
                                                     <th>Orders</th>
                                                     <th>Total Sales</th>
+                                                    <th>Late Fines</th>
                                                     <th>Revenue (5%)</th>
                                                 </tr>
                                             </thead>
@@ -288,6 +302,7 @@
                                                     <td>{{ month_data.month }}</td>
                                                     <td><span class="badge bg-light text-dark">{{ month_data.orders }}</span></td>
                                                     <td class="amount">₹{{ "%.2f"|format(month_data.sales) }}</td>
+                                                    <td class="amount text-danger">₹{{ "%.2f"|format(month_data.late_fine|default(0)) }}</td>
                                                     <td class="amount text-primary">₹{{ "%.2f"|format(month_data.revenue) }}</td>
                                                 </tr>
                                                 {% endfor %}
@@ -315,6 +330,7 @@
                                                     <th>Customer</th>
                                                     <th>Items</th>
                                                     <th>Total</th>
+                                                    <th>Late Fine</th>
                                                     <th>Revenue (5%)</th>
                                                     <th>Order Date</th>
                                                     <th>Date & Time</th>
@@ -334,6 +350,7 @@
                                                         {% endfor %}
                                                     </td>
                                                     <td class="amount">₹{{ "%.2f"|format(order.total) }}</td>
+                                                    <td class="amount text-danger">₹{{ "%.2f"|format(order.autoreturn_charge|default(0)) }}</td>
                                                     <td class="amount text-primary">₹{{ "%.2f"|format(order.revenue) }}</td>
                                                     <td>
                                                         <span class="order-date-only">{{ order.created_at.split(' ')[0] }}</span>
@@ -459,6 +476,9 @@
         }
         .card-3 {
             background: linear-gradient(45deg, #4caf50, #8bc34a);
+        }
+        .card-4 {
+            background: linear-gradient(45deg, #ff5252, #ff7675);
         }
         .dash-card {
             position: relative;
@@ -697,13 +717,14 @@
                     '{{ order.customer_name }}',
                     '{{ order.created_at.split(" ")[0] }}',
                     `Rs ${parseFloat({{ order.total }}).toFixed(2)}`,
+                    `Rs ${parseFloat({{ order.autoreturn_charge|default(0) }}).toFixed(2)}`,
                     `Rs ${parseFloat({{ order.revenue }}).toFixed(2)}`
                 ]);
                 {% endfor %}
                 
                 // Create table with order data
                 doc.autoTable({
-                    head: [['Order ID', 'Customer', 'Date', 'Total Sale (Rs)', 'Revenue (5%) (Rs)']],
+                    head: [['Order ID', 'Customer', 'Date', 'Total Sale (Rs)', 'Late Fine (Rs)', 'Revenue (5%) (Rs)']],
                     body: orders,
                     startY: 40,
                     theme: 'grid',
@@ -715,13 +736,15 @@
                 const totalOrders = {{ revenue_data.total_orders }};
                 const totalSales = parseFloat({{ revenue_data.total_sales }}).toFixed(2);
                 const totalRevenue = parseFloat({{ revenue_data.total_revenue }}).toFixed(2);
+                const totalLateFine = parseFloat({{ revenue_data.total_late_fine|default(0) }}).toFixed(2);
                 
                 const finalY = doc.lastAutoTable.finalY + 10;
                 doc.setFontSize(12);
                 doc.text(`Summary:`, 14, finalY);
                 doc.text(`Total Orders: ${totalOrders}`, 14, finalY + 7);
                 doc.text(`Total Sales: Rs ${totalSales}`, 14, finalY + 14);
-                doc.text(`Total Revenue (5%): Rs ${totalRevenue}`, 14, finalY + 21);
+                doc.text(`Total Late Fines: Rs ${totalLateFine}`, 14, finalY + 21);
+                doc.text(`Total Revenue (5%): Rs ${totalRevenue}`, 14, finalY + 28);
                 
                 // Save PDF
                 doc.save(`${vendorName.replace(/\s+/g, '_')}_Orders_Report_${currentDate.replace(/\//g, '-')}.pdf`);
@@ -749,13 +772,14 @@
                     '{{ month_data.month }}',
                     {{ month_data.orders }},
                     `Rs ${parseFloat({{ month_data.sales }}).toFixed(2)}`,
+                    `Rs ${parseFloat({{ month_data.late_fine|default(0) }}).toFixed(2)}`,
                     `Rs ${parseFloat({{ month_data.revenue }}).toFixed(2)}`
                 ]);
                 {% endfor %}
                 
                 // Create table with monthly data
                 doc.autoTable({
-                    head: [['Month', 'Orders', 'Total Sales (Rs)', 'Revenue (5%) (Rs)']],
+                    head: [['Month', 'Orders', 'Total Sales (Rs)', 'Late Fines (Rs)', 'Revenue (5%) (Rs)']],
                     body: monthlyData,
                     startY: 40,
                     theme: 'grid',
@@ -772,11 +796,13 @@
                 // Format numbers using JavaScript instead of template rendering
                 const totalSales = parseFloat({{ revenue_data.total_sales }}).toFixed(2);
                 const totalRevenue = parseFloat({{ revenue_data.total_revenue }}).toFixed(2);
+                const totalLateFine = parseFloat({{ revenue_data.total_late_fine|default(0) }}).toFixed(2);
                 const avgRevenuePerOrder = parseFloat({{ revenue_data.total_revenue / revenue_data.total_orders if revenue_data.total_orders > 0 else 0 }}).toFixed(2);
                 
                 doc.text(`Total Sales: Rs ${totalSales}`, 14, finalY + 14);
-                doc.text(`Total Revenue (5%): Rs ${totalRevenue}`, 14, finalY + 21);
-                doc.text(`Average Revenue Per Order: Rs ${avgRevenuePerOrder}`, 14, finalY + 28);
+                doc.text(`Total Late Fines: Rs ${totalLateFine}`, 14, finalY + 21);
+                doc.text(`Total Revenue (5%): Rs ${totalRevenue}`, 14, finalY + 28);
+                doc.text(`Average Revenue Per Order: Rs ${avgRevenuePerOrder}`, 14, finalY + 35);
                 
                 // Save PDF
                 doc.save(`${vendorName.replace(/\s+/g, '_')}_Revenue_Report_${currentDate.replace(/\//g, '-')}.pdf`);

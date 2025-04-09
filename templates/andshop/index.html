@@ -122,6 +122,11 @@
 											<span class="nav-text">List Product</span>
 										</a>
 									</li>
+									<li class="">
+										<a class="sidenav-item-link" href="/lost-products">
+											<span class="nav-text">Lost Products</span>
+										</a>
+									</li>
 								</ul>
 							</div>
 						</li>
@@ -454,7 +459,7 @@
 												<th>Product Name</th>
 												<th class="d-none d-lg-table-cell">Units</th>
 												<th class="d-none d-lg-table-cell">Order Date</th>
-												<th class="d-none d-lg-table-cell">Order Cost</th>
+												
 												<th>Status</th>
 												<th></th>
 											</tr>
@@ -471,7 +476,7 @@
 												</td>
 												<td class="d-none d-lg-table-cell">{{ order.quantity }} Unit</td>
 												<td class="d-none d-lg-table-cell">{{ order.order_date }}</td>
-												<td class="d-none d-lg-table-cell">{{ order.order_cost }}</td>
+												
 												<td>
 													<span class="badge badge-{{ 'success' if order.status == 'Completed' else 'warning' }}">{{ order.status }}</span>
 												</td>

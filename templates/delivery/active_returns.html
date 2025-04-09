@@ -346,6 +346,9 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="markAsLost()">
+                        <i class="mdi mdi-alert-circle me-1"></i> Mark as Lost
+                    </button>
                     <button type="button" class="btn btn-primary" onclick="submitReturn()">
                         <i class="mdi mdi-check me-1"></i> Complete Return
                     </button>
@@ -360,6 +363,9 @@
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <!-- Store returns data from Jinja in a hidden div to avoid linter errors -->
+    <div id="returnsDataContainer" data-returns='{{ active_returns | tojson | safe }}' style="display: none;"></div>
     
     <script>
         // Initialize Firebase
@@ -382,10 +388,33 @@
 
         // Get database reference
         const database = firebase.database();
+        
+        // Add a flag to track if the product is marked as lost
+        let isProductLost = false;
+        
+        // Function to mark the product as lost
+        function markAsLost() {
+            isProductLost = true;
+            // Get the notes and add a prefix to indicate the product is lost
+            let notes = document.getElementById('conditionNotes').value;
+            if (!notes.includes('LOST PRODUCT:')) {
+                notes = 'LOST PRODUCT: ' + notes;
+                document.getElementById('conditionNotes').value = notes;
+            }
+            
+            // Show a confirmation dialog
+            if (confirm('Are you sure you want to mark this product as lost? This will forfeit the security deposit.')) {
+                submitReturn(true);
+            } else {
+                isProductLost = false;
+            }
+        }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const returns = {{ active_returns | tojson | safe }};
-            renderActiveReturns(returns);
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get returns data from the hidden div
+            const returnsDataElement = document.getElementById('returnsDataContainer');
+            const returnsData = JSON.parse(returnsDataElement.getAttribute('data-returns') || '{}');
+            renderActiveReturns(returnsData);
         });
 
         // Helper function to format date
@@ -594,14 +623,17 @@
         }
 
         // Add new function to handle the return submission
-        function submitReturn() {
+        function submitReturn(isMarkedAsLost = false) {
             const orderId = document.getElementById('returnOrderId').value;
             const productId = document.getElementById('returnProductId').value;
             const storeName = document.getElementById('returnStoreName').value;
-            const condition = document.getElementById('productCondition').value;
+            let condition = document.getElementById('productCondition').value;
             const notes = document.getElementById('conditionNotes').value;
-
-            if (!condition) {
+            
+            // If product is marked as lost, override the condition
+            if (isMarkedAsLost) {
+                condition = "lost";
+            } else if (!condition) {
                 showToast('Please select a product condition', 'error');
                 return;
             }
@@ -642,8 +674,14 @@
                                 if (transaction.type === 'deposit' && transaction.status === 'active') {
                                     const transactionKey = childSnapshot.key;
                                     console.log('Updating transaction:', transactionKey);
-                                    // Update the transaction status directly
-                                    updates[`wallet_transactions/${transactionKey}/status`] = 'returned';
+                                    // Update the transaction status based on condition
+                                    if (isMarkedAsLost) {
+                                        // If product is lost, forfeit the deposit
+                                        updates[`wallet_transactions/${transactionKey}/status`] = 'forfeited';
+                                    } else {
+                                        // If product is returned, return the deposit
+                                        updates[`wallet_transactions/${transactionKey}/status`] = 'returned';
+                                    }
                                 }
                             });
 
@@ -671,7 +709,12 @@
                                     return database.ref().update(updates)
                                         .then(() => {
                                             console.log('Firebase update successful');
-                                            showToast('Return completed successfully!', 'success');
+                                            // Show appropriate toast message
+                                            if (isMarkedAsLost) {
+                                                showToast('Product marked as lost. Security deposit forfeited.', 'warning');
+                                            } else {
+                                                showToast('Return completed successfully!', 'success');
+                                            }
                                             // Close the modal
                                             const modal = bootstrap.Modal.getInstance(document.getElementById('productConditionModal'));
                                             modal.hide();
@@ -684,7 +727,12 @@
                                         });
                                 } else {
                                     console.log('No Firebase updates needed');
-                                    showToast('Return completed successfully!', 'success');
+                                    // Show appropriate toast message
+                                    if (isMarkedAsLost) {
+                                        showToast('Product marked as lost.', 'warning');
+                                    } else {
+                                        showToast('Return completed successfully!', 'success');
+                                    }
                                     // Close the modal
                                     const modal = bootstrap.Modal.getInstance(document.getElementById('productConditionModal'));
                                     modal.hide();
